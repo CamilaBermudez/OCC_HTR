@@ -1,3 +1,4 @@
 /data/raw/original_manuscript/
 /.venv
 .env
+/results/image_segmentation/

@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 from dotenv import load_dotenv
 
@@ -21,8 +22,7 @@ def segment_all_images():
     _env["PYTHONIOENCODING"] = PYTHON_IO_ENCODING
 
     print(f"Starting segmentation for files in: {input_folder}")
-    print("-" * 50)
-
+    
     for image_file in os.listdir(input_folder):
         input_path = os.path.join(input_folder, image_file)
         
@@ -32,7 +32,9 @@ def segment_all_images():
         if not image_file.lower().endswith((".jpg", ".jpeg", ".png", ".tif")):
             continue
 
-        processed_name = os.path.splitext(image_file)[0].replace(" ", "_").replace("-", "_")
+        base_name = os.path.splitext(image_file)[0]
+        padded_name = re.sub(r'^\d+', lambda m: m.group().zfill(2), base_name)
+        processed_name = padded_name.replace(" ", "").replace("-", "_")
         output_filename = processed_name + ".json"
         output_path = os.path.join(output_folder, output_filename)
 
