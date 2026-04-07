@@ -7,8 +7,6 @@ from dotenv import load_dotenv
 from tqdm import tqdm  # pip install tqdm
 from src.utils.path_utils import format_filename, format_for_cli
 
-
-# Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 logger = logging.getLogger(__name__)
 
@@ -69,69 +67,6 @@ def segment_all_images() -> None:
             success_count += 1
 
     logger.info(f"Segmentation complete: {success_count}/{len(image_files)} succeeded.")
-
-if __name__ == "__main__":
-    segment_all_images()
-
-
-
-
-
-
-
-
-
-
-load_dotenv()
-PROJECT_ROOT = os.environ.get("PROJECT_ROOT")
-PYTHON_IO_ENCODING = os.environ.get("PYTHON_IO_ENCODING")
-
-_env = os.environ.copy()
-_env["PYTHONIOENCODING"] = PYTHON_IO_ENCODING
-
-def segment_image(input_path_cmd, output_path_cmd,output_filename,KRAKEN_BIN,_env = os.environ):
-    try:
-        subprocess.run(
-            [KRAKEN_BIN, "-i", input_path_cmd, output_path_cmd, "segment", "-bl"],
-            check=True,
-            capture_output=True,
-            text=True,
-            env=_env
-        )
-        print(f"  -> Success: Saved {output_filename}")
-        
-    except subprocess.CalledProcessError as e:
-        print(f"  -> Failed: {e.stderr}")
-    except Exception as e:
-        print(f"  -> Unexpected Error: {e}")
-
-def segment_all_images():
-    input_folder = os.path.join(PROJECT_ROOT, "data", "raw", "original_manuscript", "reproduction14453_100")
-    output_folder = os.path.join(PROJECT_ROOT, "data", "processed", "segmented_images")
-    os.makedirs(output_folder, exist_ok=True)
-    KRAKEN_BIN = os.path.join(PROJECT_ROOT, ".venv", "Scripts", "kraken.exe")
-
-    if not os.path.exists(input_folder):
-        print(f"Error: Input folder not found at {input_folder}")
-        return
-
-    print(f"Starting segmentation for files in: {input_folder}")
-    for image_file in os.listdir(input_folder):
-        input_path = os.path.join(input_folder, image_file)
-        
-        if not os.path.isfile(input_path):
-            continue
-            
-        if not image_file.lower().endswith((".jpg", ".jpeg", ".png", ".tif")):
-            continue
-
-        base_name = os.path.splitext(image_file)[0]
-        output_path, output_filename,_ = format_filename(base_name, output_folder)
-        input_path_cmd, output_path_cmd = format_for_cli(input_path, output_path)
-
-        print(f"Processing: {image_file}")
-        segment_image(input_path_cmd, output_path_cmd,_env,output_filename,KRAKEN_BIN)
-        
 
 if __name__ == "__main__":
     segment_all_images()
