@@ -4,34 +4,51 @@ import shutil
 import subprocess
 from pathlib import Path
 from dotenv import load_dotenv
-from tqdm import tqdm  # pip install tqdm
+from tqdm import tqdm  
 from src.utils.path_utils import format_filename, format_for_cli
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    force=True 
+)
 logger = logging.getLogger(__name__)
 
-def segment_image( input_path_cmd: str, output_path_cmd: str, output_filename: str,
-    kraken_bin: str) -> bool:
+
+def segment_image( img_path: Path, output_path: Path) -> bool:
     """Run Kraken segmentation for a single image. Returns True on success."""
     load_dotenv()
+    project_root = Path(os.environ["PROJECT_ROOT"])
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = os.environ.get("PYTHON_IO_ENCODING", "utf-8")
 
+    img_path = Path(img_path)
+    output_path = Path(output_path)
+    input_cmd, output_cmd = format_for_cli(img_path, output_path)
+    
+    kraken_bin = os.environ.get("KRAKEN_BIN") or shutil.which("kraken")
+    logger.info(f"KRAKEN_BIN resolved to: {kraken_bin}")
+    
+    if not kraken_bin:
+        logger.error("Kraken executable not found. Set KRAKEN_BIN env var or add to PATH.")
+        return
+
     try:
         subprocess.run(
-            [kraken_bin, "-i", input_path_cmd, output_path_cmd, "segment", "-bl"],
+            [kraken_bin, "-i", input_cmd, output_cmd, "segment", "-bl"],
             check=True,
             capture_output=True,
             text=True,
             env=env
         )
-        logger.info(f"Saved: {output_filename}")
+        logger.info(f"Saved: {output_cmd}")
         return True
     except subprocess.CalledProcessError as e:
-        logger.error(f"Kraken failed for {output_filename}: {e.stderr.strip()}")
+        logger.error(f"Kraken failed for {output_cmd}: {e.stderr.strip()}")
         return False
     except Exception as e:
-        logger.exception(f"Unexpected error for {output_filename}: {e}")
+        logger.exception(f"Unexpected error for {output_cmd}: {e}")
         return False
     
 
@@ -42,11 +59,6 @@ def segment_all_images() -> None:
     input_folder = project_root / "data" / "raw" / "original_manuscript" / "reproduction14453_100"
     output_folder = project_root / "data" / "processed" / "segmented_images"
     output_folder.mkdir(parents=True, exist_ok=True)
-
-    kraken_bin = os.environ.get("KRAKEN_BIN") or shutil.which("kraken")
-    if not kraken_bin:
-        logger.error("Kraken executable not found. Set KRAKEN_BIN env var or add to PATH.")
-        return
 
     if not input_folder.is_dir():
         logger.error(f"Input folder not found: {input_folder}")
@@ -63,7 +75,7 @@ def segment_all_images() -> None:
         output_path, output_filename, _ = format_filename(base_name, output_folder)
         input_cmd, output_cmd = format_for_cli(img_path, output_path)
 
-        if segment_image(input_cmd, output_cmd, output_filename, kraken_bin):
+        if segment_image(input_cmd, output_cmd):
             success_count += 1
 
     logger.info(f"Segmentation complete: {success_count}/{len(image_files)} succeeded.")
