@@ -17,7 +17,7 @@ h, w = img_rgb.shape[:2]
 # Create figure
 fig, ax = plt.subplots(figsize=(12, 8))
 ax.imshow(img_rgb, extent=[0, w, h, 0])
-ax.set_title("🖱️ CLICK to get coordinates | Press 'q' in console to stop", fontsize=12)
+ax.set_title("CLICK to get coordinates | Press 'q' in console to stop", fontsize=12)
 ax.set_xlabel("X (pixels)")
 ax.set_ylabel("Y (pixels)")
 
@@ -40,7 +40,7 @@ def on_click(event):
         fig.canvas.draw()
         
         # Print coordinates
-        print(f"✅ Point {len(clicked_points)}: ({x}, {y})")
+        print(f"Point {len(clicked_points)}: ({x}, {y})")
         
         # If we have 2 points, suggest rectangle
         if len(clicked_points) == 2:
@@ -56,15 +56,15 @@ def on_click(event):
 # Connect the click handler
 fig.canvas.mpl_connect('button_press_event', on_click)
 
-print("📍 Click on the image to mark points (top-left and bottom-right of rectangle)")
-print("   Click twice to get a complete rectangle definition\n")
+print("Click on the image to mark points (top-left and bottom-right of rectangle)")
+print("Click twice to get a complete rectangle definition\n")
 
 plt.tight_layout()
 plt.show()
 
 # After closing/finishing, show all collected points
 print("\n" + "="*50)
-print("📋 ALL CLICKED POINTS:")
+print("ALL CLICKED POINTS:")
 for i, (x, y) in enumerate(clicked_points, 1):
     print(f"   {i}. ({x}, {y})")
 print("="*50)
