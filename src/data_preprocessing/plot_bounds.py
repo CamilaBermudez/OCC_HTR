@@ -4,6 +4,8 @@ import logging
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 from dotenv import load_dotenv
+import sys
+sys.path.insert(0, str(Path(os.environ.get("PROJECT_ROOT", "."))))
 from src.utils.path_utils import format_filename
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
@@ -59,7 +61,8 @@ def plot_all_images_with_bounds( input_dir: str | Path, kraken_output_path: str 
             continue
 
         base_name = image_file.stem
-        json_path, _, processed_name = format_filename(base_name, kraken_output_path)
+        json_path_str, _, processed_name = format_filename(base_name, kraken_output_path)
+        json_path = Path(json_path_str) 
         output_path = output_dir / f"{processed_name}.png"
 
         if not json_path.exists():
@@ -88,6 +91,6 @@ if __name__ == "__main__":
     
     plot_all_images_with_bounds(
         input_dir=project_root / "data" / "raw" / "original_manuscript" / "reproduction14453_100",
-        kraken_output_path=project_root / "data" / "processed" / "segmented_images",
-        output_dir=project_root / "results" / "image_segmentation"
+        kraken_output_path= project_root / "data" / "processed" / "segmented_images",
+        output_dir=project_root / "data" / "processed" / "plotted_bounds",
     )
