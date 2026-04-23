@@ -4,6 +4,7 @@
 /results/image_segmentation/
 /data/processed/extracted_lines/
 /data/processed/img_layout/
+/data/processed/binarized_images/
 /data/processed/plotted_bounds/
 /tests/data_preprocessing/cropped_img/
 /data/processed/annotated_samples/
