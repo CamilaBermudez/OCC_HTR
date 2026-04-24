@@ -201,7 +201,7 @@ def evaluate_detection_only(
 if __name__ == "__main__":
     load_dotenv()
     PROJECT_ROOT = os.environ.get("PROJECT_ROOT")
-    MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "layout", "y8_YALTAi_5_best.pt")
+    MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "layout", "y8_YALTAi_30_best_annotated.pt")
     TEST_IMAGES_DIR = os.path.join(PROJECT_ROOT, "data", "processed", "annotated_samples", "retrain","images")
     TEST_ANNOTATIONS_DIR = os.path.join(PROJECT_ROOT, "data", "processed", "annotated_samples", "retrain","annotations")
 

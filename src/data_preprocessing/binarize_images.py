@@ -26,17 +26,6 @@ logger = logging.getLogger(__name__)
 
 
 def binarize_image(input_img: Union[str, Path], gaussian_filter: Tuple[int, int] = (5, 5), method: str = "otsu_gaussian") -> Tuple[float, np.ndarray]:
-    """
-    Binarize a grayscale image using Otsu's method, optionally with Gaussian blur.
-    
-    Args:
-        input_img: Path to input image (str or Path)
-        gaussian_filter: Kernel size for Gaussian blur as (width, height)
-        method: Binarization method - "otsu" or "otsu_gaussian"
-    
-    Returns:
-        Tuple of (threshold_value, binarized_image_array)
-    """
     img = cv.imread(str(input_img), cv.IMREAD_GRAYSCALE)
     if img is None:
         raise ValueError(f"Failed to read image: {input_img}")
@@ -78,7 +67,7 @@ def binarize_and_save(input_path: Union[str, Path], output_path: Union[str, Path
         stats["total_images"] += len(image_files)
         logger.info(f"Starting binarization for {len(image_files)} images in {img_folder.name}")
         
-        # 🔹 Create matching subfolder in output_path
+        # Create matching subfolder in output_path
         folder_output_path = output_path / img_folder.name
         if not dry_run:
             folder_output_path.mkdir(parents=True, exist_ok=True)
@@ -89,7 +78,7 @@ def binarize_and_save(input_path: Union[str, Path], output_path: Union[str, Path
         
         for img_path in tqdm(image_files, desc=f"Images in {img_folder.name}", unit="file", leave=False):
             try:
-                # 🔹 Pass the subfolder path to format_filename so it generates names relative to that folder
+                # Pass the subfolder path to format_filename so it generates names relative to that folder
                 _, _, processed_name = format_filename(
                     base_name=img_path.stem, 
                     output_folder=folder_output_path  # ← Use subfolder, not root output_path
@@ -102,7 +91,7 @@ def binarize_and_save(input_path: Union[str, Path], output_path: Union[str, Path
                 )
                 
                 if not dry_run:
-                    # 🔹 Save to the subfolder
+                    #  Save to the subfolder
                     output_file = folder_output_path / f"{processed_name}.png"
                     cv.imwrite(str(output_file), img_thr)
                 

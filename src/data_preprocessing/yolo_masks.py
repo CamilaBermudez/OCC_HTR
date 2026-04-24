@@ -66,7 +66,7 @@ def build_mask_yolo(model_path, images_path, output_path):
 if __name__ == "__main__":
     load_dotenv()
     PROJECT_ROOT = os.environ.get("PROJECT_ROOT")
-    MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "layout", "y8_YALTAi_5_best.pt")
+    MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "layout", "y8_YALTAi_15_best_annotated.pt")
     IMAGES_PATH = os.path.join(PROJECT_ROOT, "data", "raw", "original_manuscript", "reproduction14453_100")
     OUTPUT_PATH = os.path.join(PROJECT_ROOT, "data", "processed", "img_layout")
 
