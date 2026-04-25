@@ -44,7 +44,7 @@ def process_single_xml(xml_path: str, output_dir: str):
         page = root.find(".//Page")
     
     if page is None:
-        print(f"⚠️ Warning: No Page element found in {os.path.basename(xml_path)}")
+        print(f"Warning: No Page element found in {os.path.basename(xml_path)}")
         # Use default dimensions
         img_w, img_h = 1.0, 1.0
     else:
