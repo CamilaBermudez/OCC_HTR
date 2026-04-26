@@ -147,7 +147,7 @@ def filter_based_on_thresholds(density_size_data: List[dict], density_thresholds
     return bounds_density_down, bounds_density_up, bounds_size_down, bounds_size_up, long_imgs, clean_img
     
     
-def move_files(src_dir: Path, dst_dir: Path, list_img_remove):
+def move_files(src_dir: Path, dst_dir: Path, list_img_remove,type):
     
     image_folders = [f for f in src_dir.iterdir() if f.is_dir()]
     exclude_keys = {(image_folders[item[0]].stem, item[2]) for item in list_img_remove}
@@ -162,7 +162,7 @@ def move_files(src_dir: Path, dst_dir: Path, list_img_remove):
         folder = 'removed' if file_key in exclude_keys else 'kept'
             
         rel_path = src_file.relative_to(src_dir)
-        dst_file = dst_dir /folder / rel_path
+        dst_file = dst_dir / type /folder / rel_path
         
         dst_file.parent.mkdir(parents=True, exist_ok=True)
         
@@ -227,25 +227,31 @@ def filter_noisy_lines(src_dir: Path, dst_dir: Path,size_thresholds: List[float]
     
     
     bounds_density_down,bounds_density_up,bounds_size_down,bounds_size_up,long_imgs,clean_img = filter_based_on_thresholds(density_size_data=density_size_data, 
-                                        density_thresholds= density_thresholds ,size_thresholds=size_thresholds ,stats_density = stats_density,stats_size = stats_size)
+                                        density_thresholds= density_thresholds ,size_thresholds=size_thresholds ,stats_density = stats_density,stats_size = stats_size,src_dir=src_dir)
 
     bounds_density_ = set(bounds_density_down).union(set(bounds_density_up))
     bounds_size_ = set(bounds_size_down).union(set(bounds_size_up))
     bounds_density_size_ = set(bounds_size_).intersection(set(bounds_density_))
     img_remove = set([(i,j,stem,density,size,height,width)for i,j,stem,density,size,height,width in long_imgs]).union(set([(i,j,stem,density,size,height,width)for i,j,stem,density,size,height,width in bounds_density_size_]))
 
-
-    move_files(src_dir = src_dir, dst_dir = dst_dir, list_img_remove = img_remove)
-
     if export_tracking:
         generate_analysis_df(dst_dir = dst_dir, bounds_density_down = bounds_density_down,
                              bounds_density_up = bounds_density_up,bounds_size_down = bounds_size_down,
                              bounds_size_up = bounds_size_up,long_imgs = long_imgs,clean_img = clean_img)
+    
+    return img_remove
 
 
 
 if __name__ == "__main__":
     src_dir = Path(PROJECT_ROOT) / "data" / "processed" / "binarized_images"
-    dst_dir = Path(PROJECT_ROOT) / "data" / "processed" / "binarized_images_filtered"
+    dst_dir = Path(PROJECT_ROOT) / "data" / "processed" / "filtered_images"
     
-    filter_noisy_lines(src_dir=src_dir, dst_dir=dst_dir, size_thresholds=[0.03], density_thresholds=[0.001, 0.997])
+    img_remove = filter_noisy_lines(src_dir=src_dir, dst_dir=dst_dir, size_thresholds=[0.03], density_thresholds=[0.001, 0.997])
+    
+    # Moving binarized files
+    move_files(src_dir = src_dir, dst_dir = dst_dir, list_img_remove = img_remove,type = "binarized")
+
+    # Moving original images
+    src_dir = Path(PROJECT_ROOT) / "data" / "processed" / "extracted_lines"
+    move_files(src_dir = src_dir, dst_dir = dst_dir, list_img_remove = img_remove, type = "original")
