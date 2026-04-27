@@ -1,0 +1,10 @@
+2026-04-27 22:16:39 | INFO | === Cropping Started | Run: crop_reproduction14453_100_20260427_221639 ===
+2026-04-27 22:16:39 | INFO | Config: {"run": "crop_reproduction14453_100_20260427_221639", "git": "00f8c96", "input": "reproduction14453_100", "output": "extracted_lines", "images_count": 71}
+2026-04-27 22:16:39 | INFO | Starting cropping for 71 images
+2026-04-27 22:16:45 | INFO | Progress: 20/71 | OK: 20
+2026-04-27 22:16:51 | INFO | Progress: 40/71 | OK: 40
+2026-04-27 22:16:57 | INFO | Progress: 60/71 | OK: 60
+2026-04-27 22:17:00 | INFO | Progress: 71/71 | OK: 71
+2026-04-27 22:17:00 | INFO | Cropping complete: 71/71 succeeded
+2026-04-27 22:17:00 | INFO | Output: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/extracted_lines/extraction_20260427_221639
+2026-04-27 22:17:00 | INFO | 📄 Log file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/cropping/crop_reproduction14453_100_20260427_221639_cropping.log

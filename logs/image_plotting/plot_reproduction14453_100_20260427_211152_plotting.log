@@ -1,0 +1,106 @@
+2026-04-27 21:11:52 | INFO     | === Plotting Run Started ===
+2026-04-27 21:11:52 | INFO     | Run name: plot_reproduction14453_100_20260427_211152
+2026-04-27 21:11:52 | INFO     | Log file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/image_plotting/plot_reproduction14453_100_20260427_211152_plotting.log
+2026-04-27 21:11:52 | INFO     | Config file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/image_plotting/plot_reproduction14453_100_20260427_211152_config.json
+2026-04-27 21:11:52 | INFO     | Configuration: {
+  "run_name": "plot_reproduction14453_100_20260427_211152",
+  "timestamp": "20260427_211152",
+  "input_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/raw/original_manuscript/reproduction14453_100",
+  "kraken_output_path": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/segmented_images/segmentation_20260427_181912",
+  "output_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/plotted_bounds/plotting_20260427_211152",
+  "font_size": 20,
+  "logs_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/image_plotting",
+  "environment": {
+    "PROJECT_ROOT": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR",
+    "PYTHON_VERSION": "3.11.3 (v3.11.3:f3909b8bc8, Apr  4 2023, 20:12:10) [Clang 13.0.0 (clang-1300.0.29.30)]"
+  },
+  "git_commit": "00f8c963ae6208d98eb3416c54f454cfed42f106"
+}
+2026-04-27 21:11:52 | INFO     | Starting annotation for 71 images
+2026-04-27 21:11:52 | INFO     | Output directory: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/plotted_bounds/plotting_20260427_211152
+2026-04-27 21:11:53 | DEBUG    | ✓ Saved: 10_f_005v_006.png
+2026-04-27 21:11:54 | DEBUG    | ✓ Saved: 11_f_006v_007.png
+2026-04-27 21:11:54 | DEBUG    | ✓ Saved: 12_f_007v_008.png
+2026-04-27 21:11:55 | DEBUG    | ✓ Saved: 13_f_008v_009.png
+2026-04-27 21:11:56 | DEBUG    | ✓ Saved: 14_f_009v_010.png
+2026-04-27 21:11:57 | DEBUG    | ✓ Saved: 15_f_010v_011.png
+2026-04-27 21:11:58 | DEBUG    | ✓ Saved: 16_f_011v_012.png
+2026-04-27 21:11:59 | DEBUG    | ✓ Saved: 17_f_012v_013.png
+2026-04-27 21:12:00 | DEBUG    | ✓ Saved: 18_f_013v_014.png
+2026-04-27 21:12:01 | DEBUG    | ✓ Saved: 19_f_014v_015.png
+2026-04-27 21:12:01 | INFO     | Progress: 10/71 | ✓ 10
+2026-04-27 21:12:02 | DEBUG    | ✓ Saved: 20_f_015v_016.png
+2026-04-27 21:12:03 | DEBUG    | ✓ Saved: 21_f_016v_017.png
+2026-04-27 21:12:04 | DEBUG    | ✓ Saved: 22_f_017v_018.png
+2026-04-27 21:12:05 | DEBUG    | ✓ Saved: 23_f_018v_019.png
+2026-04-27 21:12:06 | DEBUG    | ✓ Saved: 24_f_019v_020.png
+2026-04-27 21:12:06 | DEBUG    | ✓ Saved: 25_f_020v_021.png
+2026-04-27 21:12:07 | DEBUG    | ✓ Saved: 26_f_021v_022.png
+2026-04-27 21:12:08 | DEBUG    | ✓ Saved: 27_f_022v_023.png
+2026-04-27 21:12:09 | DEBUG    | ✓ Saved: 28_f_023v_024.png
+2026-04-27 21:12:10 | DEBUG    | ✓ Saved: 29_f_024v_025.png
+2026-04-27 21:12:10 | INFO     | Progress: 20/71 | ✓ 20
+2026-04-27 21:12:11 | DEBUG    | ✓ Saved: 30_f_025v_026.png
+2026-04-27 21:12:12 | DEBUG    | ✓ Saved: 31_f_026v_027.png
+2026-04-27 21:12:13 | DEBUG    | ✓ Saved: 32_f_027v_028.png
+2026-04-27 21:12:14 | DEBUG    | ✓ Saved: 33_f_028v_029.png
+2026-04-27 21:12:15 | DEBUG    | ✓ Saved: 34_f_029v_030.png
+2026-04-27 21:12:16 | DEBUG    | ✓ Saved: 35_f_030v_031.png
+2026-04-27 21:12:17 | DEBUG    | ✓ Saved: 36_f_031v_032.png
+2026-04-27 21:12:18 | DEBUG    | ✓ Saved: 37_f_032v_033.png
+2026-04-27 21:12:18 | DEBUG    | ✓ Saved: 38_f_033v_034.png
+2026-04-27 21:12:19 | DEBUG    | ✓ Saved: 39_f_034v_035.png
+2026-04-27 21:12:19 | INFO     | Progress: 30/71 | ✓ 30
+2026-04-27 21:12:20 | DEBUG    | ✓ Saved: 40_f_035v_036.png
+2026-04-27 21:12:21 | DEBUG    | ✓ Saved: 41_f_036v_037.png
+2026-04-27 21:12:22 | DEBUG    | ✓ Saved: 42_f_037v_038.png
+2026-04-27 21:12:23 | DEBUG    | ✓ Saved: 43_f_038v_039.png
+2026-04-27 21:12:24 | DEBUG    | ✓ Saved: 44_f_039v_040.png
+2026-04-27 21:12:25 | DEBUG    | ✓ Saved: 45_f_040v_041.png
+2026-04-27 21:12:26 | DEBUG    | ✓ Saved: 46_f_041v_042.png
+2026-04-27 21:12:27 | DEBUG    | ✓ Saved: 47_f_042v_043.png
+2026-04-27 21:12:28 | DEBUG    | ✓ Saved: 48_f_043v_044.png
+2026-04-27 21:12:29 | DEBUG    | ✓ Saved: 49_f_044v_045.png
+2026-04-27 21:12:29 | INFO     | Progress: 40/71 | ✓ 40
+2026-04-27 21:12:30 | DEBUG    | ✓ Saved: 05_garde_001.png
+2026-04-27 21:12:31 | DEBUG    | ✓ Saved: 50_f_045v_046.png
+2026-04-27 21:12:32 | DEBUG    | ✓ Saved: 51_f_046v_047.png
+2026-04-27 21:12:33 | DEBUG    | ✓ Saved: 52_f_047v_048.png
+2026-04-27 21:12:34 | DEBUG    | ✓ Saved: 53_f_048v_049.png
+2026-04-27 21:12:35 | DEBUG    | ✓ Saved: 54_f_049v_050.png
+2026-04-27 21:12:36 | DEBUG    | ✓ Saved: 55_f_050v_051.png
+2026-04-27 21:12:36 | DEBUG    | ✓ Saved: 56_f_051v_052.png
+2026-04-27 21:12:38 | DEBUG    | ✓ Saved: 57_f_052v_053.png
+2026-04-27 21:12:38 | DEBUG    | ✓ Saved: 58_f_053v_054.png
+2026-04-27 21:12:38 | INFO     | Progress: 50/71 | ✓ 50
+2026-04-27 21:12:40 | DEBUG    | ✓ Saved: 59_f_054v_055.png
+2026-04-27 21:12:40 | DEBUG    | ✓ Saved: 06_f_001v_002.png
+2026-04-27 21:12:41 | DEBUG    | ✓ Saved: 60_f_055v_056.png
+2026-04-27 21:12:43 | DEBUG    | ✓ Saved: 61_f_056v_057.png
+2026-04-27 21:12:43 | DEBUG    | ✓ Saved: 62_f_057v_058.png
+2026-04-27 21:12:44 | DEBUG    | ✓ Saved: 63_f_058v_059.png
+2026-04-27 21:12:45 | DEBUG    | ✓ Saved: 64_f_059v_060.png
+2026-04-27 21:12:46 | DEBUG    | ✓ Saved: 65_f_060v_061.png
+2026-04-27 21:12:47 | DEBUG    | ✓ Saved: 66_f_061v_062.png
+2026-04-27 21:12:48 | DEBUG    | ✓ Saved: 67_f_062v_063.png
+2026-04-27 21:12:48 | INFO     | Progress: 60/71 | ✓ 60
+2026-04-27 21:12:49 | DEBUG    | ✓ Saved: 68_f_063v_064.png
+2026-04-27 21:12:50 | DEBUG    | ✓ Saved: 69_f_064v_065.png
+2026-04-27 21:12:51 | DEBUG    | ✓ Saved: 07_f_002v_003.png
+2026-04-27 21:12:52 | DEBUG    | ✓ Saved: 70_f_065v_066.png
+2026-04-27 21:12:53 | DEBUG    | ✓ Saved: 71_f_066v_067.png
+2026-04-27 21:12:54 | DEBUG    | ✓ Saved: 72_f_067v_068.png
+2026-04-27 21:12:54 | DEBUG    | ✓ Saved: 73_f_068v_069.png
+2026-04-27 21:12:55 | DEBUG    | ✓ Saved: 74_f_069v_070.png
+2026-04-27 21:12:56 | DEBUG    | ✓ Saved: 75_f_070v_garde.png
+2026-04-27 21:12:57 | DEBUG    | ✓ Saved: 08_f_003v_004.png
+2026-04-27 21:12:57 | INFO     | Progress: 70/71 | ✓ 70
+2026-04-27 21:12:58 | DEBUG    | ✓ Saved: 09_f_004v_005.png
+2026-04-27 21:12:58 | INFO     | Progress: 71/71 | ✓ 71
+2026-04-27 21:12:58 | INFO     | === Plotting Complete ===
+2026-04-27 21:12:58 | INFO     | Successfully processed: 71/71 (100.0%)
+2026-04-27 21:12:58 | INFO     | Skipped (no JSON): 0
+2026-04-27 21:12:58 | INFO     | Failed (errors): 0
+2026-04-27 21:12:58 | INFO     | Results saved to: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/plotted_bounds/plotting_20260427_211152
+2026-04-27 21:12:58 | INFO     | Full config + metrics saved to: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/image_plotting/plot_reproduction14453_100_20260427_211152_config.json
+2026-04-27 21:12:58 | INFO     | === Run 'plot_reproduction14453_100_20260427_211152' Finished ===

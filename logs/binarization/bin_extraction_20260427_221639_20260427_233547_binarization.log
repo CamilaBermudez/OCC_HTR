@@ -1,0 +1,11 @@
+2026-04-27 23:35:47 | INFO | === Binarization Started | Run: bin_extraction_20260427_221639_20260427_233547 ===
+2026-04-27 23:35:47 | INFO | Config: {"run": "bin_extraction_20260427_221639_20260427_233547", "git": "d4b0031", "input": "extraction_20260427_221639", "output_base": "binarized_images", "timestamp": "20260427_233547", "method": "otsu_gaussian", "gaussian_filter": [3, 3], "folders_count": 71, "images_count": 13784, "dry_run": false}
+2026-04-27 23:35:47 | INFO | 📁 Output directory: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/binarized_images/20260427_233547
+2026-04-27 23:35:47 | INFO | Starting binarization for 13784 images across 71 folders...
+2026-04-27 23:35:56 | INFO | 📊 Progress: 20/71 folders processed
+2026-04-27 23:35:56 | INFO | 📊 Progress: 40/71 folders processed
+2026-04-27 23:35:56 | INFO | 📊 Progress: 60/71 folders processed
+2026-04-27 23:35:56 | INFO | Binarization complete: 13784/13784 succeeded (100.0%)
+2026-04-27 23:35:56 | INFO | Failed: 0
+2026-04-27 23:35:56 | INFO | Results: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/binarized_images/20260427_233547
+2026-04-27 23:35:56 | INFO | Log file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/binarization/bin_extraction_20260427_221639_20260427_233547_binarization.log

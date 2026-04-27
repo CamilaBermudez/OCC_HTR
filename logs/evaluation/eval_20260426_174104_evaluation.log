@@ -1,0 +1,27 @@
+2026-04-26 17:41:04,703 - INFO - === Evaluation Run Started ===
+2026-04-26 17:41:04,703 - INFO - Log file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/evaluation/eval_20260426_174104_evaluation.log
+2026-04-26 17:41:04,703 - INFO - Metrics file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/evaluation/eval_20260426_174104_metrics.json
+2026-04-26 17:41:04,703 - INFO - Evaluation Configuration: {
+  "timestamp": "2026-04-26T17:41:04.703725",
+  "model_path": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/models/layout/y8_YALTAi_5_best_+9annotated.pt",
+  "test_images_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/annotated_samples/retrain/images",
+  "test_annotations_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/annotated_samples/retrain/annotations",
+  "iou_thresholds": [
+    0.3,
+    0.5,
+    0.7
+  ],
+  "conf_threshold": 0.25,
+  "imgsz": 640,
+  "environment": {
+    "SEGMONTO_LIST": "['DamageZone', 'DigitizationArtefactZone', 'DropCapitalZone', 'GraphicZone', 'MainZone', 'MarginTextZone', 'MusicZone', 'NumberingZone', 'QuireMarksZone', 'RunningTitleZone', 'SealZone', 'StampZone', 'TableZone', 'TitlePageZone']",
+    "PROJECT_ROOT": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR"
+  }
+}
+2026-04-26 17:41:04,732 - INFO - Evaluating 24 images
+2026-04-26 17:41:06,449 - INFO - DETECTION-ONLY EVALUATION RESULTS (Class-Agnostic)
+2026-04-26 17:41:06,449 - INFO - IoU Threshold: 0.3 | mPA@0.3: 0.9481 | P: 0.9481 | R: 0.8707 | F1: 0.9078 | TP:128 FP:7 FN:19
+2026-04-26 17:41:06,449 - INFO - IoU Threshold: 0.5 | mPA@0.5: 0.9333 | P: 0.9333 | R: 0.8571 | F1: 0.8936 | TP:126 FP:9 FN:21
+2026-04-26 17:41:06,449 - INFO - IoU Threshold: 0.7 | mPA@0.7: 0.9185 | P: 0.9185 | R: 0.8435 | F1: 0.8794 | TP:124 FP:11 FN:23
+2026-04-26 17:41:06,450 - INFO - Metrics saved to: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/evaluation/eval_20260426_174104_metrics.json
+2026-04-26 17:41:06,450 - INFO - === Evaluation Run Completed ===

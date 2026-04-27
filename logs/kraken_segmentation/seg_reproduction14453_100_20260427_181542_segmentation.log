@@ -1,0 +1,21 @@
+2026-04-27 18:15:42 | INFO     | === Segmentation Run Started ===
+2026-04-27 18:15:42 | INFO     | Run name: seg_reproduction14453_100_20260427_181542
+2026-04-27 18:15:42 | INFO     | Log file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/kraken_segmentation/seg_reproduction14453_100_20260427_181542_segmentation.log
+2026-04-27 18:15:42 | INFO     | Config file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/kraken_segmentation/seg_reproduction14453_100_20260427_181542_config.json
+2026-04-27 18:15:42 | INFO     | Configuration: {
+  "run_name": "seg_reproduction14453_100_20260427_181542",
+  "timestamp": "20260427_181542",
+  "input_folder": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/raw/original_manuscript/reproduction14453_100",
+  "output_folder": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/segmented_images/segmentation_20260427_181542",
+  "masks_folder": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/img_layout/masks/20260427_101946",
+  "logs_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/kraken_segmentation",
+  "timeout_per_image_sec": 300,
+  "environment": {
+    "PROJECT_ROOT": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR",
+    "KRAKEN_BIN": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/.venv/bin/kraken",
+    "PYTHON_IO_ENCODING": "utf-8"
+  },
+  "git_commit": "00f8c963ae6208d98eb3416c54f454cfed42f106"
+}
+2026-04-27 18:15:42 | INFO     | Starting segmentation for 71 images
+2026-04-27 18:15:42 | INFO     | Output: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/segmented_images/segmentation_20260427_181542

@@ -1,0 +1,25 @@
+{
+  "run_name": "seg_reproduction14453_100_20260427_181912",
+  "timestamp": "20260427_181912",
+  "input_folder": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/raw/original_manuscript/reproduction14453_100",
+  "output_folder": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/segmented_images/segmentation_20260427_181912",
+  "masks_folder": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/img_layout/masks/20260427_101946",
+  "logs_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/kraken_segmentation",
+  "timeout_per_image_sec": 300,
+  "environment": {
+    "PROJECT_ROOT": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR",
+    "KRAKEN_BIN": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/.venv/bin/kraken",
+    "PYTHON_IO_ENCODING": "utf-8"
+  },
+  "git_commit": "00f8c963ae6208d98eb3416c54f454cfed42f106",
+  "results": {
+    "total": 71,
+    "success": 71,
+    "failed": 0,
+    "skipped_no_mask": 0,
+    "errors": [],
+    "success_rate_percent": 100.0,
+    "output_folder": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/segmented_images/segmentation_20260427_181912",
+    "completed_at": "2026-04-27T19:22:42.683378"
+  }
+}

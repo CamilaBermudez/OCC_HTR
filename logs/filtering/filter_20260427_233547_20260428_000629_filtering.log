@@ -1,0 +1,32 @@
+2026-04-28 00:06:29 | INFO | === Filtering Started | Run: filter_20260427_233547_20260428_000629 ===
+2026-04-28 00:06:29 | INFO | Config: {"run": "filter_20260427_233547_20260428_000629", "git": "d4b0031", "binarized_input": "20260427_233547", "extracted_input": "extraction_20260427_221639", "output_base": "filtered_images", "timestamp": "20260428_000629", "density_thresholds": [0.001, 0.997], "size_thresholds": [0.03]}
+2026-04-28 00:06:29 | INFO | Output directory: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/filtered_images/20260428_000629
+2026-04-28 00:06:29 | INFO | Analyzing images for filtering...
+2026-04-28 00:06:30 | INFO | Filter Breakdown:
+2026-04-28 00:06:30 | INFO |     Density outliers: 56 (low: 14, high: 42)
+2026-04-28 00:06:30 | INFO |     Size outliers:    414 (low: 414, high: 0)
+2026-04-28 00:06:30 | INFO |     Long images:      115
+2026-04-28 00:06:30 | INFO |     Clean/kept:       13669
+2026-04-28 00:06:30 | INFO |  Intersections:
+2026-04-28 00:06:30 | INFO |    Density ∩ Size:     50
+2026-04-28 00:06:30 | INFO |    Density ∩ Long:     25
+2026-04-28 00:06:30 | INFO |    Size ∩ Long:        114
+2026-04-28 00:06:30 | INFO |    All three:          25
+2026-04-28 00:06:30 | INFO |  Final Removal:
+2026-04-28 00:06:30 | INFO |    Unique to remove:   140
+2026-04-28 00:06:30 | INFO |  Funnel:
+2026-04-28 00:06:30 | INFO |     Total analyzed      13784 ████████████████████████████████████████
+2026-04-28 00:06:30 | INFO |     Density filter         56 
+2026-04-28 00:06:30 | INFO |     Size filter           414 █
+2026-04-28 00:06:30 | INFO |     Long filter           115 
+2026-04-28 00:06:30 | INFO |     Final removal         140 
+2026-04-28 00:06:30 | INFO |     Kept                13644 ███████████████████████████████████████
+2026-04-28 00:06:30 | INFO | Analysis complete: 13784 images | Marked for removal: 140
+2026-04-28 00:06:30 | INFO | Moving binarized images...
+2026-04-28 00:06:33 | INFO | Binarized: 13644 kept | 140 removed
+2026-04-28 00:06:33 | INFO | Moving original extracted lines...
+2026-04-28 00:06:38 | INFO |    ✓ Original: 13644 kept | 140 removed
+2026-04-28 00:06:38 | INFO | Filtering complete
+2026-04-28 00:06:38 | INFO | Kept: 27288 | Removed: 280
+2026-04-28 00:06:38 | INFO | Results: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/filtered_images/20260428_000629
+2026-04-28 00:06:38 | INFO | Log file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/filtering/filter_20260427_233547_20260428_000629_filtering.log

@@ -1,0 +1,31 @@
+{
+  "mPA@0.3": 0.8865248226950354,
+  "Precision@0.3": 0.8865248226950354,
+  "Recall@0.3": 0.946969696969697,
+  "F1@0.3": 0.9157509157509157,
+  "mPA@0.5": 0.8794326241134752,
+  "Precision@0.5": 0.8794326241134752,
+  "Recall@0.5": 0.9393939393939394,
+  "F1@0.5": 0.9084249084249085,
+  "mPA@0.7": 0.8652482269503546,
+  "Precision@0.7": 0.8652482269503546,
+  "Recall@0.7": 0.9242424242424242,
+  "F1@0.7": 0.8937728937728938,
+  "evaluation_config": {
+    "timestamp": "2026-04-27T10:17:41.243741",
+    "model_path": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/models/layout/y8_YALTAi_7epochs_best_+9annotated_fix50.pt",
+    "test_images_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/annotated_samples/retrain/images",
+    "test_annotations_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/annotated_samples/retrain/annotations",
+    "iou_thresholds": [
+      0.3,
+      0.5,
+      0.7
+    ],
+    "conf_threshold": 0.25,
+    "imgsz": 640,
+    "environment": {
+      "SEGMONTO_LIST": "['DamageZone', 'DigitizationArtefactZone', 'DropCapitalZone', 'GraphicZone', 'MainZone', 'MarginTextZone', 'MusicZone', 'NumberingZone', 'QuireMarksZone', 'RunningTitleZone', 'SealZone', 'StampZone', 'TableZone', 'TitlePageZone']",
+      "PROJECT_ROOT": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR"
+    }
+  }
+}

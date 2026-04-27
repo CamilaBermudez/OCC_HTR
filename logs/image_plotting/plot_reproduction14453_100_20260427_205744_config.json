@@ -1,0 +1,309 @@
+{
+  "run_name": "plot_reproduction14453_100_20260427_205744",
+  "timestamp": "20260427_205744",
+  "input_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/raw/original_manuscript/reproduction14453_100",
+  "kraken_output_path": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/segmented_images/segmentation_20260427_181912",
+  "output_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/plotted_bounds/plotting_20260427_205744",
+  "font_size": 20,
+  "logs_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/image_plotting",
+  "environment": {
+    "PROJECT_ROOT": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR",
+    "PYTHON_VERSION": "3.11.3 (v3.11.3:f3909b8bc8, Apr  4 2023, 20:12:10) [Clang 13.0.0 (clang-1300.0.29.30)]"
+  },
+  "git_commit": "00f8c963ae6208d98eb3416c54f454cfed42f106",
+  "results": {
+    "total_images": 71,
+    "processed_successfully": 0,
+    "skipped_no_json": 0,
+    "failed_errors": 71,
+    "errors_detail": [
+      {
+        "image": "10 - f. 005v - 006.jpg",
+        "json": "10_f_005v_006.json"
+      },
+      {
+        "image": "11 - f. 006v - 007.jpg",
+        "json": "11_f_006v_007.json"
+      },
+      {
+        "image": "12 - f. 007v - 008.jpg",
+        "json": "12_f_007v_008.json"
+      },
+      {
+        "image": "13 - f. 008v - 009.jpg",
+        "json": "13_f_008v_009.json"
+      },
+      {
+        "image": "14 - f. 009v - 010.jpg",
+        "json": "14_f_009v_010.json"
+      },
+      {
+        "image": "15 - f. 010v - 011.jpg",
+        "json": "15_f_010v_011.json"
+      },
+      {
+        "image": "16 - f. 011v - 012.jpg",
+        "json": "16_f_011v_012.json"
+      },
+      {
+        "image": "17 - f. 012v - 013.jpg",
+        "json": "17_f_012v_013.json"
+      },
+      {
+        "image": "18 - f. 013v - 014.jpg",
+        "json": "18_f_013v_014.json"
+      },
+      {
+        "image": "19 - f. 014v - 015.jpg",
+        "json": "19_f_014v_015.json"
+      },
+      {
+        "image": "20 - f. 015v - 016.jpg",
+        "json": "20_f_015v_016.json"
+      },
+      {
+        "image": "21 - f. 016v - 017.jpg",
+        "json": "21_f_016v_017.json"
+      },
+      {
+        "image": "22 - f. 017v - 018.jpg",
+        "json": "22_f_017v_018.json"
+      },
+      {
+        "image": "23 - f. 018v - 019.jpg",
+        "json": "23_f_018v_019.json"
+      },
+      {
+        "image": "24 - f. 019v - 020.jpg",
+        "json": "24_f_019v_020.json"
+      },
+      {
+        "image": "25 - f. 020v - 021.jpg",
+        "json": "25_f_020v_021.json"
+      },
+      {
+        "image": "26 - f. 021v - 022.jpg",
+        "json": "26_f_021v_022.json"
+      },
+      {
+        "image": "27 - f. 022v - 023.jpg",
+        "json": "27_f_022v_023.json"
+      },
+      {
+        "image": "28 - f. 023v - 024.jpg",
+        "json": "28_f_023v_024.json"
+      },
+      {
+        "image": "29 - f. 024v - 025.jpg",
+        "json": "29_f_024v_025.json"
+      },
+      {
+        "image": "30 - f. 025v - 026.jpg",
+        "json": "30_f_025v_026.json"
+      },
+      {
+        "image": "31 - f. 026v - 027.jpg",
+        "json": "31_f_026v_027.json"
+      },
+      {
+        "image": "32 - f. 027v - 028.jpg",
+        "json": "32_f_027v_028.json"
+      },
+      {
+        "image": "33 - f. 028v - 029.jpg",
+        "json": "33_f_028v_029.json"
+      },
+      {
+        "image": "34 - f. 029v - 030.jpg",
+        "json": "34_f_029v_030.json"
+      },
+      {
+        "image": "35 - f. 030v - 031.jpg",
+        "json": "35_f_030v_031.json"
+      },
+      {
+        "image": "36 - f. 031v - 032.jpg",
+        "json": "36_f_031v_032.json"
+      },
+      {
+        "image": "37 - f. 032v - 033.jpg",
+        "json": "37_f_032v_033.json"
+      },
+      {
+        "image": "38 - f. 033v - 034.jpg",
+        "json": "38_f_033v_034.json"
+      },
+      {
+        "image": "39 - f. 034v - 035.jpg",
+        "json": "39_f_034v_035.json"
+      },
+      {
+        "image": "40 - f. 035v - 036.jpg",
+        "json": "40_f_035v_036.json"
+      },
+      {
+        "image": "41 - f. 036v - 037.jpg",
+        "json": "41_f_036v_037.json"
+      },
+      {
+        "image": "42 - f. 037v - 038.jpg",
+        "json": "42_f_037v_038.json"
+      },
+      {
+        "image": "43 - f. 038v - 039.jpg",
+        "json": "43_f_038v_039.json"
+      },
+      {
+        "image": "44 - f. 039v - 040.jpg",
+        "json": "44_f_039v_040.json"
+      },
+      {
+        "image": "45 - f. 040v - 041.jpg",
+        "json": "45_f_040v_041.json"
+      },
+      {
+        "image": "46 - f. 041v - 042.jpg",
+        "json": "46_f_041v_042.json"
+      },
+      {
+        "image": "47 - f. 042v - 043.jpg",
+        "json": "47_f_042v_043.json"
+      },
+      {
+        "image": "48 - f. 043v - 044.jpg",
+        "json": "48_f_043v_044.json"
+      },
+      {
+        "image": "49 - f. 044v - 045.jpg",
+        "json": "49_f_044v_045.json"
+      },
+      {
+        "image": "5 - garde - 001.jpg",
+        "json": "05_garde_001.json"
+      },
+      {
+        "image": "50 - f. 045v - 046.jpg",
+        "json": "50_f_045v_046.json"
+      },
+      {
+        "image": "51 - f. 046v - 047.jpg",
+        "json": "51_f_046v_047.json"
+      },
+      {
+        "image": "52 - f. 047v - 048.jpg",
+        "json": "52_f_047v_048.json"
+      },
+      {
+        "image": "53 - f. 048v - 049.jpg",
+        "json": "53_f_048v_049.json"
+      },
+      {
+        "image": "54 - f. 049v - 050.jpg",
+        "json": "54_f_049v_050.json"
+      },
+      {
+        "image": "55 - f. 050v - 051.jpg",
+        "json": "55_f_050v_051.json"
+      },
+      {
+        "image": "56 - f. 051v - 052.jpg",
+        "json": "56_f_051v_052.json"
+      },
+      {
+        "image": "57 - f. 052v - 053.jpg",
+        "json": "57_f_052v_053.json"
+      },
+      {
+        "image": "58 - f. 053v - 054.jpg",
+        "json": "58_f_053v_054.json"
+      },
+      {
+        "image": "59 - f. 054v - 055.jpg",
+        "json": "59_f_054v_055.json"
+      },
+      {
+        "image": "6 - f. 001v - 002.jpg",
+        "json": "06_f_001v_002.json"
+      },
+      {
+        "image": "60 - f. 055v - 056.jpg",
+        "json": "60_f_055v_056.json"
+      },
+      {
+        "image": "61 - f. 056v - 057.jpg",
+        "json": "61_f_056v_057.json"
+      },
+      {
+        "image": "62 - f. 057v - 058.jpg",
+        "json": "62_f_057v_058.json"
+      },
+      {
+        "image": "63 - f. 058v - 059.jpg",
+        "json": "63_f_058v_059.json"
+      },
+      {
+        "image": "64 - f. 059v - 060.jpg",
+        "json": "64_f_059v_060.json"
+      },
+      {
+        "image": "65 - f. 060v - 061.jpg",
+        "json": "65_f_060v_061.json"
+      },
+      {
+        "image": "66 - f. 061v - 062.jpg",
+        "json": "66_f_061v_062.json"
+      },
+      {
+        "image": "67 - f. 062v - 063.jpg",
+        "json": "67_f_062v_063.json"
+      },
+      {
+        "image": "68 - f. 063v - 064.jpg",
+        "json": "68_f_063v_064.json"
+      },
+      {
+        "image": "69 - f. 064v - 065.jpg",
+        "json": "69_f_064v_065.json"
+      },
+      {
+        "image": "7 - f. 002v - 003.jpg",
+        "json": "07_f_002v_003.json"
+      },
+      {
+        "image": "70 - f. 065v - 066.jpg",
+        "json": "70_f_065v_066.json"
+      },
+      {
+        "image": "71 - f. 066v - 067.jpg",
+        "json": "71_f_066v_067.json"
+      },
+      {
+        "image": "72 - f. 067v - 068.jpg",
+        "json": "72_f_067v_068.json"
+      },
+      {
+        "image": "73 - f. 068v - 069.jpg",
+        "json": "73_f_068v_069.json"
+      },
+      {
+        "image": "74 - f. 069v - 070.jpg",
+        "json": "74_f_069v_070.json"
+      },
+      {
+        "image": "75 - f. 070v - garde.jpg",
+        "json": "75_f_070v_garde.json"
+      },
+      {
+        "image": "8 - f. 003v - 004.jpg",
+        "json": "08_f_003v_004.json"
+      },
+      {
+        "image": "9 - f. 004v - 005.jpg",
+        "json": "09_f_004v_005.json"
+      }
+    ],
+    "success_rate_percent": 0.0,
+    "output_directory": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/plotted_bounds/plotting_20260427_205744",
+    "completed_at": "2026-04-27T20:59:01.906830"
+  }
+}

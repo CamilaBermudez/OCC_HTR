@@ -1,0 +1,29 @@
+2026-04-27 20:57:44 | INFO     | === Plotting Run Started ===
+2026-04-27 20:57:44 | INFO     | Run name: plot_reproduction14453_100_20260427_205744
+2026-04-27 20:57:44 | INFO     | Log file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/image_plotting/plot_reproduction14453_100_20260427_205744_plotting.log
+2026-04-27 20:57:44 | INFO     | Config file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/image_plotting/plot_reproduction14453_100_20260427_205744_config.json
+2026-04-27 20:57:44 | INFO     | Configuration: {
+  "run_name": "plot_reproduction14453_100_20260427_205744",
+  "timestamp": "20260427_205744",
+  "input_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/raw/original_manuscript/reproduction14453_100",
+  "kraken_output_path": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/segmented_images/segmentation_20260427_181912",
+  "output_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/plotted_bounds/plotting_20260427_205744",
+  "font_size": 20,
+  "logs_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/image_plotting",
+  "environment": {
+    "PROJECT_ROOT": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR",
+    "PYTHON_VERSION": "3.11.3 (v3.11.3:f3909b8bc8, Apr  4 2023, 20:12:10) [Clang 13.0.0 (clang-1300.0.29.30)]"
+  },
+  "git_commit": "00f8c963ae6208d98eb3416c54f454cfed42f106"
+}
+2026-04-27 20:57:44 | INFO     | Starting annotation for 71 images
+2026-04-27 20:57:44 | INFO     | Output directory: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/plotted_bounds/plotting_20260427_205744
+2026-04-27 20:59:01 | INFO     | === Plotting Complete ===
+2026-04-27 20:59:01 | INFO     | Successfully processed: 0/71 (0.0%)
+2026-04-27 20:59:01 | INFO     | Skipped (no JSON): 0
+2026-04-27 20:59:01 | INFO     | Failed (errors): 71
+2026-04-27 20:59:01 | INFO     | Results saved to: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/plotted_bounds/plotting_20260427_205744
+2026-04-27 20:59:01 | WARNING  | Failed images: ['10 - f. 005v - 006.jpg', '11 - f. 006v - 007.jpg', '12 - f. 007v - 008.jpg', '13 - f. 008v - 009.jpg', '14 - f. 009v - 010.jpg']
+2026-04-27 20:59:01 | WARNING  | ... and 66 more
+2026-04-27 20:59:01 | INFO     | 📄 Full config + metrics saved to: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/image_plotting/plot_reproduction14453_100_20260427_205744_config.json
+2026-04-27 20:59:01 | INFO     | === Run 'plot_reproduction14453_100_20260427_205744' Finished ===

@@ -1,0 +1,23 @@
+{
+  "model_path": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/models/layout/y8_YALTAi_15_best_annotated.pt",
+  "model_name": "y8_YALTAi_15_best_annotated",
+  "model_file_size_mb": 5.96,
+  "timestamp": "20260426_174837",
+  "images_path": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/raw/original_manuscript/reproduction14453_100",
+  "output_path": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/img_layout",
+  "imgsz": 640,
+  "target_class": "MainZone",
+  "environment": {
+    "PROJECT_ROOT": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR",
+    "SEGMONTO_LIST": "['DamageZone', 'DigitizationArtefactZone', 'DropCapitalZone', 'GraphicZone', 'MainZone', 'MarginTextZone', 'MusicZone', 'NumberingZone', 'QuireMarksZone', 'RunningTitleZone', 'SealZone', 'StampZone', 'TableZone', 'TitlePageZone']"
+  },
+  "git_commit": "00f8c963ae6208d98eb3416c54f454cfed42f106",
+  "processing_summary": {
+    "total_images": 71,
+    "processed_successfully": 71,
+    "images_with_mainzone": 71,
+    "images_no_detections": 0,
+    "masks_saved_to": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/img_layout/masks/20260426_174837",
+    "masks_format": "PNG (0=MainZone, 255=background)"
+  }
+}

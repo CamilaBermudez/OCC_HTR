@@ -1,0 +1,24 @@
+{
+  "run_name": "plot_reproduction14453_100_20260427_211152",
+  "timestamp": "20260427_211152",
+  "input_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/raw/original_manuscript/reproduction14453_100",
+  "kraken_output_path": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/segmented_images/segmentation_20260427_181912",
+  "output_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/plotted_bounds/plotting_20260427_211152",
+  "font_size": 20,
+  "logs_dir": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/image_plotting",
+  "environment": {
+    "PROJECT_ROOT": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR",
+    "PYTHON_VERSION": "3.11.3 (v3.11.3:f3909b8bc8, Apr  4 2023, 20:12:10) [Clang 13.0.0 (clang-1300.0.29.30)]"
+  },
+  "git_commit": "00f8c963ae6208d98eb3416c54f454cfed42f106",
+  "results": {
+    "total_images": 71,
+    "processed_successfully": 71,
+    "skipped_no_json": 0,
+    "failed_errors": 0,
+    "errors_detail": [],
+    "success_rate_percent": 100.0,
+    "output_directory": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/plotted_bounds/plotting_20260427_211152",
+    "completed_at": "2026-04-27T21:12:58.709156"
+  }
+}

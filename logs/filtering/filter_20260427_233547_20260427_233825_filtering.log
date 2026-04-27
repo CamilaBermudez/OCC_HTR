@@ -1,0 +1,13 @@
+2026-04-27 23:38:25 | INFO | === Filtering Started | Run: filter_20260427_233547_20260427_233825 ===
+2026-04-27 23:38:25 | INFO | Config: {"run": "filter_20260427_233547_20260427_233825", "git": "d4b0031", "binarized_input": "20260427_233547", "extracted_input": "extraction_20260427_221639", "output_base": "filtered_images", "timestamp": "20260427_233825", "density_thresholds": [0.001, 0.997], "size_thresholds": [0.03]}
+2026-04-27 23:38:25 | INFO | 📁 Output directory: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/filtered_images/20260427_233825
+2026-04-27 23:38:25 | INFO | 🔍 Analyzing images for filtering...
+2026-04-27 23:38:26 | INFO | Analysis complete: 13784 images | Marked for removal: 140
+2026-04-27 23:38:26 | INFO | Moving binarized images...
+2026-04-27 23:38:29 | INFO | Binarized: 13644 kept | 140 removed
+2026-04-27 23:38:29 | INFO | Moving original extracted lines...
+2026-04-27 23:38:34 | INFO |    ✓ Original: 13644 kept | 140 removed
+2026-04-27 23:38:34 | INFO | Filtering complete
+2026-04-27 23:38:34 | INFO | Kept: 27288 | Removed: 280
+2026-04-27 23:38:34 | INFO | Results: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/filtered_images/20260427_233825
+2026-04-27 23:38:34 | INFO | Log file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/filtering/filter_20260427_233547_20260427_233825_filtering.log

@@ -1,0 +1,31 @@
+2026-04-27 10:19:21,049 - INFO - === Mask Generation Run Started ===
+2026-04-27 10:19:21,049 - INFO - Run name: mask_reproduction14453_100_20260427_101921
+2026-04-27 10:19:21,049 - INFO - Log file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/mask_generation/mask_reproduction14453_100_20260427_101921_mask_generation.log
+2026-04-27 10:19:21,049 - INFO - Config file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/mask_generation/mask_reproduction14453_100_20260427_101921_config.json
+2026-04-27 10:19:21,062 - INFO - Model Configuration: {
+  "model_path": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/models/layout/y8_YALTAi_7epochs_best_+9annotated_fix50.pt",
+  "model_name": "y8_YALTAi_7epochs_best_+9annotated_fix50",
+  "model_file_size_mb": 5.94,
+  "timestamp": "20260427_101921",
+  "images_path": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/raw/original_manuscript/reproduction14453_100",
+  "output_path": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/img_layout",
+  "imgsz": 640,
+  "target_class": "MainZone",
+  "environment": {
+    "PROJECT_ROOT": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR",
+    "SEGMONTO_LIST": "['DamageZone', 'DigitizationArtefactZone', 'DropCapitalZone', 'GraphicZone', 'MainZone', 'MarginTextZone', 'MusicZone', 'NumberingZone', 'QuireMarksZone', 'RunningTitleZone', 'SealZone', 'StampZone', 'TableZone', 'TitlePageZone']"
+  },
+  "git_commit": "00f8c963ae6208d98eb3416c54f454cfed42f106"
+}
+2026-04-27 10:19:21,063 - INFO - Loading YOLO model: y8_YALTAi_7epochs_best_+9annotated_fix50
+2026-04-27 10:19:21,075 - INFO - Masks output directory: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/img_layout/masks/20260427_101921
+2026-04-27 10:19:21,075 - INFO - Images output directory: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/img_layout/images
+2026-04-27 10:19:21,076 - INFO - Target class: 'MainZone' (index: 4)
+2026-04-27 10:19:21,076 - INFO - Starting prediction on: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/raw/original_manuscript/reproduction14453_100
+2026-04-27 10:19:25,697 - INFO - === Processing Summary ===
+2026-04-27 10:19:25,697 - INFO - Total images: 71
+2026-04-27 10:19:25,697 - INFO - Images with MainZone detected: 71
+2026-04-27 10:19:25,697 - INFO - Images with no detections: 0
+2026-04-27 10:19:25,697 - INFO - Masks saved to: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/img_layout/masks/20260427_101921
+2026-04-27 10:19:25,697 - INFO - === Mask Generation Run Completed ===
+2026-04-27 10:19:25,698 - INFO - Configuration and summary saved to: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/mask_generation/mask_reproduction14453_100_20260427_101921_config.json
