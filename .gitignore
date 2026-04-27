@@ -11,4 +11,6 @@
 /tests/data_preprocessing/cropped_img/
 /data/processed/annotated_samples/
 /models/
+/data/processed/segmented_images/
+data/processed/segmented_images/
 
