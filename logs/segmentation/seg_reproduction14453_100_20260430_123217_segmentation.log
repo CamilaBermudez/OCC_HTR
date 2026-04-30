@@ -1,0 +1,10 @@
+2026-04-30 12:32:17 | INFO | === Segmentation Started | Run: seg_reproduction14453_100_20260430_123217 ===
+2026-04-30 12:32:17 | INFO | Config: {"run": "seg_reproduction14453_100_20260430_123217", "git": "8fc13ba", "input": "reproduction14453_100", "output": "segmented_images", "images_count": 71}
+2026-04-30 12:32:17 | INFO | Starting segmentation for 71 images...
+2026-04-30 12:37:53 | INFO | Progress: 20/71 | OK: 20
+2026-04-30 13:07:41 | INFO | Progress: 40/71 | OK: 40
+2026-04-30 13:37:52 | INFO | Progress: 60/71 | OK: 60
+2026-04-30 13:41:07 | INFO | Progress: 71/71 | OK: 71
+2026-04-30 13:41:07 | INFO | Segmentation complete: 71/71 succeeded
+2026-04-30 13:41:07 | INFO | Output: data/processed/segmented_images
+2026-04-30 13:41:07 | INFO | Log file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/segmentation/seg_reproduction14453_100_20260430_123217_segmentation.log

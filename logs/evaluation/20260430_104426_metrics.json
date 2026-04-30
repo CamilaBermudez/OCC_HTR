@@ -1,0 +1,31 @@
+{
+  "mPA@0.3": 0.984375,
+  "Precision@0.3": 0.984375,
+  "Recall@0.3": 0.9545454545454546,
+  "F1@0.3": 0.9692307692307692,
+  "mPA@0.5": 0.9765625,
+  "Precision@0.5": 0.9765625,
+  "Recall@0.5": 0.946969696969697,
+  "F1@0.5": 0.9615384615384616,
+  "mPA@0.7": 0.9609375,
+  "Precision@0.7": 0.9609375,
+  "Recall@0.7": 0.9318181818181818,
+  "F1@0.7": 0.9461538461538462,
+  "evaluation_config": {
+    "timestamp": "2026-04-30T10:44:26.227271",
+    "model_path": "./models/layout/y8_YALTAi_50epochs_best_+9annotated_fix50.pt",
+    "test_images_dir": "./data/processed/annotated_samples/retrain/images",
+    "test_annotations_dir": "./data/processed/annotated_samples/retrain/annotations",
+    "iou_thresholds": [
+      0.3,
+      0.5,
+      0.7
+    ],
+    "conf_threshold": 0.25,
+    "imgsz": 640,
+    "environment": {
+      "SEGMONTO_LIST": "['DamageZone', 'DigitizationArtefactZone', 'DropCapitalZone', 'GraphicZone', 'MainZone', 'MarginTextZone', 'MusicZone', 'NumberingZone', 'QuireMarksZone', 'RunningTitleZone', 'SealZone', 'StampZone', 'TableZone', 'TitlePageZone']",
+      "PROJECT_ROOT": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR"
+    }
+  }
+}

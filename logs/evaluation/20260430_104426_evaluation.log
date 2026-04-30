@@ -1,0 +1,27 @@
+2026-04-30 10:44:26,227 - INFO - === Evaluation Run Started ===
+2026-04-30 10:44:26,227 - INFO - Log file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/evaluation/20260430_104426_evaluation.log
+2026-04-30 10:44:26,227 - INFO - Metrics file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/evaluation/20260430_104426_metrics.json
+2026-04-30 10:44:26,227 - INFO - Evaluation Configuration: {
+  "timestamp": "2026-04-30T10:44:26.227271",
+  "model_path": "./models/layout/y8_YALTAi_50epochs_best_+9annotated_fix50.pt",
+  "test_images_dir": "./data/processed/annotated_samples/retrain/images",
+  "test_annotations_dir": "./data/processed/annotated_samples/retrain/annotations",
+  "iou_thresholds": [
+    0.3,
+    0.5,
+    0.7
+  ],
+  "conf_threshold": 0.25,
+  "imgsz": 640,
+  "environment": {
+    "SEGMONTO_LIST": "['DamageZone', 'DigitizationArtefactZone', 'DropCapitalZone', 'GraphicZone', 'MainZone', 'MarginTextZone', 'MusicZone', 'NumberingZone', 'QuireMarksZone', 'RunningTitleZone', 'SealZone', 'StampZone', 'TableZone', 'TitlePageZone']",
+    "PROJECT_ROOT": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR"
+  }
+}
+2026-04-30 10:44:26,246 - INFO - Evaluating 24 images
+2026-04-30 10:44:28,023 - INFO - DETECTION-ONLY EVALUATION RESULTS (Class-Agnostic)
+2026-04-30 10:44:28,023 - INFO - IoU Threshold: 0.3 | mPA@0.3: 0.9844 | P: 0.9844 | R: 0.9545 | F1: 0.9692 | TP:126 FP:2 FN:6
+2026-04-30 10:44:28,023 - INFO - IoU Threshold: 0.5 | mPA@0.5: 0.9766 | P: 0.9766 | R: 0.9470 | F1: 0.9615 | TP:125 FP:3 FN:7
+2026-04-30 10:44:28,023 - INFO - IoU Threshold: 0.7 | mPA@0.7: 0.9609 | P: 0.9609 | R: 0.9318 | F1: 0.9462 | TP:123 FP:5 FN:9
+2026-04-30 10:44:28,023 - INFO - Metrics saved to: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/evaluation/20260430_104426_metrics.json
+2026-04-30 10:44:28,023 - INFO - === Evaluation Run Completed ===
