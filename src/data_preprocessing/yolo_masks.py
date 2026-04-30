@@ -224,22 +224,3 @@ def build_mask_yolo(model_path, images_path, output_path, logs_dir=None, run_nam
         "config_file": config_file if logger else None
     }
 
-
-if __name__ == "__main__":
-    load_dotenv()
-    PROJECT_ROOT = os.environ.get("PROJECT_ROOT")
-    MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "layout", "y8_YALTAi_15_best_+9annotated_fix50.pt")
-    IMAGES_PATH = os.path.join(PROJECT_ROOT, "data", "raw", "original_manuscript", "reproduction14453_100")
-    OUTPUT_PATH = os.path.join(PROJECT_ROOT, "data", "processed", "img_layout")
-
-    LOGS_DIR = os.path.join(PROJECT_ROOT, "logs", "mask_generation")  # NEW
-    RUN_NAME = f"mask_{Path(IMAGES_PATH).name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"  # NEW
-
-
-    result = build_mask_yolo(model_path=MODEL_PATH, images_path=IMAGES_PATH, output_path=OUTPUT_PATH,
-        logs_dir=LOGS_DIR,run_name=RUN_NAME)
-    
-    print(f"Masks generated: {result['summary']['images_with_mainzone']}/{result['summary']['total_images']} images")
-    print(f"Masks saved to: {result['masks_dir']}")
-    if result['config_file']:
-        print(f"Config logged to: {result['config_file']}")
