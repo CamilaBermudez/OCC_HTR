@@ -16,34 +16,6 @@ import subprocess
 sys.path.insert(0, str(Path(os.environ.get("PROJECT_ROOT", "."))))
 from src.utils.path_utils import fixed_file_naming
 
-def setup_processing_logging(logs_dir, run_name=None, extra_config=None):
-    """
-    Setup logging for mask generation run
-    Returns: (log_file_path, metrics_file_path, logger)
-    """
-    Path(logs_dir).mkdir(parents=True, exist_ok=True)
-    
-    if run_name is None:
-        run_name = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    log_file = Path(logs_dir) / f"{run_name}_mask_generation.log"
-    config_file = Path(logs_dir) / f"{run_name}_config.json"
-    
-    # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file, mode='w', encoding='utf-8'),
-            logging.StreamHandler()
-        ],
-        force=True  # Reset any existing handlers
-    )
-    
-    logger = logging.getLogger(__name__)
-    
-    return str(log_file), str(config_file), logger
-
 
 def setup_processing_logging(logs_dir, run_name=None, extra_config=None):
     """
@@ -66,7 +38,7 @@ def setup_processing_logging(logs_dir, run_name=None, extra_config=None):
             logging.FileHandler(log_file, mode='w', encoding='utf-8'),
             logging.StreamHandler()
         ],
-        force=True  # Reset any existing handlers
+        force=True  
     )
     
     logger = logging.getLogger(__name__)
@@ -76,7 +48,7 @@ def setup_processing_logging(logs_dir, run_name=None, extra_config=None):
 
 
 def build_mask_yolo(model_path, images_path, output_path, logs_dir=None, run_name=None):
-    
+    output_path = str(Path(output_path).resolve())
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     if run_name is None:
         run_name = f"mask_gen_{timestamp}"
@@ -146,11 +118,14 @@ def build_mask_yolo(model_path, images_path, output_path, logs_dir=None, run_nam
         images_path,
         imgsz=640,
         save=True,
-        project=images_output_dir,
+        project=str(Path(images_output_dir).resolve()),
         name=f'predict_run-{timestamp}',
         exist_ok=True,
         verbose=False
     )
+    predict_dir = os.path.join(images_output_dir, f'predict_run-{timestamp}')
+    print(f"[DEBUG] YOLO saved images to: {os.path.abspath(predict_dir)}")
+    print(f"[DEBUG] Dir exists: {os.path.exists(predict_dir)}")
 
     total_images = len(results)
     processed_count = 0

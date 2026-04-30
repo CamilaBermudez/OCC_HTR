@@ -125,17 +125,3 @@ def crop_all_images(input_folder: Union[str, Path],output_kraken_path: Union[str
     
     return {"total": len(image_files), "success": success_count, "output": str(run_output_folder)}
 
-if __name__ == "__main__":
-    load_dotenv()
-    project_root = Path(os.environ.get("PROJECT_ROOT", "."))
-
-    input_folder = project_root / "data" / "raw" / "original_manuscript" / "reproduction14453_100"
-    output_kraken_path = project_root / "data" / "processed" / "segmented_images"  / "segmentation_20260427_181912"
-    output_folder = project_root / "data" / "processed" / "extracted_lines"
-
-    logs_dir = project_root / "logs" / "cropping"
-    run_name = f"crop_{input_folder.name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
-    result = crop_all_images(input_folder = input_folder,output_kraken_path = output_kraken_path,output_folder=output_folder,logs_dir=str(logs_dir),run_name=run_name)
-
-    print(f"\n Done: {result['success']}/{result['total']} images | Output: {result['output']}\n")

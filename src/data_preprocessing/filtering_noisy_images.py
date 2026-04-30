@@ -120,7 +120,7 @@ def process_image_folder(input_path: Union[str, Path]) -> List[dict]:
     glb_density = []
     
     for img_folder in tqdm(image_folders, desc="Processing folders", unit="folder"):
-        image_files = [f for f in img_folder.iterdir() if f.suffix.lower() in image_extensions]
+        image_files = sorted([f for f in img_folder.iterdir() if f.suffix.lower() in image_extensions],key=lambda x: x.stem)
         folder_density = []
         
         for img_path in tqdm(image_files, desc=f"Images in {img_folder.name}", unit="file", leave=False):
@@ -158,9 +158,8 @@ def filter_based_on_thresholds(density_size_data: List[dict], density_thresholds
     for sublist in density_size_data:
         folder_path = src_dir / sublist['folder']
         if folder_path.is_dir():
-            folder_files[sublist['folder']] = sorted(
-                [f for f in folder_path.iterdir() if f.suffix.lower() in image_extensions],
-                key=lambda x: x.stem)
+            folder_files[sublist['folder']] = sorted([f for f in folder_path.iterdir() if f.suffix.lower() in image_extensions],
+                                                     key=lambda x: x.stem)
 
     density_keys = {}
     if len(density_thresholds) >= 1:
@@ -255,6 +254,7 @@ def generate_analysis_df( dst_dir: Path, timestamp: str, bounds_density_down, bo
     size_keys = set(get_key(t) for t in bounds_size_down) | set(get_key(t) for t in bounds_size_up)
     bounds_density_size_keys = density_keys & size_keys
     long_imgs_keys = set(get_key(t) for t in long_imgs)
+
     
     img_remove_keys = long_imgs_keys | bounds_density_size_keys
     
@@ -379,8 +379,7 @@ def run_filtering_pipeline( binarized_src: Path, extracted_src: Path, dst_base_d
         size_thresholds=size_thresholds,
         density_thresholds=density_thresholds,
         export_tracking=True,
-        timestamp=timestamp
-    )
+        timestamp=timestamp)
     
     total_analyzed = len(df_tracking) if not df_tracking.empty else 0
     
@@ -442,39 +441,4 @@ def run_filtering_pipeline( binarized_src: Path, extracted_src: Path, dst_base_d
         "output_dir": str(run_output_dir),
         "tracking_csv": str(run_output_dir / "filter_tracking.csv")
     }
-
-
-if __name__ == "__main__":
-    load_dotenv()
-    project_root = Path(os.environ.get("PROJECT_ROOT", "."))
-    
-    BINARIZED_SRC = project_root / "data" / "processed" / "binarized_images" / "20260427_233547"
-    EXTRACTED_SRC = project_root / "data" / "processed" / "extracted_lines" / "extraction_20260427_221639"
-    DST_BASE_DIR = project_root / "data" / "processed" / "filtered_images"
-    
-    LOGS_DIR = project_root / "logs" / "filtering"
-    RUN_NAME = f"filter_{BINARIZED_SRC.name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
-    SIZE_THRESHOLDS = [0.03]
-    DENSITY_THRESHOLDS = [0.001, 0.997]
-    
-    result = run_filtering_pipeline(
-        binarized_src=BINARIZED_SRC,
-        extracted_src=EXTRACTED_SRC,
-        dst_base_dir=DST_BASE_DIR,
-        logs_dir=str(LOGS_DIR),
-        run_name=RUN_NAME,
-        size_thresholds=SIZE_THRESHOLDS,
-        density_thresholds=DENSITY_THRESHOLDS
-    )
-    
-    print(f"\n{'='*50}")
-    print(f"FILTERING SUMMARY")
-    print(f"{'='*50}")
-    print(f"Analyzed:     {result.get('total_analyzed', 0)}")
-    print(f"Kept:      {result.get('kept', 0)}")
-    print(f"Removed:   {result.get('removed', 0)}")
-    print(f"Output:    {result.get('output_dir')}")
-    print(f"Tracking:  {result.get('tracking_csv')}")
-    print(f"{'='*50}\n")
 

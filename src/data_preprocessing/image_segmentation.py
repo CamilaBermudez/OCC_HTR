@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from tqdm import tqdm  
 import sys
 import datetime
-from typing import Optional
+from typing import Optional, Union 
 
 sys.path.insert(0, str(Path(os.environ.get("PROJECT_ROOT", "."))))
 from src.utils.path_utils import format_filename, format_for_cli
@@ -49,7 +49,7 @@ def segment_image(img_path: Path, output_path: Path, mask_path: Optional[Path] =
         
         mask_cmd = None
         if mask_path is not None and Path(mask_path).exists():
-            mask_cmd = format_for_cli(Path(mask_path), None)[0]
+            mask_cmd = format_for_cli(Path(mask_path))[0]
 
         kraken_bin = os.environ.get("KRAKEN_BIN") or shutil.which("kraken")
         if not kraken_bin:
@@ -61,7 +61,9 @@ def segment_image(img_path: Path, output_path: Path, mask_path: Optional[Path] =
         
         subprocess.run(cmd,check=True,capture_output=True,text=True,env=env,timeout=300)
         return True
-    except Exception:
+    except Exception as e:
+        import traceback
+        traceback.print_exc()  # shows full error + line number
         return False
     
 
@@ -104,8 +106,15 @@ def segment_all_images(input_folder: Union[str, Path],output_folder: Union[str, 
     if log_file:
         logger.info(f"Config: {json.dumps(config_summary)}")
     
+    output_folder = Path(output_folder) / f"segmentation_{timestamp}"
     output_folder.mkdir(parents=True, exist_ok=True)
     logger.info(f"Starting segmentation for {len(image_files)} images...")
+    logger.info(f"✅ Attempted to create: {output_folder.resolve()}")
+    logger.info(f"📁 Exists? {output_folder.exists()}")
+    logger.info(f"🔐 Writable? {os.access(output_folder, os.W_OK)}")
+    if not output_folder.exists():
+        logger.error(f"❌ Failed to create directory. Check permissions or parent path.")
+
     
     success_count = 0
     for idx, img_path in enumerate(tqdm(image_files, desc="Segmenting", unit="file"), 1):
@@ -130,17 +139,3 @@ def segment_all_images(input_folder: Union[str, Path],output_folder: Union[str, 
     
     return {"total": len(image_files),"success": success_count,"output": str(output_folder)}
 
-if __name__ == "__main__":
-    load_dotenv()
-    project_root = Path(os.environ.get("PROJECT_ROOT", "."))
-    
-    INPUT_FOLDER = project_root / "data" / "raw" / "original_manuscript" / "reproduction14453_100"
-    OUTPUT_FOLDER = project_root / "data" / "processed" / "segmented_images"
-    MASKS_FOLDER = project_root / "data" / "processed" / "img_layout" / "masks" / "20260427_101946"
-    
-    LOGS_DIR = project_root / "logs" / "segmentation"
-    RUN_NAME = f"seg_{INPUT_FOLDER.name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
-    result = segment_all_images(input_folder=INPUT_FOLDER, output_folder=OUTPUT_FOLDER, masks_folder=MASKS_FOLDER, logs_dir=str(LOGS_DIR), run_name=RUN_NAME)
-    
-    print(f"\n Done: {result['success']}/{result['total']} images | Output: {result['output']}\n")

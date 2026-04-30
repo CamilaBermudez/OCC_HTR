@@ -207,39 +207,3 @@ def run_binarization_pipeline( input_path: Union[str, Path], output_base_dir: Un
         "output_dir": str(run_output_dir),
         "thresholds_summary": stats["thresholds_summary"] if not dry_run else {}
     }
-
-if __name__ == "__main__":
-    load_dotenv()
-    project_root = Path(os.environ.get("PROJECT_ROOT", "."))
-    
-    INPUT_PATH = project_root / "data" / "processed" / "extracted_lines" / "extraction_20260427_221639"
-    OUTPUT_BASE_DIR = project_root / "data" / "processed" / "binarized_images"
-    
-    LOGS_DIR = project_root / "logs" / "binarization"
-    RUN_NAME = f"bin_{INPUT_PATH.name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    
-    GAUSSIAN_FILTER = (3, 3)
-    METHOD = "otsu_gaussian"
-    DRY_RUN = False  # Set True to test without writing files
-    
-    result = run_binarization_pipeline(
-        input_path=INPUT_PATH,
-        output_base_dir=OUTPUT_BASE_DIR,
-        logs_dir=str(LOGS_DIR),
-        run_name=RUN_NAME,
-        gaussian_filter=GAUSSIAN_FILTER,
-        method=METHOD,
-        dry_run=DRY_RUN
-    )
-    
-    print(f"\n{'='*50}")
-    print(f"BINARIZATION SUMMARY")
-    print(f"{'='*50}")
-    print(f"Folders:        {result.get('total_folders', 0)}")
-    print(f"Total images:   {result.get('total_images', 0)}")
-    print(f"Success:     {result.get('success', 0)}")
-    print(f"Failed:      {result.get('failed', 0)}")
-    if result.get('success_rate_percent') is not None:
-        print(f"Success rate: {result['success_rate_percent']:.1f}%")
-    print(f"Output:      {result.get('output_dir')}")
-    print(f"{'='*50}\n")
