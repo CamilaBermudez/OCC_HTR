@@ -15,10 +15,13 @@ BINARIZED_IMAGES_DIR=./data/processed/binarized_images
 BINARIZED_METHOD?=otsu_gaussian
 BINARIZED_IMAGES_PATH=./data/processed/binarized_images/20260430_192414
 FILTERED_IMAGES_DIR=./data/processed/filtered_images
+FILTERED_ORIGINAL_LINES_PATH=./data/processed/filtered_images/20260430_224958/original/kept
+RESIZED_IMAGES_DIR=./data/processed/resized_samples
+RESIZING_TARGET_SIZE?=224
 
 PYTHON=python
 
-.PHONY: all evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images clean
+.PHONY: all evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images clean
 
 all: evaluate_yolo_performance
 
@@ -67,6 +70,12 @@ filter_images:
 		--binarized-src $(BINARIZED_IMAGES_PATH) \
 		--extracted-src $(EXTRACTED_LINES_PATH) \
 		--dst-base-dir $(FILTERED_IMAGES_DIR)
+
+resize_images:
+	$(PYTHON) scripts/data_preprocessing/run_resize_image.py \
+			--input-folder $(FILTERED_ORIGINAL_LINES_PATH) \
+			--output-folder $(RESIZED_IMAGES_DIR) \
+			--target-size $(RESIZING_TARGET_SIZE)
 
 
 clean:
