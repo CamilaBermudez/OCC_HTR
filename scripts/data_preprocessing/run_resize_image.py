@@ -28,8 +28,8 @@ def main():
     input_folder = (Path(args.input_folder) if args.input_folder else project_root/ "data" / "processed"/ "filtered_images"/ "20260430_224958"/ "original"/ "kept")
     output_folder = (Path(args.output_folder) if args.output_folder else project_root / "data" / "processed" / "resized_samples")
 
-    logs_dir = (Path(args.logs_dir) if args.logs_dir else project_root / "logs" / "binarization")
-    run_name = (args.run_name or f"bin_{input_folder.name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}")
+    logs_dir = (Path(args.logs_dir) if args.logs_dir else project_root / "logs" / "resizing")
+    run_name = (args.run_name or f"resize_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}")
 
 
     resize_all_images(

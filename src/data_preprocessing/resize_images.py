@@ -22,7 +22,7 @@ def setup_simple_logging(logs_dir: str, run_name: Optional[str] = None):
     if run_name is None:
         run_name = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    log_file = Path(logs_dir) / f"{run_name}_resize.log"  # ← Same naming pattern
+    log_file = Path(logs_dir) / f"{run_name}.log" 
     
     logger = logging.getLogger("resize_images")
     logger.setLevel(logging.INFO)
@@ -32,10 +32,9 @@ def setup_simple_logging(logs_dir: str, run_name: Optional[str] = None):
     formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", 
                                  datefmt="%Y-%m-%d %H:%M:%S")
     
-    for handler in [logging.FileHandler(log_file, mode='w', encoding='utf-8'), 
-                    logging.StreamHandler()]:
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+    file_handler = logging.FileHandler(log_file,mode="w",encoding="utf-8")
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
     
     return logger, str(log_file)
 
@@ -104,13 +103,13 @@ def resize_all_images(input_dir: Union[str, Path], output_dir: Union[str, Path],
     
     # Config summary (matching your style)
     config_summary = {
-        "run": run_name,
-        "git": git_commit, 
-        "input": input_dir.name,
-        "output": output_dir.name,
-        "target_size": target_size,
-        "images_count": None
-    }
+    "run": run_name,
+    "git": git_commit, 
+    "input": str(input_dir.resolve()),    
+    "output": str(output_dir.resolve()),  
+    "target_size": target_size,
+    "images_count": None
+}
     
     if not input_dir.is_dir():
         if logs_dir:
