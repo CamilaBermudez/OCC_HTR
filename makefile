@@ -1,5 +1,6 @@
 # Makefile
 LOGS_DIR ?= ./logs 
+#======= Image preprocessing ========
 LAYOUT_YOLO_MODEL_PATH=./models/layout/y8_YALTAi_50epochs_best_+9annotated_fix50.pt
 IMAGES_TEST_SET_DIR=./data/processed/annotated_samples/retrain/images
 ANNOT_TEST_SET_DIR=./data/processed/annotated_samples/retrain/annotations
@@ -18,10 +19,16 @@ FILTERED_IMAGES_DIR=./data/processed/filtered_images
 FILTERED_ORIGINAL_LINES_PATH=./data/processed/filtered_images/20260430_224958/original/kept
 RESIZED_IMAGES_DIR=./data/processed/resized_samples
 RESIZING_TARGET_SIZE?=224
+#======= Tokenizer ========
+RAW_CORPORA_DIR=./data/raw/COMETA_medieval_corpus
+TOKENIZER_CORPORA_DIR=./data/processed/tokenizer_corpora
+TOKENIZER_DIR=./data/processed/tokenizer
+VOCAB_SIZE?=100
+
 
 PYTHON=python
 
-.PHONY: all evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images clean
+.PHONY: all evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images unify_corpora run_tokenizer clean
 
 all: evaluate_yolo_performance
 
@@ -76,6 +83,20 @@ resize_images:
 			--input-folder $(FILTERED_ORIGINAL_LINES_PATH) \
 			--output-folder $(RESIZED_IMAGES_DIR) \
 			--target-size $(RESIZING_TARGET_SIZE)
+
+
+unify_corpora:
+	$(PYTHON) scripts/tokenizer/run_unified_corpus.py \
+			--input_dir $(RAW_CORPORA_DIR) \
+			--output_dir $(TOKENIZER_CORPORA_DIR) \
+			--run_name $(RUN_NAME_CORPORA)
+
+
+run_tokenizer:
+	$(PYTHON) scripts/tokenizer/run_BPE_tokenizer.py \
+			--input_path $(TOKENIZER_CORPORA_DIR) \
+			--output_path $(TOKENIZER_DIR) \
+			--vocab_size $(VOCAB_SIZE)
 
 
 clean:

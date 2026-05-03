@@ -1,0 +1,41 @@
+2026-05-03 13:50:44,482 | INFO | Logging to: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/tokenizer_corpora/tokenizer_corpora_20260503_135044.log
+2026-05-03 13:50:44,482 | INFO | === Plotting Started | Run: tokenizer_corpora_20260503_135044 ===
+2026-05-03 13:50:44,482 | INFO | Starting corpus build from: data/raw/COMETA_medieval_corpus
+2026-05-03 13:50:44,482 | INFO | Processing file: data/raw/COMETA_medieval_corpus/Latin_901.txt
+2026-05-03 13:50:44,482 | INFO | Latin_901.txt: 5440 -> 5400 chars after cleaning
+2026-05-03 13:50:44,482 | INFO | Processing file: data/raw/COMETA_medieval_corpus/BmT-2884.txt
+2026-05-03 13:50:44,494 | INFO | BmT-2884.txt: 686769 -> 685311 chars after cleaning
+2026-05-03 13:50:44,494 | INFO | Processing file: data/raw/COMETA_medieval_corpus/Harley_3041.txt
+2026-05-03 13:50:44,494 | INFO | Harley_3041.txt: 2097 -> 2094 chars after cleaning
+2026-05-03 13:50:44,494 | INFO | Processing file: data/raw/COMETA_medieval_corpus/Français_25425.txt
+2026-05-03 13:50:44,501 | INFO | Français_25425.txt: 419925 -> 419435 chars after cleaning
+2026-05-03 13:50:44,501 | INFO | Processing file: data/raw/COMETA_medieval_corpus/Français_13509.txt
+2026-05-03 13:50:44,507 | INFO | Français_13509.txt: 323012 -> 322087 chars after cleaning
+2026-05-03 13:50:44,507 | INFO | Processing file: data/raw/COMETA_medieval_corpus/Arsenal_6355.txt
+2026-05-03 13:50:44,508 | INFO | Arsenal_6355.txt: 55036 -> 54804 chars after cleaning
+2026-05-03 13:50:44,508 | INFO | Processing file: data/raw/COMETA_medieval_corpus/Additional_10323.txt
+2026-05-03 13:50:44,512 | INFO | Additional_10323.txt: 273674 -> 272816 chars after cleaning
+2026-05-03 13:50:44,513 | INFO | Processing file: data/raw/COMETA_medieval_corpus/BmC-34.txt
+2026-05-03 13:50:44,517 | INFO | BmC-34.txt: 225591 -> 225018 chars after cleaning
+2026-05-03 13:50:44,517 | INFO | Processing file: data/raw/COMETA_medieval_corpus/Français_13503.txt
+2026-05-03 13:50:44,520 | INFO | Français_13503.txt: 192313 -> 191856 chars after cleaning
+2026-05-03 13:50:44,520 | INFO | Processing file: data/raw/COMETA_medieval_corpus/NAF_11180.txt
+2026-05-03 13:50:44,521 | INFO | NAF_11180.txt: 22634 -> 22461 chars after cleaning
+2026-05-03 13:50:44,521 | INFO | Processing file: data/raw/COMETA_medieval_corpus/Français_1049.txt
+2026-05-03 13:50:44,532 | INFO | Français_1049.txt: 676544 -> 674914 chars after cleaning
+2026-05-03 13:50:44,532 | INFO | Processing file: data/raw/COMETA_medieval_corpus/Français_2232.txt
+2026-05-03 13:50:44,535 | INFO | Français_2232.txt: 179624 -> 179094 chars after cleaning
+2026-05-03 13:50:44,535 | INFO | Processing file: data/raw/COMETA_medieval_corpus/Français_13504.txt
+2026-05-03 13:50:44,539 | INFO | Français_13504.txt: 191710 -> 191464 chars after cleaning
+2026-05-03 13:50:44,539 | INFO | Processing file: data/raw/COMETA_medieval_corpus/NAF_11151.txt
+2026-05-03 13:50:44,541 | INFO | NAF_11151.txt: 106221 -> 106094 chars after cleaning
+2026-05-03 13:50:44,541 | INFO | Processing file: data/raw/COMETA_medieval_corpus/Additional_21218.txt
+2026-05-03 13:50:44,544 | INFO | Additional_21218.txt: 165834 -> 165162 chars after cleaning
+2026-05-03 13:50:44,544 | INFO | Processing file: data/raw/COMETA_medieval_corpus/Harley_7403.txt
+2026-05-03 13:50:44,546 | INFO | Harley_7403.txt: 114135 -> 113053 chars after cleaning
+2026-05-03 13:50:44,546 | INFO | Processing file: data/raw/COMETA_medieval_corpus/NAF_6195.txt
+2026-05-03 13:50:44,550 | INFO | NAF_6195.txt: 226622 -> 226171 chars after cleaning
+2026-05-03 13:50:44,556 | INFO | === Corpus Summary ===
+2026-05-03 13:50:44,556 | INFO | Files included: 17
+2026-05-03 13:50:44,556 | INFO | Total characters: 3,857,234
+2026-05-03 13:50:44,556 | INFO | Saved to: data/processed/tokenizer_corpora/tokenizer_corpora_20260503_135044.txt

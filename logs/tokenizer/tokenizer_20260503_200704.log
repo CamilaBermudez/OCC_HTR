@@ -1,0 +1,12 @@
+2026-05-03 20:07:04,122 | INFO | Logging to: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/tokenizer_corpora/tokenizer_20260503_200704.log
+2026-05-03 20:07:04,122 | INFO | === Tokenizer Training Started | Run: tokenizer_20260503_200704 ===
+2026-05-03 20:07:04,122 | INFO | Input directory: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/tokenizer_corpora
+2026-05-03 20:07:04,122 | INFO | Number of files: 2
+2026-05-03 20:07:04,122 | INFO |  - /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/tokenizer_corpora/transcription_Chirurquia.txt
+2026-05-03 20:07:04,122 | INFO |  - /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/tokenizer_corpora/tokenizer_corpora_20260503_135044.txt
+2026-05-03 20:07:04,122 | INFO | Tokenizer config:
+2026-05-03 20:07:04,122 | INFO |  - vocab_size: 100
+2026-05-03 20:07:04,122 | INFO |  - pre_tokenizer: ByteLevel
+2026-05-03 20:07:04,122 | INFO |  - decoder: ByteLevel
+2026-05-03 20:07:04,744 | INFO | Training complete
+2026-05-03 20:07:04,744 | INFO | Final vocab size: 100

@@ -1,0 +1,24 @@
+2026-05-03 20:10:03,387 | INFO | Logging to: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/tokenizer_corpora/tokenizer_20260503_201003.log
+2026-05-03 20:10:03,387 | INFO | === Tokenizer Training Started | Run: tokenizer_20260503_201003 ===
+2026-05-03 20:10:03,387 | INFO | Input directory: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/tokenizer_corpora
+2026-05-03 20:10:03,387 | INFO | Number of files: 2
+2026-05-03 20:10:03,387 | INFO |  - /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/tokenizer_corpora/transcription_Chirurquia.txt
+2026-05-03 20:10:03,387 | INFO |  - /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/tokenizer_corpora/tokenizer_corpora_20260503_135044.txt
+2026-05-03 20:10:03,387 | INFO | Tokenizer config:
+2026-05-03 20:10:03,387 | INFO |  - vocab_size: 100
+2026-05-03 20:10:03,387 | INFO |  - pre_tokenizer: ByteLevel
+2026-05-03 20:10:03,387 | INFO |  - decoder: ByteLevel
+2026-05-03 20:10:03,949 | INFO | Training complete
+2026-05-03 20:10:03,949 | INFO | Final vocab size: 100
+2026-05-03 20:10:03,950 | INFO | 
+Saved tokenizer JSON:
+2026-05-03 20:10:03,950 | INFO |  - /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/tokenizer/tokenizer_20260503_201003/occitan_tokenizer.json
+2026-05-03 20:10:03,952 | INFO | 
+Saved Hugging Face tokenizer folder:
+2026-05-03 20:10:03,952 | INFO |  - /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/tokenizer/tokenizer_20260503_201003/hf_tokenizer
+2026-05-03 20:10:03,952 | INFO | === Run Summary ===
+2026-05-03 20:10:03,952 | INFO | Run name: tokenizer_20260503_201003
+2026-05-03 20:10:03,952 | INFO | Input: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/tokenizer_corpora
+2026-05-03 20:10:03,952 | INFO | Output: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/tokenizer/tokenizer_20260503_201003
+2026-05-03 20:10:03,952 | INFO | Files used: 2
+2026-05-03 20:10:03,952 | INFO | Final vocab size: 100

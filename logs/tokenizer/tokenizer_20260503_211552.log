@@ -1,0 +1,24 @@
+2026-05-03 21:15:52,710 | INFO | Logging to: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/tokenizer/tokenizer_20260503_211552.log
+2026-05-03 21:15:52,710 | INFO | === Tokenizer Training Started | Run: tokenizer_20260503_211552 ===
+2026-05-03 21:15:52,711 | INFO | Input directory: data/processed/tokenizer_corpora
+2026-05-03 21:15:52,711 | INFO | Number of files: 2
+2026-05-03 21:15:52,711 | INFO |  - data/processed/tokenizer_corpora/transcription_Chirurquia.txt
+2026-05-03 21:15:52,711 | INFO |  - data/processed/tokenizer_corpora/tokenizer_corpora_20260503_135044.txt
+2026-05-03 21:15:52,711 | INFO | Tokenizer config:
+2026-05-03 21:15:52,711 | INFO |  - vocab_size: 100
+2026-05-03 21:15:52,711 | INFO |  - pre_tokenizer: ByteLevel
+2026-05-03 21:15:52,711 | INFO |  - decoder: ByteLevel
+2026-05-03 21:15:53,357 | INFO | Training complete
+2026-05-03 21:15:53,357 | INFO | Final vocab size: 100
+2026-05-03 21:15:53,358 | INFO | 
+Saved tokenizer JSON:
+2026-05-03 21:15:53,358 | INFO |  - data/processed/tokenizer/tokenizer_20260503_211552/occitan_tokenizer.json
+2026-05-03 21:15:53,360 | INFO | 
+Saved Hugging Face tokenizer folder:
+2026-05-03 21:15:53,360 | INFO |  - data/processed/tokenizer/tokenizer_20260503_211552/hf_tokenizer
+2026-05-03 21:15:53,360 | INFO | === Run Summary ===
+2026-05-03 21:15:53,360 | INFO | Run name: tokenizer_20260503_211552
+2026-05-03 21:15:53,360 | INFO | Input: data/processed/tokenizer_corpora
+2026-05-03 21:15:53,360 | INFO | Output: data/processed/tokenizer/tokenizer_20260503_211552
+2026-05-03 21:15:53,360 | INFO | Files used: 2
+2026-05-03 21:15:53,360 | INFO | Final vocab size: 100

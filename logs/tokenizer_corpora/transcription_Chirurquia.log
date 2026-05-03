@@ -1,0 +1,9 @@
+2026-05-03 14:14:29,348 | INFO | Logging to: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/tokenizer_corpora/transcription_Chirurquia.log
+2026-05-03 14:14:29,349 | INFO | === Plotting Started | Run: transcription_Chirurquia ===
+2026-05-03 14:14:29,349 | INFO | Starting corpus build from: data/raw
+2026-05-03 14:14:29,349 | INFO | Processing file: data/raw/AlbucE.txt
+2026-05-03 14:14:29,358 | INFO | AlbucE.txt: 537347 -> 533824 chars after cleaning
+2026-05-03 14:14:29,359 | INFO | === Corpus Summary ===
+2026-05-03 14:14:29,359 | INFO | Files included: 1
+2026-05-03 14:14:29,359 | INFO | Total characters: 533,824
+2026-05-03 14:14:29,359 | INFO | Saved to: data/processed/tokenizer_corpora/transcription_Chirurquia.txt

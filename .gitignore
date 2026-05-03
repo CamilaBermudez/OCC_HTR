@@ -1,4 +1,5 @@
 /data/raw/original_manuscript/
+/data/raw/COMETA_medieval_corpus/
 /.venv
 .env
 /results/image_segmentation/
@@ -13,4 +14,4 @@
 /models/
 /data/processed/segmented_images/
 /data/processed/
-
+/data/raw/AlbucE.txt
