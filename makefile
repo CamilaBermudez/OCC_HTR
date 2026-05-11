@@ -8,9 +8,11 @@ ORIGINAL_IMAGES_PATH=./data/raw/original_manuscript/reproduction14453_100
 MASKS_DIR=./data/processed/img_layout
 IMAGES_SEGMENTS = ./data/processed/segmented_images
 MASKS_PATH = ./data/processed/img_layout/masks/20260430_115917
+FONT_SIZE?=20
 PLOTTED_BOUNDS_PATH=./data/processed/plotted_bounds
 IMAGES_SEGMENTS_PATH=./data/processed/segmented_images/segmentation_20260430_123217
 EXTRACTED_LINES_DIR=./data/processed/extracted_lines
+CROP_TYPE?="polygon"
 EXTRACTED_LINES_PATH=./data/processed/extracted_lines/extraction_20260430_190006
 BINARIZED_IMAGES_DIR=./data/processed/binarized_images
 BINARIZED_METHOD?=otsu_gaussian
@@ -23,6 +25,7 @@ RESIZING_TARGET_SIZE?=224
 RAW_CORPORA_DIR=./data/raw/COMETA_medieval_corpus
 TOKENIZER_CORPORA_DIR=./data/processed/tokenizer_corpora
 TOKENIZER_DIR=./data/processed/tokenizer
+TOKENIZER_TYPE?="byte"
 VOCAB_SIZE?=100
 
 
@@ -54,14 +57,16 @@ plot_bounds:
 	$(PYTHON) scripts/data_preprocessing/run_plot_bounds.py \
 		--input-dir $(ORIGINAL_IMAGES_PATH) \
 		--kraken-output-path $(IMAGES_SEGMENTS_PATH) \
-		--output-dir $(PLOTTED_BOUNDS_PATH)
+		--output-dir $(PLOTTED_BOUNDS_PATH) \
+		--font-size $(FONT_SIZE)
 
 
 crop_segments:
 	$(PYTHON) scripts/data_preprocessing/run_crop_image_segments.py \
 		--input-folder $(ORIGINAL_IMAGES_PATH) \
 		--output-kraken-path $(IMAGES_SEGMENTS_PATH) \
-		--output-folder $(EXTRACTED_LINES_DIR)
+		--output-folder $(EXTRACTED_LINES_DIR)  \
+		--crop-type $(CROP_TYPE)  
 
 
 binarize_image:
@@ -96,6 +101,7 @@ run_tokenizer:
 	$(PYTHON) scripts/tokenizer/run_BPE_tokenizer.py \
 			--input_path $(TOKENIZER_CORPORA_DIR) \
 			--output_path $(TOKENIZER_DIR) \
+			--type $(TOKENIZER_TYPE) \
 			--vocab_size $(VOCAB_SIZE)
 
 
