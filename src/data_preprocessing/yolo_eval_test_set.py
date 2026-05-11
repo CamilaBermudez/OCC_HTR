@@ -6,7 +6,7 @@ from tqdm import tqdm
 import os
 import ast
 from dotenv import load_dotenv
-
+import argparse
 import json
 import logging
 from datetime import datetime
@@ -174,6 +174,8 @@ def evaluate_detection_only(
     model = YOLO(model_path)
     results_per_iou = {iou: {'tp': 0, 'fp': 0, 'fn': 0} for iou in iou_thresholds}
     
+    load_dotenv()
+    SEGMONTO_LIST = ast.literal_eval(os.environ.get("SEGMONTO_LIST"))
     
     image_extensions = ['.jpg', '.jpeg', '.png', '.bmp']
     test_images = [
@@ -204,9 +206,6 @@ def evaluate_detection_only(
             verbose=False
         )
         
-        load_dotenv()
-        SEGMONTO_LIST = ast.literal_eval(os.environ.get("SEGMONTO_LIST"))
-
         pred_boxes = []
         if results[0].boxes is not None:
             boxes = results[0].boxes.xyxy.cpu().numpy()
@@ -274,32 +273,4 @@ def evaluate_detection_only(
     return metrics
 
 
-if __name__ == "__main__":
-    load_dotenv()
-    PROJECT_ROOT = os.environ.get("PROJECT_ROOT")
-    MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "layout", "y8_YALTAi_20epochs_best_+9annotated_fix50.pt")
-    TEST_IMAGES_DIR = os.path.join(PROJECT_ROOT, "data", "processed", "annotated_samples", "retrain","images")
-    TEST_ANNOTATIONS_DIR = os.path.join(PROJECT_ROOT, "data", "processed", "annotated_samples", "retrain","annotations")
 
-    LOGS_DIR = os.path.join(PROJECT_ROOT, "logs", "evaluation")
-    RUN_NAME = f"eval_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    # Evaluate at common IoU thresholds
-    metrics = evaluate_detection_only(
-        model_path=MODEL_PATH,
-        test_images_dir=TEST_IMAGES_DIR,
-        test_annotations_dir=TEST_ANNOTATIONS_DIR,
-        iou_thresholds=[0.3, 0.5, 0.7],  # Relaxed to strict
-        conf_threshold=0.25,
-        logs_dir=LOGS_DIR,
-        run_name=RUN_NAME
-    )
-    
-    print(f"mPA@0.5: {metrics.get('mPA@0.5', 0):.4f}")
-    
-    mpa_05 = metrics.get('mPA@0.5', 0)
-    if mpa_05 >= 0.8:
-        print("Model is excellent for region detection - ready for production!")
-    elif mpa_05 >= 0.6:
-        print("Model is good - consider minor fine-tuning for edge cases")
-    else:
-        print("Model needs more training data or hyperparameter tuning")

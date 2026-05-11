@@ -219,7 +219,6 @@ def move_files_to_timestamped_folder(src_dir: Path, dst_base_dir: Path, list_img
         
         rel_path = src_file.relative_to(src_dir)
         dst_file = dst_base_dir / timestamp / file_type / folder / rel_path
-        
         dst_file.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src_file, dst_file)
         

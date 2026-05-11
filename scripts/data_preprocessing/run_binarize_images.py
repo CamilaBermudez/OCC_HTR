@@ -14,8 +14,7 @@ def main():
     project_root = Path(os.environ.get("PROJECT_ROOT", "."))
     parser = argparse.ArgumentParser(description="Run image binarization pipeline")
 
-    parser.add_argument("--input-path", required=False)
-    parser.add_argument("--output-base-dir", required=False)
+
     parser.add_argument("--logs-dir", required=False)
     parser.add_argument("--run-name", required=False)
 
