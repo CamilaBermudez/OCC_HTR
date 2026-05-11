@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import logging
 import json
+import cv2
 import subprocess
 from pathlib import Path
 from PIL import Image
@@ -37,28 +38,51 @@ def setup_simple_logging(logs_dir: str, run_name: Optional[str] = None):
     
     return logger, str(log_file)
 
-def crop_image_segments( img_path: Path, kraken_output_path: Path, processed_name: str, output_path: Path) -> bool:
+
+def extract_polygon(img_np, polygon):
+    pts = np.array(polygon, dtype=np.int32)
+    mask = np.zeros(img_np.shape[:2], dtype=np.uint8)
+    cv2.fillPoly(mask, [pts], 255)
+    masked = cv2.bitwise_and(img_np, img_np, mask=mask)
+    x, y, w, h = cv2.boundingRect(pts)
+    cropped = masked[y:y+h, x:x+w]
+    return cropped
+
+def crop_image_segments( img_path: Path, kraken_output_path: Path, processed_name: str, output_path: Path, crop_type:str="polygon") -> bool:
     try:
-        img = Image.open(img_path).convert("RGB")
+        img_pil = Image.open(img_path).convert("RGB")
+        img_np = np.array(img_pil)
 
         with open(kraken_output_path, "r", encoding="utf-8") as f:
             kraken_output = json.load(f)
-
+        
         for id, line in enumerate(kraken_output.get("lines", [])):
             if "boundary" not in line:
                 continue
 
-            xs, ys = zip(*line["boundary"])
-            left, upper = int(min(xs)), int(min(ys))
-            right, lower = int(max(xs)), int(max(ys))
-            img.crop((left, upper, right, lower)).save(f"{output_path}/{processed_name}_line_{id}.png", optimize=True)
+            save_path = output_path / f"{processed_name}_line_{id}.png"
+
+            if crop_type=="rectangle":    
+                xs, ys = zip(*line["boundary"])
+                left, upper = int(min(xs)), int(min(ys))
+                right, lower = int(max(xs)), int(max(ys))
+                cropped = img_pil.crop((left, upper, right, lower))
+                cropped.save(save_path,optimize=True)
+            elif crop_type=="polygon":
+                polygon = [(int(x), int(y)) for x, y in line["boundary"]]
+                crop_np = extract_polygon(img_np, polygon)
+                crop_pil = Image.fromarray(crop_np)
+                crop_pil.save(save_path, optimize=True)
+            else:
+                raise ValueError(f"Unknown crop_type: {crop_type}")
         return True
-    except Exception:
+    except Exception as e:
+        print(f"Error in crop_image_segments: {e}")
         return False
 
 
-def crop_all_images(input_folder: Union[str, Path],output_kraken_path: Union[str, Path],output_folder: Union[str, Path],logs_dir: Optional[str] = None,run_name: Optional[str] = None) -> dict:
-    nput_folder = Path(input_folder)
+def crop_all_images(input_folder: Union[str, Path],output_kraken_path: Union[str, Path],output_folder: Union[str, Path],logs_dir: Optional[str] = None,run_name: Optional[str] = None,crop_type:str="polygon") -> dict:
+    input_folder = Path(input_folder)
     output_kraken_path = Path(output_kraken_path)
     output_folder = Path(output_folder)
     
@@ -85,7 +109,7 @@ def crop_all_images(input_folder: Union[str, Path],output_kraken_path: Union[str
     except:
         git_commit = "unknown"
 
-    config_summary = {"run": run_name,"git": git_commit,"input": str(input_folder.name),"output": str(output_folder.name),"images_count": None}
+    config_summary = {"run": run_name,"git": git_commit,"input": str(input_folder.name),"output": str(output_folder.name),"images_count": None,"crop_type":str(crop_type)}
     
     if not input_folder.is_dir():
         logger.error(f"Input folder not found: {input_folder}")
@@ -112,7 +136,7 @@ def crop_all_images(input_folder: Union[str, Path],output_kraken_path: Union[str
         if not json_path.exists():
             continue
         
-        if crop_image_segments(img_path, json_path, processed_name, file_output_dir):
+        if crop_image_segments(img_path, json_path, processed_name, file_output_dir,crop_type):
             success_count += 1
         
         if idx % 20 == 0 or idx == len(image_files):
