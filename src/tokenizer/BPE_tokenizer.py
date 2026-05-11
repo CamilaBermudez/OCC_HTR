@@ -10,6 +10,7 @@ from tokenizers.trainers import BpeTrainer
 from tokenizers.pre_tokenizers import ByteLevel
 from tokenizers.decoders import ByteLevel as ByteLevelDecoder
 from tokenizers.processors import TemplateProcessing
+from tokenizers.pre_tokenizers import Split
 
 from transformers import PreTrainedTokenizerFast
 
@@ -40,7 +41,7 @@ def setup_logger(logs_dir: Union[str, Path], run_name: str):
 
     return logger
 
-def train_occitan_htr_tokenizer(input_path: Path,output_path: Path,vocab_size:int=100,logs_dir: Optional[str] = None,run_name: Optional[str] = None):
+def train_occitan_htr_tokenizer(input_path: Path,output_path: Path, type:str = 'byte',vocab_size:int=100,logs_dir: Optional[str] = None,run_name: Optional[str] = None):
     """
     Export both:
     1. tokenizer.json
@@ -67,12 +68,18 @@ def train_occitan_htr_tokenizer(input_path: Path,output_path: Path,vocab_size:in
 
     logger.info("Tokenizer config:")
     logger.info(f" - vocab_size: {vocab_size}")
-    logger.info(f" - pre_tokenizer: ByteLevel")
-    logger.info(f" - decoder: ByteLevel")
+    logger.info(f" - pre_tokenizer: {type}")
+
+    decoder_type= ByteLevel if type=="byte" else None
+    logger.info(f" - decoder: {decoder_type}")
     
     tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
-    tokenizer.pre_tokenizer = ByteLevel()
-    tokenizer.decoder = ByteLevelDecoder()
+
+    if type=="byte":
+        tokenizer.pre_tokenizer = ByteLevel()
+        tokenizer.decoder = ByteLevelDecoder()
+    elif type=="char":
+        tokenizer.pre_tokenizer = Split(pattern="", behavior="isolated")
 
     trainer = BpeTrainer(
         vocab_size=vocab_size,
