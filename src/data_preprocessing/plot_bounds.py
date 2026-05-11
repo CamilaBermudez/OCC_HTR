@@ -70,7 +70,7 @@ def plot_image_with_bounds(image_file: Path, json_path: Path, output_path: Path,
             draw = ImageDraw.Draw(img)
             font = get_font(font_size)
 
-            for idx, line in enumerate(kraken_data.get("lines", []), start=1):
+            for idx, line in enumerate(kraken_data.get("lines", []), start=0):
                 baseline = line.get("baseline", [])
                 
                 # Baseline (red)
@@ -86,7 +86,7 @@ def plot_image_with_bounds(image_file: Path, json_path: Path, output_path: Path,
                 if baseline:
                     x, y = baseline[0]
                     text_pos = (max(0, int(x) - 20), max(0, int(y) - 20))
-                    draw.text(text_pos, str(idx - 1), fill="green", font=font)
+                    draw.text(text_pos, str(idx), fill="green", font=font)
             
             
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -147,10 +147,7 @@ def plot_all_images_with_bounds(input_dir: Union[str, Path], kraken_output_path:
         return {"success": False}
     
     image_extensions = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
-    image_files = sorted([
-        f for f in input_dir.iterdir() 
-        if f.is_file() and f.suffix.lower() in image_extensions
-    ])
+    image_files = sorted([f for f in input_dir.iterdir() if f.is_file() and f.suffix.lower() in image_extensions])
     
     config_summary["images_count"] = len(image_files)
     if log_file:
