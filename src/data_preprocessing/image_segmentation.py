@@ -109,9 +109,7 @@ def segment_all_images(input_folder: Union[str, Path],output_folder: Union[str, 
     output_folder = Path(output_folder) / f"segmentation_{timestamp}"
     output_folder.mkdir(parents=True, exist_ok=True)
     logger.info(f"Starting segmentation for {len(image_files)} images...")
-    logger.info(f"✅ Attempted to create: {output_folder.resolve()}")
-    logger.info(f"📁 Exists? {output_folder.exists()}")
-    logger.info(f"🔐 Writable? {os.access(output_folder, os.W_OK)}")
+    
     if not output_folder.exists():
         logger.error(f"❌ Failed to create directory. Check permissions or parent path.")
 

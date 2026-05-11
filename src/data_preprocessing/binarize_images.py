@@ -13,7 +13,7 @@ from typing import Tuple, Union, List, Optional
 from argparse import ArgumentParser
 
 load_dotenv()
-
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
 PROJECT_ROOT = os.environ.get("PROJECT_ROOT", ".")
 sys.path.insert(0, str(Path(PROJECT_ROOT)))
 
@@ -43,6 +43,24 @@ def setup_simple_logging(logs_dir: str, run_name: Optional[str] = None):
     
     return logger, str(log_file)
 
+def get_image_groups(input_path: Path, image_extensions):
+    # Case 1: subfolders exist
+    subfolders = [f for f in input_path.iterdir() if f.is_dir()]
+
+    if subfolders:
+        return {
+    folder.name: sorted([
+        f for f in folder.iterdir()
+        if f.suffix.lower() in image_extensions ]) 
+        for folder in sorted(subfolders)}
+
+    # Case 2: flat structure (images directly in root)
+    return {
+        "root": [
+            f for f in input_path.iterdir()
+            if f.suffix.lower() in image_extensions
+        ]
+    }
 
 def binarize_image(input_img: Union[str, Path], gaussian_filter: Tuple[int, int] = (5, 5), method: str = "otsu_gaussian") -> Tuple[float, np.ndarray]:
     img = cv.imread(str(input_img), cv.IMREAD_GRAYSCALE)
@@ -69,28 +87,26 @@ def binarize_and_save(input_path: Union[str, Path], output_path: Union[str, Path
     if not dry_run:
         output_path.mkdir(parents=True, exist_ok=True)
     
-    image_folders = [f for f in input_path.iterdir() if f.is_dir()]
-    image_extensions = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
+    image_groups = get_image_groups(input_path, IMAGE_EXTENSIONS)
     
-    stats = {"total_folders": len(image_folders), "total_images": 0, "success_count": 0, "failed_count": 0, "thresholds_summary": {}}
     
-    for img_folder in tqdm(image_folders, desc="Processing folders", unit="folder"):
-        image_files = [f for f in img_folder.iterdir() if f.suffix.lower() in image_extensions]
-        
+    stats = {"total_folders": len(image_groups), "total_images": 0, "success_count": 0, "failed_count": 0, "thresholds_summary": {}}
+    
+    for group_name, image_files in tqdm(image_groups.items(), desc="Processing groups", unit="group"):
         if not image_files:
             continue
             
         stats["total_images"] += len(image_files)
     
         # Create matching subfolder in output_path
-        folder_output_path = output_path / img_folder.name
+        folder_output_path = output_path / group_name
         if not dry_run:
             folder_output_path.mkdir(parents=True, exist_ok=True)
         
         thresholds: List[float] = []
         folder_success_count = 0
         
-        for img_path in tqdm(image_files, desc=f"Images in {img_folder.name}", unit="file", leave=False):
+        for img_path in tqdm(image_files, desc=f"Images in {group_name}", unit="file", leave=False):
             try:
                 _, _, processed_name = format_filename(base_name=img_path.stem, output_folder=folder_output_path)
                 
@@ -103,20 +119,21 @@ def binarize_and_save(input_path: Union[str, Path], output_path: Union[str, Path
                 thresholds.append(float(threshold))
                 folder_success_count += 1
                 
-            except Exception:
+            except Exception as e:
+                logging.getLogger("binarization").warning(f"Failed {img_path}: {e}")
                 continue
         
         stats["success_count"] += folder_success_count
         stats["failed_count"] += len(image_files) - folder_success_count
         
         if not dry_run and thresholds:
-            summary_file = folder_output_path / f"{img_folder.stem}_thresholds.txt"
+            summary_file = folder_output_path / f"{group_name}_thresholds.txt"
             with open(summary_file, 'w', encoding='utf-8') as f:
-                f.write(f"Folder: {img_folder.name}\n")
+                f.write(f"Folder: {group_name}\n")
                 f.write(f"Processed: {folder_success_count}/{len(image_files)}\n")
                 f.write(f"Thresholds: min={min(thresholds):.2f} / max={max(thresholds):.2f} / avg={np.mean(thresholds):.2f}\n")
             
-            stats["thresholds_summary"][img_folder.name] = {
+            stats["thresholds_summary"][group_name] = {
                 "min": round(min(thresholds), 2),
                 "max": round(max(thresholds), 2),
                 "avg": round(np.mean(thresholds), 2)
@@ -155,11 +172,10 @@ def run_binarization_pipeline( input_path: Union[str, Path], output_base_dir: Un
         logger.error(f"Input folder not found: {input_path}")
         return {"success": False}
     
-    image_folders = [f for f in input_path.iterdir() if f.is_dir()]
-    image_extensions = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
-    total_images = sum(
-        len([f for f in folder.iterdir() if f.suffix.lower() in image_extensions])
-        for folder in image_folders)
+    
+    image_groups = get_image_groups(input_path, IMAGE_EXTENSIONS)
+    
+    total_images = sum(len(files) for files in image_groups.values())
     
     # Log essential config only
     config_summary = {
@@ -170,7 +186,7 @@ def run_binarization_pipeline( input_path: Union[str, Path], output_base_dir: Un
         "timestamp": timestamp,
         "method": method,
         "gaussian_filter": gaussian_filter,
-        "folders_count": len(image_folders),
+        "folders_count": len(image_groups),
         "images_count": total_images,
         "dry_run": dry_run
     }
@@ -180,15 +196,15 @@ def run_binarization_pipeline( input_path: Union[str, Path], output_base_dir: Un
     run_output_dir = output_base_dir / timestamp
     if not dry_run:
         run_output_dir.mkdir(parents=True, exist_ok=True)
-    logger.info(f"📁 Output directory: {run_output_dir}")
+    logger.info(f"Output directory: {run_output_dir}")
     
-    logger.info(f"Starting binarization for {total_images} images across {len(image_folders)} folders...")
+    logger.info(f"Starting binarization for {total_images} images across {len(image_groups)} folders...")
     
     stats = binarize_and_save(input_path=input_path, output_path=run_output_dir, gaussian_filter=gaussian_filter, method=method, dry_run=dry_run)
     
-    if len(image_folders) >= 20:
-        for idx in range(20, len(image_folders) + 1, 20):
-            logger.info(f"📊 Progress: {idx}/{len(image_folders)} folders processed")
+    if len(image_groups) >= 20:
+        for idx in range(20, len(image_groups) + 1, 20):
+            logger.info(f"Progress: {idx}/{len(image_groups)} folders processed")
     
     success_rate = stats["success_count"] / stats["total_images"] * 100 if stats["total_images"] > 0 else 0
     
