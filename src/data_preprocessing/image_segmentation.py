@@ -7,6 +7,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 from tqdm import tqdm  
 import sys
+from kraken import serialization
+from PIL import Image
+from kraken.containers import Segmentation, BBoxLine, BaselineLine
 import datetime
 from typing import Optional, Union 
 
@@ -65,7 +68,45 @@ def segment_image(img_path: Path, output_path: Path, mask_path: Optional[Path] =
         import traceback
         traceback.print_exc()  # shows full error + line number
         return False
-    
+
+
+def format_from_JSON_to_ALTO_XML(input_json_path,input_img_path, output_alto_path):
+    with open(input_json_path, encoding="utf-8") as f:
+        data = json.load(f)
+    im = Image.open(input_img_path)
+
+    lines = []
+    for line in data["lines"]:
+        if line.get("type") == "baselines":
+            lines.append(BaselineLine(
+                id=line["id"],
+                baseline=line["baseline"],
+                boundary=line["boundary"],
+                text=line.get("text"),
+                tags=line.get("tags"),
+            ))
+        else:  
+            lines.append(BBoxLine(
+                id=line["id"],
+                bbox=line["bbox"],
+                text=line.get("text"),
+                tags=line.get("tags"),
+                split=line.get("split"),
+            ))
+
+    seg = Segmentation(
+        type=data["type"],
+        imagename=data["imagename"],
+        text_direction=data["text_direction"],
+        script_detection=data["script_detection"],
+        lines=lines,
+        regions=data.get("regions", {}),
+        line_orders=data.get("line_orders", [])
+    )
+
+    alto = serialization.serialize(seg, image_size=im.size)
+    with open(output_alto_path, "w", encoding="utf-8") as f:
+        f.write(alto)
 
 def segment_all_images(input_folder: Union[str, Path],output_folder: Union[str, Path], masks_folder: Union[str, Path], logs_dir: Optional[str] = None, run_name: Optional[str] = None) -> dict:
     
@@ -109,23 +150,27 @@ def segment_all_images(input_folder: Union[str, Path],output_folder: Union[str, 
     output_folder = Path(output_folder) / f"segmentation_{timestamp}"
     output_folder.mkdir(parents=True, exist_ok=True)
     logger.info(f"Starting segmentation for {len(image_files)} images...")
-    
-    if not output_folder.exists():
-        logger.error(f"❌ Failed to create directory. Check permissions or parent path.")
+
+    alto_dir = output_folder / "alto_format"
+    alto_dir.mkdir(parents=True, exist_ok=True)
 
     
+    if not output_folder.exists():
+        logger.error(f"Failed to create directory. Check permissions or parent path.")
+
     success_count = 0
     for idx, img_path in enumerate(tqdm(image_files, desc="Segmenting", unit="file"), 1):
         base_name = img_path.stem
         output_path, output_filename, processed_name = format_filename(base_name, output_folder)
         input_cmd, output_cmd = format_for_cli(img_path, output_path)
-        
+        alto_path = alto_dir / f"{processed_name}.xml"
         mask_path = masks_folder / f"{processed_name}.png"
         if not mask_path.exists():
             mask_path = None
         
         if segment_image(input_cmd, output_cmd, mask_path=mask_path):
             success_count += 1
+            format_from_JSON_to_ALTO_XML(input_json_path=output_path,input_img_path=img_path, output_alto_path=alto_path)
         
         if idx % 20 == 0 or idx == len(image_files):
             logger.info(f"Progress: {idx}/{len(image_files)} | OK: {success_count}")
