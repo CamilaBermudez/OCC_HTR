@@ -18,6 +18,9 @@ def main():
     parser.add_argument("--logs-dir", required=False)
     parser.add_argument("--run-name", required=False)
 
+    parser.add_argument("--input-path", required=True)
+    parser.add_argument("--output-base-dir", required=True)
+
     parser.add_argument("--gaussian-filter",type=int,nargs=2,default=[3, 3], help="Gaussian filter kernel size (example: --gaussian-filter 3 3)")
     parser.add_argument("--method",type=str, default="otsu_gaussian", help="Binarization method",)
     parser.add_argument("--dry-run", action="store_true", help="Run without writing output files",)
@@ -26,7 +29,7 @@ def main():
 
     input_path = (Path(args.input_path) if args.input_path else project_root / "data"/ "processed"/ "extracted_lines"/ "extraction_20260427_221639")
     output_base_dir = (Path(args.output_base_dir) if args.output_base_dir else project_root / "data" / "processed"/ "binarized_images")
-
+    method =  args.method
     logs_dir = (Path(args.logs_dir) if args.logs_dir else project_root / "logs" / "binarization")
 
     run_name = (args.run_name or f"bin_{input_path.name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}")

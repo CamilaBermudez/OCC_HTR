@@ -29,7 +29,7 @@ def main():
     input_folder = (Path(args.input_folder) if args.input_folder else project_root / "data"/ "raw"/ "original_manuscript"/ "reproduction14453_100")
     output_kraken_path = Path(args.output_kraken_path)
     output_folder = (Path(args.output_folder) if args.output_folder else project_root/ "data"/ "processed"/ "extracted_lines")
-    crop_type = Path(args.crop_type)
+    crop_type = crop_type = args.crop_type
     logs_dir = (Path(args.logs_dir) if args.logs_dir else project_root/ "logs"/ "cropping")
 
     run_name = (args.run_name or f"crop_{input_folder.name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}")
