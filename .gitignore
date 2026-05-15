@@ -14,4 +14,6 @@
 /models/
 /data/processed/segmented_images/
 /data/processed/
-/data/raw/AlbucE.txt
+/fonts/
+/runs/
+/logs/
