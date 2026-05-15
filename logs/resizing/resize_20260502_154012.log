@@ -1,6 +1,0 @@
-2026-05-02 15:40:12 | INFO | === Resizing Started | Run: resize_20260502_154012 ===
-2026-05-02 15:40:12 | INFO | Config: {"run": "resize_20260502_154012", "git": "b1cf30a", "input": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/filtered_images/20260430_224958/original/kept", "output": "/Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/resized_samples", "target_size": 224, "images_count": 13674}
-2026-05-02 15:40:12 | INFO | Starting resize for 13674 images
-2026-05-02 15:40:22 | INFO | Resizing complete: 13674/13674 succeeded
-2026-05-02 15:40:22 | INFO | Output: data/processed/resized_samples/resize_20260502_154012
-2026-05-02 15:40:22 | INFO | Log file: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/logs/resizing/resize_20260502_154012.log
