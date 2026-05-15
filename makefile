@@ -7,31 +7,35 @@ ANNOT_TEST_SET_DIR=./data/processed/annotated_samples/retrain/annotations
 ORIGINAL_IMAGES_PATH=./data/raw/original_manuscript/reproduction14453_100
 MASKS_DIR=./data/processed/img_layout
 IMAGES_SEGMENTS = ./data/processed/segmented_images
-MASKS_PATH = ./data/processed/img_layout/masks/20260430_115917
-FONT_SIZE?=20
-PLOTTED_BOUNDS_PATH=./data/processed/plotted_bounds
-IMAGES_SEGMENTS_PATH=./data/processed/segmented_images/segmentation_20260430_123217
+MASKS_PATH = ./data/processed/img_layout/masks/20260515_092830
+FONT_SIZE?=50
+PLOTTED_BOUNDS_DIR=./data/processed/plotted_bounds
+IMAGES_SEGMENTS_PATH=./data/processed/segmented_images/segmentation_20260515_093010
+
 EXTRACTED_LINES_DIR=./data/processed/extracted_lines
-CROP_TYPE?="polygon"
-EXTRACTED_LINES_PATH=./data/processed/extracted_lines/extraction_20260430_190006
+CROP_TYPE?=polygon
+EXTRACTED_LINES_PATH=./data/processed/extracted_lines/extraction_20260515_102608
 BINARIZED_IMAGES_DIR=./data/processed/binarized_images
 BINARIZED_METHOD?=otsu_gaussian
-BINARIZED_IMAGES_PATH=./data/processed/binarized_images/20260430_192414
+BINARIZED_IMAGES_PATH=./data/processed/binarized_images/20260515_104214
 FILTERED_IMAGES_DIR=./data/processed/filtered_images
-FILTERED_ORIGINAL_LINES_PATH=./data/processed/filtered_images/20260430_224958/original/kept
+FILTERED_ORIGINAL_LINES_PATH=./data/processed/filtered_images/20260515_104416/original/kept
 RESIZED_IMAGES_DIR=./data/processed/resized_samples
 RESIZING_TARGET_SIZE?=224
 #======= Tokenizer ========
 RAW_CORPORA_DIR=./data/raw/COMETA_medieval_corpus
 TOKENIZER_CORPORA_DIR=./data/processed/tokenizer_corpora
 TOKENIZER_DIR=./data/processed/tokenizer
-TOKENIZER_TYPE?="byte"
+TOKENIZER_TYPE?=byte
 VOCAB_SIZE?=100
-
+#========= transcription ========
+TRANSCRIPTION_DIR=./data/processed/transcription
+IMAGE_INVENTORY=./data/processed/filtered_images/20260515_104416/filter_tracking.csv
+TRANSCRIPTION_MODEL=./models/ocr/catmus-medieval.mlmodel
 
 PYTHON=python
 
-.PHONY: all evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images unify_corpora run_tokenizer clean
+.PHONY: all evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images unify_corpora run_tokenizer run_transcription clean
 
 all: evaluate_yolo_performance
 
@@ -57,7 +61,7 @@ plot_bounds:
 	$(PYTHON) scripts/data_preprocessing/run_plot_bounds.py \
 		--input-dir $(ORIGINAL_IMAGES_PATH) \
 		--kraken-output-path $(IMAGES_SEGMENTS_PATH) \
-		--output-dir $(PLOTTED_BOUNDS_PATH) \
+		--output-dir $(PLOTTED_BOUNDS_DIR) \
 		--font-size $(FONT_SIZE)
 
 
@@ -104,6 +108,14 @@ run_tokenizer:
 			--type $(TOKENIZER_TYPE) \
 			--vocab_size $(VOCAB_SIZE)
 
+
+run_transcription:
+	$(PYTHON) scripts/ocr/run_transcribe_img.py \
+			--seg-path $(IMAGES_SEGMENTS_PATH) \
+			--input-img-dir $(FILTERED_ORIGINAL_LINES_PATH) \
+			--output-dir $(TRANSCRIPTION_DIR) \
+			--img-inventory $(IMAGE_INVENTORY)\
+			--model-path $(TRANSCRIPTION_MODEL)
 
 clean:
 	rm -rf $(LOGS_DIR)
