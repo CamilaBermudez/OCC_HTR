@@ -1,6 +1,0 @@
-2026-04-30 17:12:10 | INFO | === Segmentation Started | Run: seg_reproduction14453_100_20260430_171210 ===
-2026-04-30 17:12:10 | INFO | Config: {"run": "seg_reproduction14453_100_20260430_171210", "git": "8fc13ba", "input": "reproduction14453_100", "output": "segmented_images", "images_count": 71}
-2026-04-30 17:12:10 | INFO | Starting segmentation for 71 images...
-2026-04-30 17:12:10 | INFO | ✅ Attempted to create: /Users/camilabermudezvalderrama/Documents/LMU-STATISTICS & DATA SCIENCE MASTER/SS2026/Thesis/OCC_HTR/data/processed/segmented_images/segmentation_20260430_171210
-2026-04-30 17:12:10 | INFO | 📁 Exists? True
-2026-04-30 17:12:10 | INFO | 🔐 Writable? True

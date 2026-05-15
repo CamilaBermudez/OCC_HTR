@@ -1,3 +1,0 @@
-2026-04-30 17:04:58 | INFO | === Segmentation Started | Run: seg_reproduction14453_100_20260430_170458 ===
-2026-04-30 17:04:58 | INFO | Config: {"run": "seg_reproduction14453_100_20260430_170458", "git": "8fc13ba", "input": "reproduction14453_100", "output": "segmented_images", "images_count": 71}
-2026-04-30 17:04:58 | INFO | Starting segmentation for 71 images...
