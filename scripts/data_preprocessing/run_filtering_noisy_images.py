@@ -1,10 +1,10 @@
-from pathlib import Path
-from dotenv import load_dotenv
 import argparse
 import os
 from datetime import datetime
-import sys
-sys.path.insert(0, str(Path(os.environ.get("PROJECT_ROOT", "."))))
+from pathlib import Path
+
+from dotenv import load_dotenv
+
 from src.data_preprocessing.filtering_noisy_images import run_filtering_pipeline
 
 
@@ -23,21 +23,45 @@ def main():
     parser.add_argument("--logs-dir", required=False)
     parser.add_argument("--run-name", required=False)
 
-    parser.add_argument("--size-thresholds", type=float,
-        nargs="+", default=[0.03], help="List of size thresholds (example: --size-thresholds 0.03 0.05)",)
+    parser.add_argument(
+        "--size-thresholds",
+        type=float,
+        nargs="+",
+        default=[0.03],
+        help="List of size thresholds (example: --size-thresholds 0.03 0.05)",
+    )
 
-    parser.add_argument("--density-thresholds", type=float, nargs="+",
-        default=[0.001, 0.997], help="List of density thresholds (example: --density-thresholds 0.001 0.997)",)
+    parser.add_argument(
+        "--density-thresholds",
+        type=float,
+        nargs="+",
+        default=[0.001, 0.997],
+        help="List of density thresholds (example: --density-thresholds 0.001 0.997)",
+    )
 
     args = parser.parse_args()
 
-    binarized_src = (Path(args.binarized_src) if args.binarized_src else project_root / "data"/ "processed"/ "binarized_images"/ "20260427_233547")
-    extracted_src = (Path(args.extracted_src) if args.extracted_src else project_root/ "data"/ "processed"/ "extracted_lines"/ "extraction_20260427_221639")
-    dst_base_dir = (Path(args.dst_base_dir) if args.dst_base_dir else project_root / "data"/ "processed"/ "filtered_images")
+    binarized_src = (
+        Path(args.binarized_src)
+        if args.binarized_src
+        else project_root / "data" / "processed" / "binarized_images" / "20260427_233547"
+    )
+    extracted_src = (
+        Path(args.extracted_src)
+        if args.extracted_src
+        else project_root / "data" / "processed" / "extracted_lines" / "extraction_20260427_221639"
+    )
+    dst_base_dir = (
+        Path(args.dst_base_dir)
+        if args.dst_base_dir
+        else project_root / "data" / "processed" / "filtered_images"
+    )
 
-    logs_dir = (Path(args.logs_dir) if args.logs_dir else project_root / "logs"/ "filtering")
+    logs_dir = Path(args.logs_dir) if args.logs_dir else project_root / "logs" / "filtering"
 
-    run_name = (args.run_name or f"filter_{binarized_src.name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+    run_name = (
+        args.run_name or f"filter_{binarized_src.name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    )
 
     result = run_filtering_pipeline(
         binarized_src=binarized_src,

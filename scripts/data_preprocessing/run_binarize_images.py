@@ -1,11 +1,11 @@
-from pathlib import Path
-from dotenv import load_dotenv
 import argparse
-import os
 import datetime
-import sys
-sys.path.insert(0, str(Path(os.environ.get("PROJECT_ROOT", "."))))
-from src.data_preprocessing.binarize_images import run_binarization_pipeline 
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+from src.data_preprocessing.binarize_images import run_binarization_pipeline
 
 
 def main():
@@ -14,25 +14,49 @@ def main():
     project_root = Path(os.environ.get("PROJECT_ROOT", "."))
     parser = argparse.ArgumentParser(description="Run image binarization pipeline")
 
-
     parser.add_argument("--logs-dir", required=False)
     parser.add_argument("--run-name", required=False)
 
     parser.add_argument("--input-path", required=True)
     parser.add_argument("--output-base-dir", required=True)
 
-    parser.add_argument("--gaussian-filter",type=int,nargs=2,default=[3, 3], help="Gaussian filter kernel size (example: --gaussian-filter 3 3)")
-    parser.add_argument("--method",type=str, default="otsu_gaussian", help="Binarization method",)
-    parser.add_argument("--dry-run", action="store_true", help="Run without writing output files",)
+    parser.add_argument(
+        "--gaussian-filter",
+        type=int,
+        nargs=2,
+        default=[3, 3],
+        help="Gaussian filter kernel size (example: --gaussian-filter 3 3)",
+    )
+    parser.add_argument(
+        "--method",
+        type=str,
+        default="otsu_gaussian",
+        help="Binarization method",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Run without writing output files",
+    )
 
     args = parser.parse_args()
 
-    input_path = (Path(args.input_path) if args.input_path else project_root / "data"/ "processed"/ "extracted_lines"/ "extraction_20260427_221639")
-    output_base_dir = (Path(args.output_base_dir) if args.output_base_dir else project_root / "data" / "processed"/ "binarized_images")
-    method =  args.method
-    logs_dir = (Path(args.logs_dir) if args.logs_dir else project_root / "logs" / "binarization")
+    input_path = (
+        Path(args.input_path)
+        if args.input_path
+        else project_root / "data" / "processed" / "extracted_lines" / "extraction_20260427_221639"
+    )
+    output_base_dir = (
+        Path(args.output_base_dir)
+        if args.output_base_dir
+        else project_root / "data" / "processed" / "binarized_images"
+    )
+    logs_dir = Path(args.logs_dir) if args.logs_dir else project_root / "logs" / "binarization"
 
-    run_name = (args.run_name or f"bin_{input_path.name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}")
+    run_name = (
+        args.run_name
+        or f"bin_{input_path.name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    )
 
     result = run_binarization_pipeline(
         input_path=input_path,

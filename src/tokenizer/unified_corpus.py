@@ -1,21 +1,15 @@
-import os
-from pathlib import Path
-import re
-import argparse
-from datetime import datetime
-from dotenv import load_dotenv
-import sys
 import logging
-from typing import Union, Optional
+import os
+import re
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 load_dotenv()
 PROJECT_ROOT = os.environ.get("PROJECT_ROOT")
-sys.path.insert(0, str(Path(os.environ.get("PROJECT_ROOT", "."))))
 
-import logging
-from pathlib import Path
 
-def setup_logger(logs_dir: Union[str, Path], run_name: str):
+def setup_logger(logs_dir: str | Path, run_name: str):
     logs_dir = Path(logs_dir)
     logs_dir.mkdir(parents=True, exist_ok=True)
 
@@ -43,7 +37,9 @@ def setup_logger(logs_dir: Union[str, Path], run_name: str):
     return logger
 
 
-def unify_corpus(input_dir: Path, output_dir: Path,logs_dir: Optional[str] = None,run_name: Optional[str] = None) -> list[str]:
+def unify_corpus(
+    input_dir: Path, output_dir: Path, logs_dir: str | None = None, run_name: str | None = None
+) -> list[str]:
     texts = []
     total_chars = 0
     processed_files = 0
@@ -56,26 +52,30 @@ def unify_corpus(input_dir: Path, output_dir: Path,logs_dir: Optional[str] = Non
     else:
         logger = logging.getLogger("plotting")
         if not logger.handlers:
-            logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
-        
+            logging.basicConfig(
+                level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s"
+            )
+
     logger.info(f"Starting corpus build from: {input_dir}")
 
     for txt_file in input_dir.glob("*.txt"):
         logger.info(f"Processing file: {txt_file}")
 
         try:
-            with open(txt_file, "r", encoding="utf-8") as f:
+            with open(txt_file, encoding="utf-8") as f:
                 content = f.read()
 
             original_length = len(content)
 
-            content = re.sub(r'<[^>]+>', '', content)  # Remove XML/HTML tags
-            content = re.sub(r'\[.*?\]', '', content)   # Remove editorial notes
-            content = re.sub(r'\s+', ' ', content).strip() # Remove white spaces
+            content = re.sub(r"<[^>]+>", "", content)  # Remove XML/HTML tags
+            content = re.sub(r"\[.*?\]", "", content)  # Remove editorial notes
+            content = re.sub(r"\s+", " ", content).strip()  # Remove white spaces
 
             cleaned_length = len(content)
 
-            logger.info(f"{txt_file.name}: {original_length} -> {cleaned_length} chars after cleaning")
+            logger.info(
+                f"{txt_file.name}: {original_length} -> {cleaned_length} chars after cleaning"
+            )
 
             if cleaned_length > 100:
                 texts.append(content)
@@ -97,4 +97,3 @@ def unify_corpus(input_dir: Path, output_dir: Path,logs_dir: Optional[str] = Non
     logger.info(f"Saved to: {output_file}")
 
     return texts
-

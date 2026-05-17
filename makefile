@@ -1,5 +1,5 @@
 # Makefile
-LOGS_DIR ?= ./logs 
+LOGS_DIR ?= ./logs
 #======= Image preprocessing ========
 LAYOUT_YOLO_MODEL_PATH=./models/layout/y8_YALTAi_50epochs_best_+9annotated_fix50.pt
 IMAGES_TEST_SET_DIR=./data/processed/annotated_samples/retrain/images
@@ -35,27 +35,32 @@ TRANSCRIPTION_MODEL=./models/ocr/catmus-medieval.mlmodel
 
 PYTHON=python
 
-.PHONY: all evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images unify_corpora run_tokenizer run_transcription clean
+.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images unify_corpora run_tokenizer run_transcription clean
 
 all: evaluate_yolo_performance
+
+setup-precommit:
+	uv sync
+	uv run pre-commit install
+	uv run pre-commit run --all-files || true
 
 evaluate_yolo_performance:
 	$(PYTHON) scripts/data_preprocessing/run_yolo_eval_test_set.py \
 		--model-path $(LAYOUT_YOLO_MODEL_PATH) \
 		--images-dir $(IMAGES_TEST_SET_DIR) \
-		--annotations-dir $(ANNOT_TEST_SET_DIR) 
+		--annotations-dir $(ANNOT_TEST_SET_DIR)
 
 create_masks:
 	$(PYTHON) scripts/data_preprocessing/run_yolo_masks.py \
 		--model-path $(LAYOUT_YOLO_MODEL_PATH) \
 		--images-path $(ORIGINAL_IMAGES_PATH) \
-		--output-path $(MASKS_DIR) 
+		--output-path $(MASKS_DIR)
 
 segment_images:
 	$(PYTHON) scripts/data_preprocessing/run_image_segmentation.py \
 		--input-folder $(ORIGINAL_IMAGES_PATH) \
 		--output-folder $(IMAGES_SEGMENTS) \
-		--masks-folder $(MASKS_PATH) 
+		--masks-folder $(MASKS_PATH)
 
 plot_bounds:
 	$(PYTHON) scripts/data_preprocessing/run_plot_bounds.py \
@@ -70,7 +75,7 @@ crop_segments:
 		--input-folder $(ORIGINAL_IMAGES_PATH) \
 		--output-kraken-path $(IMAGES_SEGMENTS_PATH) \
 		--output-folder $(EXTRACTED_LINES_DIR)  \
-		--crop-type $(CROP_TYPE)  
+		--crop-type $(CROP_TYPE)
 
 
 binarize_image:

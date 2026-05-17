@@ -1,10 +1,10 @@
-from pathlib import Path
-from dotenv import load_dotenv
 import argparse
-import os
-import sys
 import datetime
-sys.path.insert(0, str(Path(os.environ.get("PROJECT_ROOT", "."))))
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
 from src.data_preprocessing.yolo_masks import build_mask_yolo
 
 
@@ -29,17 +29,22 @@ def main():
 
     logs_dir = args.logs_dir or os.path.join(PROJECT_ROOT, "logs", "mask_generation")
 
-    run_name = args.run_name or f"mask_{Path(images_path).name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    run_name = (
+        args.run_name
+        or f"mask_{Path(images_path).name}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    )
 
     result = build_mask_yolo(
         model_path=model_path,
         images_path=images_path,
         output_path=output_path,
         logs_dir=logs_dir,
-        run_name=run_name
+        run_name=run_name,
     )
 
-    print(f"Masks generated: {result['summary']['images_with_mainzone']}/{result['summary']['total_images']} images")
+    print(
+        f"Masks generated: {result['summary']['images_with_mainzone']}/{result['summary']['total_images']} images"
+    )
     print(f"Masks saved to: {result['masks_dir']}")
 
     if result.get("config_file"):

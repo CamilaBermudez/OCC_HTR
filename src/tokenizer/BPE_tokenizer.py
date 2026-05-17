@@ -1,20 +1,16 @@
-from pathlib import Path
 import logging
-from dotenv import load_dotenv
-import os
-from datetime import datetime
-from typing import Union, Optional
-from tokenizers import Tokenizer
-from tokenizers.models import BPE
-from tokenizers.trainers import BpeTrainer
-from tokenizers.pre_tokenizers import ByteLevel
-from tokenizers.decoders import ByteLevel as ByteLevelDecoder
-from tokenizers.processors import TemplateProcessing
-from tokenizers.pre_tokenizers import Split
+from pathlib import Path
 
+from tokenizers import Tokenizer
+from tokenizers.decoders import ByteLevel as ByteLevelDecoder
+from tokenizers.models import BPE
+from tokenizers.pre_tokenizers import ByteLevel, Split
+from tokenizers.processors import TemplateProcessing
+from tokenizers.trainers import BpeTrainer
 from transformers import PreTrainedTokenizerFast
 
-def setup_logger(logs_dir: Union[str, Path], run_name: str):
+
+def setup_logger(logs_dir: str | Path, run_name: str):
     logs_dir = Path(logs_dir)
     logs_dir.mkdir(parents=True, exist_ok=True)
 
@@ -41,7 +37,15 @@ def setup_logger(logs_dir: Union[str, Path], run_name: str):
 
     return logger
 
-def train_occitan_htr_tokenizer(input_path: Path,output_path: Path, type:str = 'byte',vocab_size:int=100,logs_dir: Optional[str] = None,run_name: Optional[str] = None):
+
+def train_occitan_htr_tokenizer(
+    input_path: Path,
+    output_path: Path,
+    type: str = "byte",
+    vocab_size: int = 100,
+    logs_dir: str | None = None,
+    run_name: str | None = None,
+):
     """
     Export both:
     1. tokenizer.json
@@ -59,7 +63,7 @@ def train_occitan_htr_tokenizer(input_path: Path,output_path: Path, type:str = '
 
     if not corpus_files:
         raise ValueError(f"No .txt files found in {input_path}")
-    
+
     logger.info(f"Input directory: {input_path}")
     logger.info(f"Number of files: {len(corpus_files)}")
 
@@ -70,21 +74,22 @@ def train_occitan_htr_tokenizer(input_path: Path,output_path: Path, type:str = '
     logger.info(f" - vocab_size: {vocab_size}")
     logger.info(f" - pre_tokenizer: {type}")
 
-    decoder_type= ByteLevel if type=="byte" else None
+    decoder_type = ByteLevel if type == "byte" else None
     logger.info(f" - decoder: {decoder_type}")
-    
+
     tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
 
-    if type=="byte":
+    if type == "byte":
         tokenizer.pre_tokenizer = ByteLevel()
         tokenizer.decoder = ByteLevelDecoder()
-    elif type=="char":
+    elif type == "char":
         tokenizer.pre_tokenizer = Split(pattern="", behavior="isolated")
 
     trainer = BpeTrainer(
         vocab_size=vocab_size,
         show_progress=True,
-        special_tokens=["[PAD]","[UNK]","[CLS]","[EOS]"])
+        special_tokens=["[PAD]", "[UNK]", "[CLS]", "[EOS]"],
+    )
 
     tokenizer.train([str(p) for p in corpus_files], trainer)
 
@@ -94,23 +99,30 @@ def train_occitan_htr_tokenizer(input_path: Path,output_path: Path, type:str = '
     logger.info(f"Final vocab size: {vocab_size_final}")
 
     eos_id = tokenizer.token_to_id("[EOS]")
-    tokenizer.post_processor = TemplateProcessing(single="$A [EOS]",special_tokens=[("[EOS]", eos_id)])
+    tokenizer.post_processor = TemplateProcessing(
+        single="$A [EOS]", special_tokens=[("[EOS]", eos_id)]
+    )
 
     run_output_dir = output_path / run_name
     run_output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     tokenizer_json_path = run_output_dir / "occitan_tokenizer.json"
     tokenizer.save(str(tokenizer_json_path))
 
-    logger.info(f"\nSaved tokenizer JSON:")
+    logger.info("\nSaved tokenizer JSON:")
     logger.info(f" - {tokenizer_json_path}")
 
-    
-    hf_tokenizer = PreTrainedTokenizerFast(tokenizer_file=str(tokenizer_json_path), unk_token="[UNK]", pad_token="[PAD]", cls_token="[CLS]", eos_token="[EOS]")
+    hf_tokenizer = PreTrainedTokenizerFast(
+        tokenizer_file=str(tokenizer_json_path),
+        unk_token="[UNK]",
+        pad_token="[PAD]",
+        cls_token="[CLS]",
+        eos_token="[EOS]",
+    )
     hf_output_dir = run_output_dir / "hf_tokenizer"
     hf_tokenizer.save_pretrained(str(hf_output_dir))
 
-    logger.info(f"\nSaved Hugging Face tokenizer folder:")
+    logger.info("\nSaved Hugging Face tokenizer folder:")
     logger.info(f" - {hf_output_dir}")
 
     logger.info("=== Run Summary ===")

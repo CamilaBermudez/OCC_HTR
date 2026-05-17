@@ -17,3 +17,15 @@
 /fonts/
 /runs/
 /logs/
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+
+# pre-commit
+.pre-commit-cache/

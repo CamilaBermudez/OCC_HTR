@@ -1,10 +1,11 @@
-from pathlib import Path
-from dotenv import load_dotenv
-import sys
 import argparse
 import os
-sys.path.insert(0, str(Path(os.environ.get("PROJECT_ROOT", "."))))
+from pathlib import Path
+
+from dotenv import load_dotenv
+
 from src.data_preprocessing.yolo_eval_test_set import evaluate_detection_only
+
 
 def main():
     load_dotenv()
@@ -30,7 +31,7 @@ def main():
         logs_dir=logs_dir,
         run_name=args.run_name,
         iou_thresholds=args.iou_thresholds,
-        conf_threshold=args.conf_threshold
+        conf_threshold=args.conf_threshold,
     )
 
     print(f"mPA@0.5: {metrics.get('mPA@0.5', 0):.4f}")
