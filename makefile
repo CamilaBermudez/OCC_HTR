@@ -32,10 +32,14 @@ VOCAB_SIZE?=100
 TRANSCRIPTION_DIR=./data/processed/transcription
 IMAGE_INVENTORY=./data/processed/filtered_images/20260515_104416/filter_tracking.csv
 TRANSCRIPTION_MODEL=./models/ocr/catmus-medieval.mlmodel
+#========= dictionary evaluation ========
+DICT_PATH=./data/raw/DOM_lemma_variants.json
+TRANSCRIPTION_RUN=./data/processed/transcription/ocr_kept_20260515_104644
+DICT_EVAL_OUTPUT_DIR=./data/processed/dictionary_eval
 
-PYTHON=python
+PYTHON=uv run python
 
-.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images unify_corpora run_tokenizer run_transcription clean
+.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images unify_corpora run_tokenizer run_transcription run_dictionary_eval clean
 
 all: evaluate_yolo_performance
 
@@ -121,6 +125,12 @@ run_transcription:
 			--output-dir $(TRANSCRIPTION_DIR) \
 			--img-inventory $(IMAGE_INVENTORY)\
 			--model-path $(TRANSCRIPTION_MODEL)
+
+run_dictionary_eval:
+	$(PYTHON) scripts/ocr/run_dictionary_evaluation.py \
+			--transcription-dir $(TRANSCRIPTION_RUN) \
+			--dictionary-path $(DICT_PATH) \
+			--output-dir $(DICT_EVAL_OUTPUT_DIR)
 
 clean:
 	rm -rf $(LOGS_DIR)

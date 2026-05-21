@@ -28,3 +28,4 @@ Requires-Dist: shapely==2.0.7
 Requires-Dist: lightning==2.4.0
 Requires-Dist: ultralytics>=8.3.50
 Requires-Dist: rich==15.0.0
+Requires-Dist: kraken>=6.0.2

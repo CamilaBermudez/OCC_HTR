@@ -7,7 +7,7 @@ repos:
       - id: end-of-file-fixer
         exclude: '\.ipynb$'
       - id: check-added-large-files
-        args: ['--maxkb=1024']
+        args: ['--maxkb=2048']
       - id: check-merge-conflict
       - id: check-yaml
       - id: check-toml

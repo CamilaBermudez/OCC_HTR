@@ -29,6 +29,7 @@ dependencies = [
     "lightning==2.4.0",
     "ultralytics>=8.3.50",
     "rich==15.0.0",
+    "kraken>=6.0.2",
 ]
 
 [dependency-groups]
