@@ -33,7 +33,7 @@ def main():
         "--output-dir",
         required=False,
         help="Output root. The per-run save directory is output-dir/run-name. "
-        "Default: data/processed/synthetic_seeds/medieval_text",
+        "Default: data/processed/synthetic_seeds",
     )
     parser.add_argument(
         "--font-path",
@@ -97,7 +97,7 @@ def main():
     parser.add_argument(
         "--run-name",
         required=False,
-        help="Subdirectory under output-dir. Default: medieval_<timestamp>.",
+        help="Subdirectory under output-dir. Default: medieval_text_<timestamp>.",
     )
 
     args = parser.parse_args()
@@ -110,7 +110,7 @@ def main():
     output_dir = (
         Path(args.output_dir)
         if args.output_dir
-        else project_root / "data/processed/synthetic_seeds/medieval_text"
+        else project_root / "data/processed/synthetic_seeds"
     )
     font_path = (
         Path(args.font_path)
@@ -120,7 +120,7 @@ def main():
     logs_dir = Path(args.logs_dir) if args.logs_dir else project_root / "logs" / "medieval_text"
     logs_dir.mkdir(parents=True, exist_ok=True)
 
-    run_name = args.run_name or f"medieval_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    run_name = args.run_name or f"medieval_text_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
     categories_filter: set[str] | None = None
     if args.categories_filter:
