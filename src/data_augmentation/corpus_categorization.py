@@ -66,6 +66,32 @@ def word_pattern(word: str, case_insensitive: bool = True) -> LineMatcher:
     return matches
 
 
+def substring_pattern(substring: str, case_insensitive: bool = True) -> LineMatcher:
+    """Return a matcher that fires when `substring` appears anywhere in the line.
+
+    Unlike `word_pattern`, no word boundary is required, so
+    ``substring_pattern("un")`` matches both standalone ``"un"`` and ``"un"``
+    inside larger words like ``"unexpected"`` or ``"comun"``.
+    """
+    if case_insensitive:
+        needle = substring.lower()
+
+        def matches(line: str) -> bool:
+            return needle in line.lower()
+    else:
+        needle = substring
+
+        def matches(line: str) -> bool:
+            return needle in line
+
+    matches.__name__ = f"substring_pattern_{substring}"
+    matches.__doc__ = (
+        f"Substring match for {substring!r} "
+        f"(case-{'insensitive' if case_insensitive else 'sensitive'})."
+    )
+    return matches
+
+
 # ──────────────────────────────────────────────
 #  Pattern: strict Roman numeral
 # ──────────────────────────────────────────────
@@ -102,20 +128,29 @@ DEFAULT_PATTERNS: dict[str, LineMatcher] = {
 
 def categorize_corpus(
     corpus_dir: str | Path,
-    output_path: str | Path,
+    output_dir: str | Path,
     patterns: dict[str, LineMatcher] | None = None,
     *,
     encoding: str = "utf-8",
     logs_dir: str | Path | None = None,
     run_name: str | None = None,
+    output_filename: str = "cometa_categorized.json",
 ) -> dict:
     corpus_dir = Path(corpus_dir)
-    output_path = Path(output_path)
+    output_dir = Path(output_dir)
     patterns = patterns if patterns is not None else dict(DEFAULT_PATTERNS)
     assert patterns, "patterns is empty — pass DEFAULT_PATTERNS or a custom dict"
 
     if run_name is None:
         run_name = f"categorize_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    # Final output lands under `output_dir / run_name / output_filename` so
+    # every run's artefacts (JSON + future per-run extras) live together
+    # under the run subdirectory — matches the convention in the other
+    # src/ scripts (parchment, medieval text, augmentation).
+    save_dir = output_dir / run_name
+    save_dir.mkdir(parents=True, exist_ok=True)
+    output_path = save_dir / output_filename
 
     # Logger setup — file + console if logs_dir, console only otherwise.
     if logs_dir:
@@ -179,7 +214,6 @@ def categorize_corpus(
         "samples": samples,
     }
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(doc, indent=2, ensure_ascii=False))
 
     logger.info(

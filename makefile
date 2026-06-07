@@ -38,8 +38,10 @@ TRANSCRIPTION_RUN=./data/processed/transcription/ocr_kept_20260515_104644
 DICT_EVAL_OUTPUT_DIR=./data/processed/dictionary_eval
 #========= synthetic data augmentation ========
 COMETA_CORPUS_DIR=./data/raw/COMETA_medieval_corpus
-CATEGORIZED_SAMPLES_JSON=./data/processed/synthetic_seeds/cometa_categorized.json
+CATEGORIZED_SAMPLES_DIR=./data/processed/synthetic_seeds
+CATEGORIZED_SAMPLES_JSON=./data/processed/synthetic_seeds/categorize_20260607_120000/cometa_categorized.json
 WORD_PATTERNS?=am,ma
+SUBSTRING_PATTERNS?=
 MEDIEVAL_TEXT_DIR=./data/processed/synthetic_seeds/medieval_text
 MEDIEVAL_TEXT_RUN_PATH=./data/processed/synthetic_seeds/medieval_text/medieval_v1
 RENDERING_FONT_PATH=./fonts/merged_font_code_cmpl2.ttf
@@ -49,6 +51,7 @@ P_LONG_S_MIDDLE?=0.80
 P_ROTUNDA_R?=0.70
 PARCHMENT_PAGES_DIR=./runs/detect/predict-8
 PARCHMENT_CROPS_DIR=./data/processed/synthetic_seeds/parchment_crops
+PARCHMENT_CROPS_PATH=./data/processed/synthetic_seeds/parchment_crops/parchments_20260607_120000
 AUGMENTED_IMAGES_DIR=./data/processed/synthetic_seeds/augmented_images
 N_AUGMENTATIONS?=5
 BASE_SEED?=42
@@ -152,8 +155,9 @@ run_dictionary_eval:
 corpus_categorization:
 	$(PYTHON) scripts/data_augmentation/run_corpus_categorization.py \
 			--corpus-dir $(COMETA_CORPUS_DIR) \
-			--output-path $(CATEGORIZED_SAMPLES_JSON) \
-			--word-patterns $(WORD_PATTERNS)
+			--output-dir $(CATEGORIZED_SAMPLES_DIR) \
+			--word-patterns $(WORD_PATTERNS) \
+			--substring-patterns $(SUBSTRING_PATTERNS)
 
 
 medieval_text_generation:
@@ -171,18 +175,18 @@ medieval_text_generation:
 extract_parchment_crops:
 	$(PYTHON) scripts/data_augmentation/run_augmentation_techniques.py \
 			--input-folder $(PARCHMENT_PAGES_DIR) \
-			--output-folder $(PARCHMENT_CROPS_DIR) \
-			--run-name latest
+			--output-folder $(PARCHMENT_CROPS_DIR)
 
 
-# Depends on extract_parchment_crops so a fresh batch of parchment textures
-# is generated each run. Both targets share --run-name latest so the
-# parchment path is stable and the data flow is visible in the Makefile.
-augmentation_techniques: extract_parchment_crops
+# Standalone target — run extract_parchment_crops and medieval_text_generation
+# first, then update PARCHMENT_CROPS_PATH and MEDIEVAL_TEXT_RUN_PATH to the
+# new timestamped subdirs before invoking this. Matches the pattern used by
+# EXTRACTED_LINES_PATH / BINARIZED_IMAGES_PATH elsewhere in the Makefile.
+augmentation_techniques:
 	$(PYTHON) scripts/data_augmentation/run_augment_images.py \
 			--input-folder $(MEDIEVAL_TEXT_RUN_PATH) \
 			--output-folder $(AUGMENTED_IMAGES_DIR) \
-			--parchment-folder $(PARCHMENT_CROPS_DIR)/latest \
+			--parchment-folder $(PARCHMENT_CROPS_PATH) \
 			--n-augmentations $(N_AUGMENTATIONS) \
 			--seed $(BASE_SEED)
 

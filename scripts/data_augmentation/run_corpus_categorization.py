@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from src.data_augmentation.corpus_categorization import (
     categorize_corpus,
     has_roman_numeral,
+    substring_pattern,
     word_pattern,
 )
 
@@ -31,10 +32,10 @@ def main():
         help="Directory of *.txt corpus files. " "Default: data/raw/COMETA_medieval_corpus",
     )
     parser.add_argument(
-        "--output-path",
+        "--output-dir",
         required=False,
-        help="Output JSON file path. "
-        "Default: data/processed/synthetic_seeds/cometa_categorized.json",
+        help="Output root. The JSON file lands at output-dir/run-name/"
+        "cometa_categorized.json. Default: data/processed/synthetic_seeds",
     )
     parser.add_argument(
         "--word-patterns",
@@ -42,6 +43,16 @@ def main():
         default="am,ma",
         help="Comma-separated list of whole-word patterns (case-insensitive). "
         "Each becomes its own category. Default: am,ma",
+    )
+    parser.add_argument(
+        "--substring-patterns",
+        required=False,
+        default="",
+        help="Comma-separated list of substring patterns (case-insensitive). "
+        "Each fires when the substring appears anywhere in the line, "
+        "including inside larger words (e.g. 'un' matches 'unexpected'). "
+        "To avoid collisions with --word-patterns, category names are "
+        "prefixed with 'substring_'. Default: empty.",
     )
     parser.add_argument(
         "--include-roman-numerals",
@@ -69,10 +80,10 @@ def main():
         if args.corpus_dir
         else project_root / "data/raw/COMETA_medieval_corpus"
     )
-    output_path = (
-        Path(args.output_path)
-        if args.output_path
-        else project_root / "data/processed/synthetic_seeds/cometa_categorized.json"
+    output_dir = (
+        Path(args.output_dir)
+        if args.output_dir
+        else project_root / "data/processed/synthetic_seeds"
     )
     logs_dir = (
         Path(args.logs_dir) if args.logs_dir else project_root / "logs" / "corpus_categorization"
@@ -82,17 +93,24 @@ def main():
     run_name = args.run_name or f"categorize_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
     # Build the pattern dict from CLI flags. Whole-word patterns come from
-    # --word-patterns; the Roman-numeral pattern is the prebuilt strict matcher.
+    # --word-patterns; substring patterns from --substring-patterns (category
+    # name prefixed with 'substring_' to avoid collisions with word patterns);
+    # the Roman-numeral pattern is the prebuilt strict matcher.
     words = [w.strip() for w in args.word_patterns.split(",") if w.strip()]
+    substrings = [s.strip() for s in (args.substring_patterns or "").split(",") if s.strip()]
     patterns = {w: word_pattern(w) for w in words}
+    patterns.update({f"substring_{s}": substring_pattern(s) for s in substrings})
     if args.include_roman_numerals:
         patterns["roman_numeral"] = has_roman_numeral
 
-    assert patterns, "No patterns selected. Pass --word-patterns or --include-roman-numerals."
+    assert patterns, (
+        "No patterns selected. Pass --word-patterns, --substring-patterns, "
+        "or --include-roman-numerals."
+    )
 
     categorize_corpus(
         corpus_dir=corpus_dir,
-        output_path=output_path,
+        output_dir=output_dir,
         patterns=patterns,
         logs_dir=logs_dir,
         run_name=run_name,
