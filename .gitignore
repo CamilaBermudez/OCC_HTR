@@ -29,3 +29,4 @@ __pycache__/
 
 # pre-commit
 .pre-commit-cache/
+/tests/augmentation/parchment_crops/
