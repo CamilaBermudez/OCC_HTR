@@ -1,27 +1,4 @@
-"""Corpus line-level categorization for synthetic-seed selection.
-
-Walks every `*.txt` under a corpus directory, labels each non-empty line by
-the categories it matches, and writes a consolidated JSON dict keyed by
-``filename:lineno``. Used to surface lines that contain orthographic
-patterns the HTR model currently struggles with (e.g. ``am``, ``ma``, Roman
-numerals) so they can be fed into the synthetic-image renderer.
-
-Patterns are pluggable: pass a `dict[str, Callable[[str], bool]]` mapping
-category name to a line matcher. The `word_pattern` factory builds a
-whole-word matcher in one line; `has_roman_numeral` is the prebuilt
-strict-Roman matcher used in the default set. Mix and match:
-
-    from src.data_augmentation.corpus_categorization import (
-        DEFAULT_PATTERNS, categorize_corpus, has_roman_numeral, word_pattern,
-    )
-
-    # Extend the defaults with a couple more whole-word patterns.
-    my_patterns = DEFAULT_PATTERNS | {
-        "um": word_pattern("um"),
-        "mo": word_pattern("mo"),
-    }
-    categorize_corpus(corpus_dir, output_path, patterns=my_patterns)
-"""
+"""Corpus line-level categorization for synthetic-seed selection."""
 
 import datetime
 import json
@@ -74,17 +51,7 @@ def _get_git_commit() -> str:
         return "unknown"
 
 
-# ──────────────────────────────────────────────
-#  Pattern factory: whole-word match
-# ──────────────────────────────────────────────
-
-
 def word_pattern(word: str, case_insensitive: bool = True) -> LineMatcher:
-    """Return a matcher that fires when `word` appears as a whole word.
-
-    Whole-word means the match is bounded by `\\b` on both sides — so
-    ``word_pattern("am")`` matches `"am"` but not `"amor"` or `"name"`.
-    """
     flags = re.IGNORECASE if case_insensitive else 0
     regex = re.compile(rf"\b{re.escape(word)}\b", flags)
 
@@ -104,32 +71,16 @@ def word_pattern(word: str, case_insensitive: bool = True) -> LineMatcher:
 # ──────────────────────────────────────────────
 
 _RE_ROMAN_VALID = re.compile(
-    r"^m{0,4}(cm|cd|d?c{0,4})(xc|xl|l?x{0,4})(ix|iv|v?i{0,4})j?$",
-    re.IGNORECASE,
+    r"^m{0,4}(cm|cd|d?c{0,4})(xc|xl|l?x{0,4})(ix|iv|v?i{0,4})j?$", re.IGNORECASE
 )
-
-# Candidate Roman tokens: pure [ivxlcdm] (with optional trailing j), with
-# capture groups for surrounding dots so we can require dot-bracketing for
-# short forms.
 _RE_ROMAN_CANDIDATE = re.compile(
-    r"(?<![A-Za-z])(\.?)([ivxlcdm]+j?)(\.?)(?![A-Za-z])",
-    re.IGNORECASE,
+    r"(?<![A-Za-z])(\.?)([ivxlcdm]+j?)(\.?)(?![A-Za-z])", re.IGNORECASE
 )
 
 
 def has_roman_numeral(line: str) -> bool:
     """True if the line contains at least one token that strict-parses as a
     Roman numeral.
-
-    Dotted forms (e.g. ``.III.``, ``.X.``) are accepted at any length because
-    the dots are a strong manuscript convention for "this is a numeral."
-    Undotted forms require ≥3 characters to exclude the Occitan words
-    ``mi`` / ``li`` / ``vi`` / ``xi`` — all of which parse as valid Romans
-    (1001 / 51 / 6 / 11) but are ordinary vocabulary in context.
-
-    One residual false positive: undotted ``dix`` (valid Roman 509) is also
-    an Occitan verb form. Blocklist it explicitly if it contaminates
-    downstream training.
     """
     for m in _RE_ROMAN_CANDIDATE.finditer(line):
         pre, tok, post = m.group(1), m.group(2), m.group(3)
@@ -142,20 +93,11 @@ def has_roman_numeral(line: str) -> bool:
     return False
 
 
-# ──────────────────────────────────────────────
-#  Default pattern set
-# ──────────────────────────────────────────────
-
 DEFAULT_PATTERNS: dict[str, LineMatcher] = {
     "am": word_pattern("am"),
     "ma": word_pattern("ma"),
     "roman_numeral": has_roman_numeral,
 }
-
-
-# ──────────────────────────────────────────────
-#  Main driver
-# ──────────────────────────────────────────────
 
 
 def categorize_corpus(
@@ -167,24 +109,6 @@ def categorize_corpus(
     logs_dir: str | Path | None = None,
     run_name: str | None = None,
 ) -> dict:
-    """Walk ``corpus_dir/*.txt`` and label each non-empty line by the
-    categories it matches. Save the result as a consolidated JSON at
-    ``output_path``.
-
-    Args:
-        corpus_dir: Directory containing `*.txt` corpus files (top-level only).
-        output_path: Output JSON file path. Parents will be created.
-        patterns: Mapping of ``category_name -> line_matcher``. If None, uses
-            ``DEFAULT_PATTERNS`` (``am``, ``ma``, ``roman_numeral``).
-        encoding: Text-file encoding (passed to ``Path.read_text``).
-        logs_dir: Optional directory for the plain-text run log. If None,
-            logs go to the console only.
-        run_name: Optional run identifier; used to name the log file and
-            recorded in the JSON summary. Defaults to a timestamp.
-
-    Returns:
-        The full JSON document (also written to ``output_path``).
-    """
     corpus_dir = Path(corpus_dir)
     output_path = Path(output_path)
     patterns = patterns if patterns is not None else dict(DEFAULT_PATTERNS)
