@@ -36,10 +36,26 @@ TRANSCRIPTION_MODEL=./models/ocr/catmus-medieval.mlmodel
 DICT_PATH=./data/raw/DOM_lemma_variants.json
 TRANSCRIPTION_RUN=./data/processed/transcription/ocr_kept_20260515_104644
 DICT_EVAL_OUTPUT_DIR=./data/processed/dictionary_eval
+#========= synthetic data augmentation ========
+COMETA_CORPUS_DIR=./data/raw/COMETA_medieval_corpus
+CATEGORIZED_SAMPLES_JSON=./data/processed/synthetic_seeds/cometa_categorized.json
+WORD_PATTERNS?=am,ma
+MEDIEVAL_TEXT_DIR=./data/processed/synthetic_seeds/medieval_text
+MEDIEVAL_TEXT_RUN_PATH=./data/processed/synthetic_seeds/medieval_text/medieval_v1
+RENDERING_FONT_PATH=./fonts/merged_font_code_cmpl2.ttf
+FONT_RENDER_SIZE?=60
+P_LONG_S_BEGIN?=0.95
+P_LONG_S_MIDDLE?=0.80
+P_ROTUNDA_R?=0.70
+PARCHMENT_PAGES_DIR=./runs/detect/predict-8
+PARCHMENT_CROPS_DIR=./data/processed/synthetic_seeds/parchment_crops
+AUGMENTED_IMAGES_DIR=./data/processed/synthetic_seeds/augmented_images
+N_AUGMENTATIONS?=5
+BASE_SEED?=42
 
 PYTHON=uv run python
 
-.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images unify_corpora run_tokenizer run_transcription run_dictionary_eval clean
+.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques clean
 
 all: evaluate_yolo_performance
 
@@ -131,6 +147,45 @@ run_dictionary_eval:
 			--transcription-dir $(TRANSCRIPTION_RUN) \
 			--dictionary-path $(DICT_PATH) \
 			--output-dir $(DICT_EVAL_OUTPUT_DIR)
+
+
+corpus_categorization:
+	$(PYTHON) scripts/data_augmentation/run_corpus_categorization.py \
+			--corpus-dir $(COMETA_CORPUS_DIR) \
+			--output-path $(CATEGORIZED_SAMPLES_JSON) \
+			--word-patterns $(WORD_PATTERNS)
+
+
+medieval_text_generation:
+	$(PYTHON) scripts/data_augmentation/run_medieval_text_generation.py \
+			--input-json $(CATEGORIZED_SAMPLES_JSON) \
+			--output-dir $(MEDIEVAL_TEXT_DIR) \
+			--font-path $(RENDERING_FONT_PATH) \
+			--font-size $(FONT_RENDER_SIZE) \
+			--p-long-s-begin $(P_LONG_S_BEGIN) \
+			--p-long-s-middle $(P_LONG_S_MIDDLE) \
+			--p-rotunda-r $(P_ROTUNDA_R) \
+			--base-seed $(BASE_SEED)
+
+
+extract_parchment_crops:
+	$(PYTHON) scripts/data_augmentation/run_augmentation_techniques.py \
+			--input-folder $(PARCHMENT_PAGES_DIR) \
+			--output-folder $(PARCHMENT_CROPS_DIR) \
+			--run-name latest
+
+
+# Depends on extract_parchment_crops so a fresh batch of parchment textures
+# is generated each run. Both targets share --run-name latest so the
+# parchment path is stable and the data flow is visible in the Makefile.
+augmentation_techniques: extract_parchment_crops
+	$(PYTHON) scripts/data_augmentation/run_augment_images.py \
+			--input-folder $(MEDIEVAL_TEXT_RUN_PATH) \
+			--output-folder $(AUGMENTED_IMAGES_DIR) \
+			--parchment-folder $(PARCHMENT_CROPS_DIR)/latest \
+			--n-augmentations $(N_AUGMENTATIONS) \
+			--seed $(BASE_SEED)
+
 
 clean:
 	rm -rf $(LOGS_DIR)
