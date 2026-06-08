@@ -43,16 +43,17 @@ CATEGORIZED_SAMPLES_JSON=./data/processed/synthetic_seeds/categorize_20260607_17
 WORD_PATTERNS?=am,ma
 SUBSTRING_PATTERNS?=
 MEDIEVAL_TEXT_DIR=./data/processed/synthetic_text
-MEDIEVAL_TEXT_RUN_PATH=./data/processed/synthetic_text/medieval_text_20260607_120000
+MEDIEVAL_TEXT_RUN_PATH=./data/processed/synthetic_text/medieval_text_20260607_224326
 RENDERING_FONT_PATH=./fonts/merged_font_code_cmpl2.ttf
 FONT_RENDER_SIZE?=60
 P_LONG_S_BEGIN?=0.95
 P_LONG_S_MIDDLE?=0.80
 P_ROTUNDA_R?=0.70
 PARCHMENT_PAGES_DIR=./data/raw/original_manuscript/reproduction14453_100
-PARCHMENT_CROPS_DIR=./data/processed/synthetic_seeds/parchment_crops
-PARCHMENT_CROPS_PATH=./data/processed/synthetic_seeds/parchment_crops/parchments_20260607_120000
-AUGMENTED_IMAGES_DIR=./data/processed/synthetic_seeds/augmented_images
+PARCHMENT_CROPS_DIR=./data/processed/synthetic_samples/parchment_crops
+PARCHMENT_CROPS_PATH=./data/processed/synthetic_samples/parchment_crops/parchments_20260608_082718
+PARCHMENT_MIN_BRIGHTNESS?=100
+AUGMENTED_IMAGES_DIR=./data/processed/synthetic_samples/augmented_images
 N_AUGMENTATIONS?=5
 BASE_SEED?=42
 
@@ -175,13 +176,10 @@ medieval_text_generation:
 extract_parchment_crops:
 	$(PYTHON) scripts/data_augmentation/run_augmentation_techniques.py \
 			--input-folder $(PARCHMENT_PAGES_DIR) \
-			--output-folder $(PARCHMENT_CROPS_DIR)
+			--output-folder $(PARCHMENT_CROPS_DIR) \
+			--min-brightness $(PARCHMENT_MIN_BRIGHTNESS)
 
 
-# Standalone target — run extract_parchment_crops and medieval_text_generation
-# first, then update PARCHMENT_CROPS_PATH and MEDIEVAL_TEXT_RUN_PATH to the
-# new timestamped subdirs before invoking this. Matches the pattern used by
-# EXTRACTED_LINES_PATH / BINARIZED_IMAGES_PATH elsewhere in the Makefile.
 augmentation_techniques:
 	$(PYTHON) scripts/data_augmentation/run_augment_images.py \
 			--input-folder $(MEDIEVAL_TEXT_RUN_PATH) \

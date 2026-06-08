@@ -61,6 +61,15 @@ def main():
         help="Reject crops with Canny mean above this. Lower = stricter (default: 6.0).",
     )
     parser.add_argument(
+        "--min-brightness",
+        required=False,
+        type=float,
+        default=100.0,
+        help="Reject crops with mean grayscale value below this (0-255). "
+        "Filters out solid-dark regions like page borders / book spine "
+        "that would otherwise pass the Canny filter. Default: 100.0.",
+    )
+    parser.add_argument(
         "--seed",
         required=False,
         type=int,
@@ -104,6 +113,7 @@ def main():
         candidates_page=args.candidates_per_page,
         keep_page=args.keep_per_page,
         edge_threshold=args.edge_threshold,
+        min_brightness=args.min_brightness,
         seed=args.seed,
         plot_=args.plot_parchments,
     )

@@ -128,12 +128,20 @@ def get_parchment_crops(
     candidates_page: int = 40,
     keep_page: int = 3,
     edge_threshold: float = 6.0,
+    min_brightness: float = 100.0,
     seed: int = 0,
     plot_: bool = False,
 ):
     """Extract low-edge ("empty parchment") crops from manuscript pages.
-    For each image, sample random square windows, score them by
-    mean Canny edge density. Lower scores indicate emptier parchment(better).
+
+    For each image, sample random square windows and score them by mean
+    Canny edge density. Lower scores indicate emptier parchment (better).
+
+    `min_brightness` rejects crops whose mean grayscale value is below
+    the threshold. Uniformly-dark regions (page borders, book spine /
+    gutter, margins) have near-zero Canny edges and would otherwise
+    slip through the edge-density filter, contaminating the parchment
+    pool with solid black patches.
     """
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
@@ -166,6 +174,11 @@ def get_parchment_crops(
             x = random.randint(0, w - crop_size)
             crop = page[y : y + crop_size, x : x + crop_size]
             gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
+            # Reject solid-dark regions (page borders / book spine) BEFORE
+            # scoring by Canny — uniformly dark regions have ~0 edge
+            # density and would otherwise outrank real parchment.
+            if float(gray.mean()) < min_brightness:
+                continue
             edges = cv2.Canny(gray, 50, 150)
             score = float(edges.mean())
             candidates.append((score, crop))
@@ -301,15 +314,25 @@ def apply_augmentation_techniques(input_image, parchment_files, seed=None):
             # 4. Page warp
             A.OneOf(
                 [
-                    A.ElasticTransform(alpha=50, sigma=5, p=1.0),
-                    A.ElasticTransform(alpha=120, sigma=12, p=1.0),
+                    A.ElasticTransform(
+                        alpha=50,
+                        sigma=5,
+                        border_mode=cv2.BORDER_REPLICATE,
+                        p=1.0,
+                    ),
+                    A.ElasticTransform(
+                        alpha=120,
+                        sigma=12,
+                        border_mode=cv2.BORDER_REPLICATE,
+                        p=1.0,
+                    ),
                 ],
                 p=0.7,
             ),
             A.Affine(
                 translate_percent={"x": (-0.02, 0.02), "y": (-0.02, 0.02)},
                 scale=1.0,
-                rotate=(-4, 4),
+                rotate=(-2.5, 2.5),
                 border_mode=cv2.BORDER_REPLICATE,
                 p=1.0,  # always-on — every real scan has slight rotation
             ),
