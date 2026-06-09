@@ -54,6 +54,11 @@ PARCHMENT_CROPS_DIR=./data/processed/synthetic_samples/parchment_crops
 PARCHMENT_CROPS_PATH=./data/processed/synthetic_samples/parchment_crops/parchments_20260608_082718
 PARCHMENT_MIN_BRIGHTNESS?=100
 AUGMENTED_IMAGES_DIR=./data/processed/synthetic_samples/augmented_images
+AUGMENTED_RUN_PATH=./data/processed/synthetic_samples/augmented_images/aug_20260608_120000
+CORRECTED_LABELS_DIR=./data/processed/synthetic_samples/img_labels
+MEDIEVAL_TEXT_LABELS=$(MEDIEVAL_TEXT_RUN_PATH)/labels.json
+LABEL_TEXT_FIELD?=original_text
+LABEL_SUBSTITUTIONS?=
 N_AUGMENTATIONS?=5
 BASE_SEED?=42
 SAMPLE?=
@@ -61,7 +66,7 @@ SAMPLE_SIZE?=5
 
 PYTHON=uv run python
 
-.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques clean
+.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels clean
 
 all: evaluate_yolo_performance
 
@@ -182,6 +187,13 @@ extract_parchment_crops:
 			--min-brightness $(PARCHMENT_MIN_BRIGHTNESS)
 
 
+# Full run (default — same as before)
+# make augmentation_techniques
+# Quick 5-image preview to sanity-check
+# make augmentation_techniques SAMPLE=1
+# Custom preview size
+# make augmentation_techniques SAMPLE=1 SAMPLE_SIZE=3
+
 augmentation_techniques:
 	$(PYTHON) scripts/data_augmentation/run_augment_images.py \
 			--input-folder $(MEDIEVAL_TEXT_RUN_PATH) \
@@ -190,6 +202,20 @@ augmentation_techniques:
 			--n-augmentations $(N_AUGMENTATIONS) \
 			--seed $(BASE_SEED) \
 			$(if $(SAMPLE),--sample --sample-size $(SAMPLE_SIZE))
+
+
+
+# make correct_labels                                    # uses defaults
+# make correct_labels LABEL_SUBSTITUTIONS=v:u,j:i        # extend later
+# make correct_labels LABEL_TEXT_FIELD=medieval_text     # keep long-s
+
+correct_labels:
+	$(PYTHON) scripts/data_augmentation/run_label_correction.py \
+			--input-json $(MEDIEVAL_TEXT_LABELS) \
+			--augmented-folder $(AUGMENTED_RUN_PATH) \
+			--output-base-dir $(CORRECTED_LABELS_DIR) \
+			--text-field $(LABEL_TEXT_FIELD) \
+			$(if $(LABEL_SUBSTITUTIONS),--substitutions "$(LABEL_SUBSTITUTIONS)")
 
 
 clean:
