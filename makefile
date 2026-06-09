@@ -56,6 +56,8 @@ PARCHMENT_MIN_BRIGHTNESS?=100
 AUGMENTED_IMAGES_DIR=./data/processed/synthetic_samples/augmented_images
 N_AUGMENTATIONS?=5
 BASE_SEED?=42
+SAMPLE?=
+SAMPLE_SIZE?=5
 
 PYTHON=uv run python
 
@@ -186,7 +188,8 @@ augmentation_techniques:
 			--output-folder $(AUGMENTED_IMAGES_DIR) \
 			--parchment-folder $(PARCHMENT_CROPS_PATH) \
 			--n-augmentations $(N_AUGMENTATIONS) \
-			--seed $(BASE_SEED)
+			--seed $(BASE_SEED) \
+			$(if $(SAMPLE),--sample --sample-size $(SAMPLE_SIZE))
 
 
 clean:

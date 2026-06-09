@@ -691,11 +691,18 @@ def batch_augment_directory(
     n_augmentations: int = 1,
     seed: int | None = None,
     logs_dir: str | Path | None = None,
+    sample_size: int | None = None,
 ):
     """Apply the augmentation pipeline to every image in `input_dir`.
     Each call uses a derived per-image-per-variant seed, so the entire
     batch is reproducible when `seed` is set. When `seed` is None, every call
     is non-deterministic.
+
+    Args:
+        sample_size: When None (the default), every source image is processed.
+            When set to a positive integer, only the first `sample_size`
+            images are taken — useful for quickly previewing what the
+            pipeline produces without writing the whole dataset.
 
     Returns:
         List of output Paths actually saved.
@@ -725,6 +732,16 @@ def batch_augment_directory(
     image_paths = sorted(input_dir.glob("*.png")) + sorted(input_dir.glob("*.jpg"))
     assert image_paths, f"No images found in {input_dir}"
 
+    # Sampling mode: keep only the first N source images for a quick
+    # preview run. Useful for verifying the pipeline produces what you
+    # expect before kicking off the full batch.
+    if sample_size is not None and sample_size > 0:
+        image_paths = image_paths[:sample_size]
+        logger.info(
+            f"Sample mode: limited to {len(image_paths)} source image(s) "
+            f"(requested sample_size={sample_size})"
+        )
+
     # Config summary — everything needed to reproduce the run later.
     config_summary = {
         "run": run_name,
@@ -735,6 +752,7 @@ def batch_augment_directory(
         "n_augmentations": n_augmentations,
         "total_expected": len(image_paths) * n_augmentations,
         "base_seed": seed,
+        "sample_size": sample_size,
         "parchment_dir": str(parchment_files[0].parent) if parchment_files else None,
         "n_parchment_files": len(parchment_files),
     }

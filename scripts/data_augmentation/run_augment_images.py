@@ -58,6 +58,21 @@ def main():
         help="Subdirectory name under output-folder. Default: aug_<timestamp>.",
     )
     parser.add_argument("--logs-dir", required=False)
+    parser.add_argument(
+        "--sample",
+        action="store_true",
+        help="Preview mode: only process the first N source images "
+        "(default: 5, override with --sample-size). Useful for quickly "
+        "verifying the pipeline produces what you expect before running "
+        "against the whole dataset.",
+    )
+    parser.add_argument(
+        "--sample-size",
+        type=int,
+        default=5,
+        help="When --sample is set, how many source images to process. "
+        "Ignored when --sample is not set. Default: 5.",
+    )
 
     args = parser.parse_args()
 
@@ -101,6 +116,7 @@ def main():
         n_augmentations=args.n_augmentations,
         seed=args.seed,
         logs_dir=str(logs_dir),
+        sample_size=args.sample_size if args.sample else None,
     )
 
 
