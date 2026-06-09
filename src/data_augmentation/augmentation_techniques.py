@@ -262,6 +262,319 @@ def composite_on_parchment(image, parchment_files, **kwargs):
     return out.clip(0, 255).astype(np.uint8)
 
 
+def apply_aged_parchment_effects(image, **kwargs):
+    """Add centuries-of-aging visual effects to a composited line image.
+
+    Each sub-effect has its own internal probability so different samples
+    show different aging combinations. Designed for line-level crops:
+    page-level effects (torn edges, wax seal, tide lines) are omitted
+    because they don't translate to line crops.
+
+    Sub-effects layered in order:
+      1. Iron-gall ink browning (p=0.85): the dark sepia ink of iron gall
+         oxidises toward warm brown over time. Shift R up and B down on
+         pixels weighted by ink density, so only the ink browns — the
+         parchment isn't touched.
+      2. Global ink wear (p=0.55): low-frequency noise field that fades
+         ink unevenly across the WHOLE line — some letters retain density,
+         others are heavily worn. This simulates widespread parchment wear
+         from centuries of handling, not localised damage. Without this,
+         only the crease band shows wear and the rest of the line stays
+         too clean.
+      3. Foxing spots (p=0.60): 2–7 small Gaussian patches of brownish-rust
+         tone scattered randomly. Each is sized 2.5–8 px and applied at
+         30–55% opacity. Simulates mold/oxidation stains.
+      4. Micro-pitting around dense ink (p=0.50): tiny dark dots clustered
+         near and within dense-ink regions. Simulates iron-gall corrosion
+         that has eaten micro-pits into the parchment. 2–6% of dense-ink
+         neighbourhood pixels become pits.
+    """
+    h, w = image.shape[:2]
+    img = image.astype(np.float32)
+
+    # Local parchment colour (target for the ink-wear blend).
+    flat = img.reshape(-1, 3)
+    brightness = flat.mean(axis=1)
+    bright_threshold = np.percentile(brightness, 75)
+    bright_pixels = flat[brightness >= bright_threshold]
+    parchment_color = (
+        bright_pixels.mean(axis=0)
+        if len(bright_pixels) > 0
+        else np.array([218, 200, 170], dtype=np.float32)
+    )
+
+    # Ink density mask used by multiple effects.
+    gray = (img.mean(axis=2) / 255.0).astype(np.float32)
+    ink_mask = np.clip((0.45 - gray) / 0.40, 0.0, 1.0)
+
+    # 1. Iron-gall ink browning.
+    if random.random() < 0.85:
+        iron_gall_shift = np.array([1.08, 1.00, 0.85], dtype=np.float32)
+        strength = random.uniform(0.20, 0.45) * ink_mask[..., None]
+        img = img * (1.0 - strength) + (img * iron_gall_shift) * strength
+
+    # 1b. Horizontal ink density variation — smoothed per-column opacity
+    #     so some words/areas show denser ink, others fainter. Real
+    #     manuscripts always have this; without it, every letter on a
+    #     line gets identical pigment density (synthetic-looking). No
+    #     internal probability — applied on every aged sample.
+    col_field = np.random.uniform(0.55, 1.0, w).astype(np.float32)
+    kernel_size = max(31, w // 8 * 2 + 1)
+    kernel = np.ones(kernel_size, dtype=np.float32) / kernel_size
+    col_smooth = np.convolve(col_field, kernel, mode="same")
+    # Convert to per-column "how much ink to fade out": (1 - opacity).
+    col_fade = (1.0 - col_smooth.reshape(1, -1)) * ink_mask
+    col_fade_3d = col_fade[..., None]
+    img = img * (1.0 - col_fade_3d) + parchment_color * col_fade_3d
+    # Recompute ink mask since the ink density has changed.
+    gray = (img.mean(axis=2) / 255.0).astype(np.float32)
+    ink_mask = np.clip((0.45 - gray) / 0.40, 0.0, 1.0)
+
+    # 2. Global ink wear — low-frequency noise field that fades ink
+    #    unevenly across the whole line, not just one localised band.
+    if random.random() < 0.60:
+        noise_h = max(6, h // 8)
+        noise_w = max(16, w // 25)
+        coarse = np.random.rand(noise_h, noise_w).astype(np.float32)
+        wear_field = cv2.resize(coarse, (w, h), interpolation=cv2.INTER_CUBIC)
+        # Clip cubic-interpolation overshoot before the power (negatives ** 1.4 → NaN).
+        wear_field = np.clip(wear_field, 0.0, 1.0)
+        # Power < 1 spreads the wear over more pixels (extreme cases worse).
+        wear_field = wear_field**1.4
+        global_strength = random.uniform(0.55, 0.98)
+        wear_fade = global_strength * wear_field * ink_mask
+        wear_3d = wear_fade[..., None]
+        img = img * (1.0 - wear_3d) + parchment_color * wear_3d
+
+    # 3. Foxing spots (more spots, larger, stronger at the upper end).
+    if random.random() < 0.65:
+        n_spots = random.randint(3, 12)
+        y_grid = np.arange(h, dtype=np.float32).reshape(-1, 1)
+        x_grid = np.arange(w, dtype=np.float32).reshape(1, -1)
+        for _ in range(n_spots):
+            cx = random.uniform(0, w)
+            cy = random.uniform(0, h)
+            radius = random.uniform(2.5, 10.0)
+            spot_color = np.array(
+                [
+                    random.uniform(120, 170),
+                    random.uniform(75, 115),
+                    random.uniform(45, 85),
+                ],
+                dtype=np.float32,
+            )
+            strength_max = random.uniform(0.30, 0.70)
+            dist_sq = (x_grid - cx) ** 2 + (y_grid - cy) ** 2
+            spot_mask = strength_max * np.exp(-dist_sq / (2 * radius**2))
+            spot_3d = spot_mask[..., None]
+            img = img * (1.0 - spot_3d) + spot_color * spot_3d
+
+    # 4. Micro-pitting around dense ink (iron-gall corrosion).
+    if random.random() < 0.55:
+        dense_ink = (ink_mask > 0.6).astype(np.float32)
+        dense_ink = cv2.dilate(dense_ink, np.ones((3, 3), dtype=np.uint8), iterations=1)
+        pit_noise = np.random.rand(h, w).astype(np.float32)
+        pit_threshold = 1.0 - random.uniform(0.02, 0.10)
+        pit_mask = ((pit_noise > pit_threshold) & (dense_ink > 0.5)).astype(np.float32)
+        pit_color = np.array([35, 25, 15], dtype=np.float32)
+        pit_strength = 0.80
+        pit_3d = (pit_mask * pit_strength)[..., None]
+        img = img * (1.0 - pit_3d) + pit_color * pit_3d
+
+    return img.clip(0, 255).astype(np.uint8)
+
+
+def apply_torn_edges(image, **kwargs):
+    """Simulate a ragged torn edge along the top, bottom, or both sides of
+    the line crop. The torn region is filled with a dark color so the
+    "missing" parchment reads as the void behind the page.
+
+    Produces an irregular zigzag edge (random vertex spacing 4–22 px,
+    depth up to ~1/6 of image height) with a slight blur for natural
+    softness. Useful for ~10–20% of training samples so the HTR model
+    learns to handle line crops where the page edge is damaged or where
+    the crop intersects a tear.
+    """
+    h, w = image.shape[:2]
+    img = image.astype(np.float32)
+
+    max_tear = max(4, h // 6)
+    sides = random.choice(["top", "bottom", "both"])
+
+    # Build a binary mask: 1 where the parchment shows, 0 inside the tear.
+    mask = np.ones((h, w), dtype=np.float32)
+
+    def _zigzag_polygon(from_top: bool):
+        """Return polygon vertices for the tear on the chosen side."""
+        pts: list[tuple[int, int]] = []
+        x = 0
+        while x < w:
+            y_tear = random.randint(0, max_tear)
+            y = y_tear if from_top else (h - 1 - y_tear)
+            pts.append((min(x, w - 1), y))
+            x += random.randint(4, 22)
+        # Close the polygon along the corresponding canvas edge.
+        if from_top:
+            return [(0, 0)] + pts + [(w - 1, 0)]
+        return [(0, h - 1)] + pts + [(w - 1, h - 1)]
+
+    if sides in ("top", "both"):
+        poly = np.array(_zigzag_polygon(from_top=True), dtype=np.int32)
+        cv2.fillPoly(mask, [poly], 0.0)
+    if sides in ("bottom", "both"):
+        poly = np.array(_zigzag_polygon(from_top=False), dtype=np.int32)
+        cv2.fillPoly(mask, [poly], 0.0)
+
+    # Soft blur so the tear edge doesn't read as a clean digital line.
+    mask = cv2.GaussianBlur(mask, (0, 0), sigmaX=1.5)
+
+    # Blend: parchment where mask=1, dark "void" where mask=0.
+    dark_void = np.array([15, 10, 8], dtype=np.float32)
+    mask_3d = mask[..., None]
+    img = img * mask_3d + dark_void * (1.0 - mask_3d)
+
+    return img.clip(0, 255).astype(np.uint8)
+
+
+def apply_page_creases(image, **kwargs):
+    """Simulate a centuries-old parchment fold with realistic ink degradation.
+
+    Models the visible wear of a manuscript that has been folded and
+    unfolded many times across centuries. The fold is revealed primarily
+    through TEXTURE and INK DEGRADATION, not a dark shadow:
+
+      1. Wavy crease centerline: low-frequency sinusoid (≤3 px) along x —
+         not perfectly straight, like a real fold.
+      2. Mechanical-wear noise modulation: high-frequency noise multiplies
+         the base fade profile, so the ink doesn't fade smoothly but
+         unevenly — the impression of "rubbed" texture rather than a
+         digital gradient.
+      3. Abrasion spots: 10–25 small Gaussian patches of heavy fading,
+         concentrated near the crease, create the "interrupted strokes /
+         missing fragments" appearance where letters cross the fold.
+      4. Asymmetric warp: subtle paper-fiber compression — pixels above
+         and below the crease drift toward it (0.6–1.4 px).
+      5. Discoloration: a warm-yellow tint weighted by the fade profile,
+         simulating age-related contamination concentrated in the fold.
+
+    Ink along the crease is blended toward the local parchment color so
+    letters appear partially rubbed away rather than blacked out. The
+    fading is strongest at the crease itself and diminishes outward.
+    """
+    h, w = image.shape[:2]
+    img = image.astype(np.float32)
+
+    # Estimate local parchment color (target for the ink-fade blend).
+    flat = img.reshape(-1, 3)
+    brightness = flat.mean(axis=1)
+    bright_threshold = np.percentile(brightness, 75)
+    bright_pixels = flat[brightness >= bright_threshold]
+    parchment_color = (
+        bright_pixels.mean(axis=0)
+        if len(bright_pixels) > 0
+        else np.array([218, 200, 170], dtype=np.float32)
+    )
+
+    # 2D coordinate grids.
+    y_grid = np.arange(h, dtype=np.float32).reshape(-1, 1)
+    x_grid = np.arange(w, dtype=np.float32).reshape(1, -1)
+
+    # Wavy crease centerline.
+    crease_y = random.uniform(h * 0.30, h * 0.70)
+    wave_freq = random.uniform(0.002, 0.008)
+    wave_amp = random.uniform(1.5, 3.5)
+    wave_phase = random.uniform(0, 2 * np.pi)
+    crease_y_per_x = crease_y + wave_amp * np.sin(x_grid * wave_freq * 2 * np.pi + wave_phase)
+    dist_from_crease = y_grid - crease_y_per_x
+
+    # Base fade profile (Gaussian falloff from the crease).
+    fade_sigma = max(8.0, h * 0.10) * random.uniform(0.85, 1.15)
+    base_fade = np.exp(-(dist_from_crease**2) / (2 * fade_sigma**2))
+
+    # Mechanical-wear noise: medium-frequency multiplicative texture so the
+    # fade isn't a smooth gradient. Modulates between 0.4× and 1.0×.
+    noise_h = max(8, h // 6)
+    noise_w = max(32, w // 20)
+    coarse_noise = np.random.rand(noise_h, noise_w).astype(np.float32)
+    wear_noise = cv2.resize(coarse_noise, (w, h), interpolation=cv2.INTER_CUBIC)
+    wear_noise = 0.4 + 0.6 * wear_noise
+
+    # Smooth fade mask (noise-modulated Gaussian).
+    fade_strength = random.uniform(0.60, 0.85)
+    smooth_fade = base_fade * wear_noise * fade_strength
+
+    # Abrasion spots — small Gaussian patches of heavy fading concentrated
+    # near the crease line, creating the "letter fragments missing" effect.
+    spot_mask = np.zeros((h, w), dtype=np.float32)
+    n_spots = random.randint(10, 25)
+    crease_y_flat = crease_y_per_x[0]  # (w,)
+    for _ in range(n_spots):
+        spot_x = random.randint(0, w - 1)
+        # Spots stay tight around the crease (within ~0.4 σ of fade).
+        spot_y_target = crease_y_flat[spot_x] + random.uniform(-fade_sigma * 0.4, fade_sigma * 0.4)
+        spot_radius = random.uniform(1.5, 4.5)
+        spot_strength = random.uniform(0.55, 0.90)
+        dist_sq = (x_grid - spot_x) ** 2 + (y_grid - spot_y_target) ** 2
+        spot = spot_strength * np.exp(-dist_sq / (2 * spot_radius**2))
+        spot_mask = np.maximum(spot_mask, spot)
+
+    # Combine smooth fade with abrasion spots; spots win where they're
+    # stronger (so missing-fragment effect dominates locally).
+    combined_fade = np.clip(np.maximum(smooth_fade, spot_mask), 0, 0.92)
+
+    # Asymmetric warp (paper fiber compression).
+    warp_sigma = fade_sigma * 0.7
+    warp_amplitude = random.uniform(0.6, 1.4)
+    displacement_y = (
+        -np.sign(dist_from_crease)
+        * warp_amplitude
+        * np.exp(-(dist_from_crease**2) / (2 * warp_sigma**2))
+    )
+    x_coords, y_coords = np.meshgrid(np.arange(w, dtype=np.float32), np.arange(h, dtype=np.float32))
+    y_coords_warped = y_coords + displacement_y
+    img = cv2.remap(
+        img,
+        x_coords,
+        y_coords_warped,
+        interpolation=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_REPLICATE,
+    )
+
+    # Compute an ink-density mask on the WARPED image so the fade can
+    # specifically target ink pixels (not parchment). Without this, the
+    # blend toward parchment lightens the whole band uniformly, making it
+    # look like a brighter stripe rather than rubbed-away letters.
+    gray = (img.mean(axis=2) / 255.0).astype(np.float32)
+    parchment_brightness = float(parchment_color.mean()) / 255.0
+    ink_density = np.clip((parchment_brightness - gray) / max(parchment_brightness, 0.01), 0.0, 1.0)
+
+    # Modulate the combined fade by ink density: parchment pixels get only
+    # a tiny share of the fade (keeps the band continuity), ink pixels get
+    # most of it (gets blended strongly toward parchment colour, which is
+    # how the "rubbed-away letter fragments" effect arises).
+    ink_targeted_fade = combined_fade * (0.10 + 0.90 * ink_density)
+    fade_3d = ink_targeted_fade[..., None]
+    img = img * (1.0 - fade_3d) + parchment_color * fade_3d
+
+    # Visible fold groove: a narrow Gaussian darkening at the crease centre,
+    # separate from the wear. Real folds show both: the wear (lighter
+    # patches where ink rubbed off, applied above) AND a subtle dark line
+    # right at the fold itself (this).
+    groove_sigma = random.uniform(0.6, 1.2)
+    groove_strength = random.uniform(0.12, 0.22)
+    groove_mask = groove_strength * np.exp(-(dist_from_crease**2) / (2 * groove_sigma**2))
+    img = img * (1.0 - groove_mask[..., None])
+
+    # Subtle warm-yellow discoloration concentrated at the crease, weighted
+    # by the base fade so it's strongest at the centre and falls off outward.
+    discoloration = base_fade * random.uniform(0.10, 0.20)
+    yellow_shift = np.array([1.0, 0.96, 0.85], dtype=np.float32)
+    disc_3d = discoloration[..., None]
+    img = img * (1.0 - disc_3d) + (img * yellow_shift) * disc_3d
+
+    return img.clip(0, 255).astype(np.uint8)
+
+
 def apply_augmentation_techniques(input_image, parchment_files, seed=None):
     """
     The pipeline:
@@ -304,6 +617,18 @@ def apply_augmentation_techniques(input_image, parchment_files, seed=None):
             A.PixelDropout(dropout_prob=0.02, drop_value=255, p=0.5),
             # 2. Substrate swap with translucent ink + bleed-through (custom).
             A.Lambda(image=bound_composite, name="composite_on_parchment", p=1.0),
+            # 2a. Centuries-of-aging effects: iron-gall ink browning,
+            #     foxing spots, micro-pitting around dense ink. Each
+            #     sub-effect has its own internal probability.
+            A.Lambda(image=apply_aged_parchment_effects, name="aged_parchment", p=0.7),
+            # 2b. Hard damage (heavy verso bleed + uneven tone + yellow tint).
+            #     Fires on a minority of samples so the HTR model sees a mix
+            #     of clean and severely damaged folios.
+            A.Lambda(image=apply_page_creases, name="page_creases", p=0.40),
+            # 2c. Torn / ragged edge on top, bottom, or both. Small fraction
+            #     of samples so the model occasionally sees clipped-page
+            #     conditions without being overwhelmed by them.
+            A.Lambda(image=apply_torn_edges, name="torn_edges", p=0.15),
             # 3. Tonal jitter — warm direction only (no pink/magenta).
             A.HueSaturationValue(
                 hue_shift_limit=(0, 8),

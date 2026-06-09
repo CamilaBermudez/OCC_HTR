@@ -30,3 +30,11 @@ __pycache__/
 # pre-commit
 .pre-commit-cache/
 /tests/augmentation/parchment_crops/
+/tests/augmentation/after_fix/
+/tests/augmentation/aged_creased/
+/tests/augmentation/aged_parchment/
+/tests/augmentation/all_three/
+/tests/augmentation/extreme/
+/tests/augmentation/gallery/
+/tests/augmentation/page_creases/
+/tests/augmentation/torn/
