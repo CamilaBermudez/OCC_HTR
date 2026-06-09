@@ -27,14 +27,35 @@ import re
 import subprocess
 from pathlib import Path
 
-# Default character substitutions: classical medieval orthography to its
-# modern normalisations. v/V are typeset where u/U is meant; same for j/J
-# vs i/I. Override or extend via `correct_labels(substitutions=...)`.
+# Default character substitutions.
+#
+# v/V are typeset where u/U is meant in medieval Iberian orthography; same
+# for j/J vs i/I. We fold those to lowercase u/i.
+#
+# Additionally, the uppercase letters {I, T, A, E, S, O, H, M, D, Q, F}
+# appear in the cometa transcriptions but are NOT in the catmus-medieval
+# OCR model's output codec — they trigger a codec-mismatch warning at
+# fine-tuning time. Medieval scribes rarely distinguished case, so we
+# fold those to lowercase rather than forcing the output layer to grow.
+#
+# Override or extend via `correct_labels(substitutions=...)`.
 DEFAULT_SUBSTITUTIONS: dict[str, str] = {
     "v": "u",
-    "V": "U",
+    "V": "u",
     "j": "i",
-    "J": "I",
+    "J": "i",
+    "I": "i",
+    "U": "u",
+    "T": "t",
+    "A": "a",
+    "E": "e",
+    "S": "s",
+    "O": "o",
+    "H": "h",
+    "M": "m",
+    "D": "d",
+    "Q": "q",
+    "F": "f",
 }
 
 

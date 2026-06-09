@@ -54,7 +54,7 @@ PARCHMENT_CROPS_DIR=./data/processed/synthetic_samples/parchment_crops
 PARCHMENT_CROPS_PATH=./data/processed/synthetic_samples/parchment_crops/parchments_20260608_082718
 PARCHMENT_MIN_BRIGHTNESS?=100
 AUGMENTED_IMAGES_DIR=./data/processed/synthetic_samples/augmented_images
-AUGMENTED_RUN_PATH=./data/processed/synthetic_samples/augmented_images/aug_20260608_120000
+AUGMENTED_RUN_PATH=./data/processed/synthetic_samples/augmented_images/aug_20260609_170621
 CORRECTED_LABELS_DIR=./data/processed/synthetic_samples/img_labels
 MEDIEVAL_TEXT_LABELS=$(MEDIEVAL_TEXT_RUN_PATH)/labels.json
 LABEL_TEXT_FIELD?=original_text
@@ -63,10 +63,24 @@ N_AUGMENTATIONS?=5
 BASE_SEED?=42
 SAMPLE?=
 SAMPLE_SIZE?=5
+#========= OCR fine-tuning ========
+FINETUNE_BASE_MODEL=./models/ocr/catmus-medieval.mlmodel
+FINETUNE_OUTPUT_DIR=./models/ocr/finetuned
+FINETUNE_AUG_FOLDER=$(AUGMENTED_RUN_PATH)
+FINETUNE_LABELS_JSON=$(CORRECTED_LABELS_DIR)/labels_20260609_170621/labels.json
+FINETUNE_VAL_FRACTION?=0.1
+FINETUNE_SEED?=42
+FINETUNE_LRATE?=1e-4
+FINETUNE_BATCH_SIZE?=1
+FINETUNE_LAG?=5
+FINETUNE_DEVICE?=cpu
+SMOKE?=
+SMOKE_SIZE?=50
+SMOKE_EPOCHS?=2
 
 PYTHON=uv run python
 
-.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels clean
+.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels finetune_ocr clean
 
 all: evaluate_yolo_performance
 
@@ -216,6 +230,26 @@ correct_labels:
 			--output-base-dir $(CORRECTED_LABELS_DIR) \
 			--text-field $(LABEL_TEXT_FIELD) \
 			$(if $(LABEL_SUBSTITUTIONS),--substitutions "$(LABEL_SUBSTITUTIONS)")
+
+
+# make finetune_ocr                                # full run, early stopping
+# make finetune_ocr SMOKE=1                        # smoke test: 50 lines, 2 epochs
+# make finetune_ocr SMOKE=1 SMOKE_SIZE=20 SMOKE_EPOCHS=1
+# make finetune_ocr FINETUNE_DEVICE=cuda:0         # use GPU if available
+
+finetune_ocr:
+	$(PYTHON) scripts/ocr/run_finetune_ocr.py \
+			--augmented-folder $(FINETUNE_AUG_FOLDER) \
+			--labels-json $(FINETUNE_LABELS_JSON) \
+			--base-model $(FINETUNE_BASE_MODEL) \
+			--output-base-dir $(FINETUNE_OUTPUT_DIR) \
+			--val-fraction $(FINETUNE_VAL_FRACTION) \
+			--seed $(FINETUNE_SEED) \
+			--lrate $(FINETUNE_LRATE) \
+			--batch-size $(FINETUNE_BATCH_SIZE) \
+			--lag $(FINETUNE_LAG) \
+			--device $(FINETUNE_DEVICE) \
+			$(if $(SMOKE),--smoke --smoke-size $(SMOKE_SIZE) --smoke-epochs $(SMOKE_EPOCHS))
 
 
 clean:
