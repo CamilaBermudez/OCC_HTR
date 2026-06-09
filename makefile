@@ -22,6 +22,11 @@ FILTERED_IMAGES_DIR=./data/processed/filtered_images
 FILTERED_ORIGINAL_LINES_PATH=./data/processed/filtered_images/20260515_104416/original/kept
 RESIZED_IMAGES_DIR=./data/processed/resized_samples
 RESIZING_TARGET_SIZE?=224
+#======= Ink-bleed detection ========
+INK_BLEED_OUTPUT_DIR=./data/processed/filtered_images/20260515_104416
+INK_BLEED_THRESHOLD?=0.35
+INK_BLEED_W_BG_STD?=0.6
+INK_BLEED_W_INTERMEDIATE?=0.4
 #======= Tokenizer ========
 RAW_CORPORA_DIR=./data/raw/COMETA_medieval_corpus
 TOKENIZER_CORPORA_DIR=./data/processed/tokenizer_corpora
@@ -80,7 +85,7 @@ SMOKE_EPOCHS?=2
 
 PYTHON=uv run python
 
-.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels finetune_ocr clean
+.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images detect_ink_bleed unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels finetune_ocr clean
 
 all: evaluate_yolo_performance
 
@@ -142,6 +147,18 @@ resize_images:
 			--input-folder $(FILTERED_ORIGINAL_LINES_PATH) \
 			--output-folder $(RESIZED_IMAGES_DIR) \
 			--target-size $(RESIZING_TARGET_SIZE)
+
+
+# make detect_ink_bleed                              # default threshold 0.35
+# make detect_ink_bleed INK_BLEED_THRESHOLD=0.45     # stricter
+# make detect_ink_bleed INK_BLEED_W_BG_STD=0.5 INK_BLEED_W_INTERMEDIATE=0.5
+detect_ink_bleed:
+	$(PYTHON) scripts/data_preprocessing/run_ink_bleed_detection.py \
+			--input-folder $(FILTERED_ORIGINAL_LINES_PATH) \
+			--output-base-dir $(INK_BLEED_OUTPUT_DIR) \
+			--bleed-threshold $(INK_BLEED_THRESHOLD) \
+			--w-bg-std $(INK_BLEED_W_BG_STD) \
+			--w-intermediate $(INK_BLEED_W_INTERMEDIATE)
 
 
 unify_corpora:
