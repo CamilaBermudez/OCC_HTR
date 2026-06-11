@@ -447,81 +447,64 @@ def apply_torn_edges(image, **kwargs):
 
 
 def apply_ink_bleed(image, bleed_source_files=None, **kwargs):
-    """Simulate verso ink bleed-through: faint, blurred ghost text from
-    the OTHER side of the parchment showing through into the recto.
+    """Simulate ink spreading INTO the parchment fibres — uniform whole-
+    line bleed where strokes lose sharpness, gain a soft halo, and blend
+    slightly toward parchment colour.
 
-    This is NOT a transformation of the current line's ink. Real
-    bleed-through is a *different* piece of text (whatever's on the back
-    of the page) diffusing through the parchment. So the bleed pattern
-    comes from a different source-text image picked at random, then:
+    Three passes:
+      1. Heavy whole-image Gaussian blur (kernel ~h/6 to h/4) so each
+         stroke spreads outward into a soft halo.
+      2. Ink-targeted fade of the blurred copy toward parchment so the
+         spread reads as diffused ink rather than just a defocused
+         photo.
+      3. Alpha-blend the blurred-and-faded result over the original at
+         strength 0.70–0.90, so the original ink stays partially
+         visible underneath — the text is bled and softer, not erased.
 
-      1. Optionally mirrored horizontally (verso reads mirrored on the
-         recto side).
-      2. Randomly shifted vertically (verso text doesn't line up with
-         recto baselines — ghost letters often land between, above, or
-         below the current line).
-      3. Heavily Gaussian-blurred — the ink has diffused through the
-         parchment, losing edge definition.
-      4. Composited as a multiplicative DARKENING into the parchment
-         (not the existing ink) of the current image: where the current
-         image is already dark (ink), nothing happens; where it's
-         parchment, the ghost shows through faintly.
-
-    With no bleed_source_files (e.g. for unit-test calls), the function
-    is a no-op so existing call sites don't break.
+    The ``bleed_source_files`` parameter is accepted (for pipeline
+    binding compatibility) but currently unused; ink bleed is a
+    transformation of the recto ink itself, not a composite of verso
+    text.
     """
-    if not bleed_source_files:
-        return image
-    h, w = image.shape[:2]
-    img = image.astype(np.float32)
+    del bleed_source_files  # accepted by signature for binding parity; not used
+    h = image.shape[0]
+    img_orig = image.astype(np.float32)
 
-    # 1. Load a random bleed source (different rendered text).
-    bleed_path = random.choice(bleed_source_files)
-    bleed_raw = cv2.imread(str(bleed_path))
-    if bleed_raw is None:
-        return image
-    bleed_gray = cv2.cvtColor(bleed_raw, cv2.COLOR_BGR2GRAY).astype(np.float32)
+    flat = img_orig.reshape(-1, 3)
+    bright = flat.mean(axis=1)
+    bright_pixels = flat[bright >= np.percentile(bright, 75)]
+    parchment_color = (
+        bright_pixels.mean(axis=0)
+        if len(bright_pixels) > 0
+        else np.array([218, 200, 170], dtype=np.float32)
+    )
+    parchment_brightness = float(parchment_color.mean()) / 255.0
 
-    # 2. Convert to ink-density mask: 0 on the source's parchment, 1 on
-    #    its ink. Threshold-style remap rather than a flat invert so light
-    #    grey shading from antialiasing doesn't read as faint ghost ink.
-    bleed_mask = np.clip((220.0 - bleed_gray) / 180.0, 0.0, 1.0)
+    # 1. Heavy whole-image Gaussian blur — larger kernel so the spread
+    #    is clearly visible (matches the reference's bled look).
+    blur_choices = [
+        max(9, (h // 4) | 1),
+        max(11, (h // 3) | 1),
+        max(13, ((h * 2) // 5) | 1),
+    ]
+    blur_k = random.choice(blur_choices)
+    img_blurred = cv2.GaussianBlur(img_orig, (blur_k, blur_k), 0)
 
-    # 3. Resize to current image shape. Source images are line crops with
-    #    similar aspect to the current line, so a direct resize works.
-    bleed_mask = cv2.resize(bleed_mask, (w, h), interpolation=cv2.INTER_LINEAR)
+    # 2. Ink-targeted fade of the blurred copy toward parchment, mid-range
+    #    so the bled ink reads diffused-and-lighter without disappearing.
+    gray_b = (img_blurred.mean(axis=2) / 255.0).astype(np.float32)
+    ink_density_b = np.clip(
+        (parchment_brightness - gray_b) / max(parchment_brightness, 0.01), 0.0, 1.0
+    )
+    fade = (0.35 + 0.30 * ink_density_b) * random.uniform(0.85, 1.0)
+    fade_3d = np.clip(fade, 0.0, 0.70)[..., None]
+    img_bled = img_blurred * (1.0 - fade_3d) + parchment_color * fade_3d
 
-    # 4. Verso simulation: horizontal flip (50 %) and small vertical shift
-    #    so the ghost doesn't sit perfectly under the current baseline.
-    if random.random() < 0.5:
-        bleed_mask = bleed_mask[:, ::-1].copy()
-    y_shift = random.randint(-h // 3, h // 3)
-    if y_shift != 0:
-        shifted = np.zeros_like(bleed_mask)
-        if y_shift > 0:
-            shifted[y_shift:, :] = bleed_mask[:-y_shift, :]
-        else:
-            shifted[:y_shift, :] = bleed_mask[-y_shift:, :]
-        bleed_mask = shifted
-
-    # 5. Heavy Gaussian blur — ink diffusion through parchment fibres.
-    blur_k = max(7, (h // 4) | 1)
-    bleed_mask = cv2.GaussianBlur(bleed_mask, (blur_k, blur_k), 0)
-
-    # 6. Protect existing ink: only darken pixels that are currently
-    #    bright (parchment). Without this guard the bleed would also
-    #    deepen the current strokes, which is wrong — bleed-through is
-    #    a parchment phenomenon, not an enhancement of recto ink.
-    gray_orig = (img.mean(axis=2) / 255.0).astype(np.float32)
-    parchment_mask = np.clip((gray_orig - 0.30) / 0.50, 0.0, 1.0)
-
-    # 7. Apply as multiplicative darkening. Multiplier 0.50–0.80 sets the
-    #    maximum ghost darkness; the bleed_mask × parchment_mask product
-    #    decides where and how much.
-    darken_amt = random.uniform(0.50, 0.80)  # 1.0 = no darkening, 0 = black
-    ghost_factor = bleed_mask * parchment_mask
-    multiplier = 1.0 - (1.0 - darken_amt) * ghost_factor
-    img = img * multiplier[..., None]
+    # 3. Alpha-blend bled over original. High alpha so the bleed dominates
+    #    (reference look) but original strokes still contribute some edge
+    #    structure underneath.
+    alpha = random.uniform(0.85, 0.98)
+    img = img_orig * (1.0 - alpha) + img_bled * alpha
 
     return img.clip(0, 255).astype(np.uint8)
 
