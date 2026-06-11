@@ -446,63 +446,82 @@ def apply_torn_edges(image, **kwargs):
     return img.clip(0, 255).astype(np.uint8)
 
 
-def apply_ink_bleed(image, **kwargs):
-    """Simulate ink spreading into the parchment fibres ("ink bleed").
+def apply_ink_bleed(image, bleed_source_files=None, **kwargs):
+    """Simulate verso ink bleed-through: faint, blurred ghost text from
+    the OTHER side of the parchment showing through into the recto.
 
-    Applied as a SOFT MASK / OVERLAY on top of the original image rather
-    than as a destructive replacement: the original sharp strokes stay
-    visible (so the model still has clean ground truth to train against),
-    while a soft tinted halo appears around each letter where the ink
-    has diffused into the surrounding parchment.
+    This is NOT a transformation of the current line's ink. Real
+    bleed-through is a *different* piece of text (whatever's on the back
+    of the page) diffusing through the parchment. So the bleed pattern
+    comes from a different source-text image picked at random, then:
 
-    Recipe:
-      1. Heavy whole-image Gaussian blur (kernel ~h/4 to h/3) — produces
-         a "spread" version where each stroke has bled outward into the
-         neighbouring parchment.
-      2. Ink-targeted fade of the blurred copy toward parchment so the
-         halo is darker than parchment but lighter than original ink.
-      3. ``np.minimum(original, halo)`` composite. Per-pixel min keeps
-         the darker of the two: original sharp strokes win wherever they
-         exist (text stays readable, and combines cleanly with any
-         further damage downstream), and the halo darkens parchment
-         around letters where there's no original ink to win.
+      1. Optionally mirrored horizontally (verso reads mirrored on the
+         recto side).
+      2. Randomly shifted vertically (verso text doesn't line up with
+         recto baselines — ghost letters often land between, above, or
+         below the current line).
+      3. Heavily Gaussian-blurred — the ink has diffused through the
+         parchment, losing edge definition.
+      4. Composited as a multiplicative DARKENING into the parchment
+         (not the existing ink) of the current image: where the current
+         image is already dark (ink), nothing happens; where it's
+         parchment, the ghost shows through faintly.
+
+    With no bleed_source_files (e.g. for unit-test calls), the function
+    is a no-op so existing call sites don't break.
     """
-    h = image.shape[0]
+    if not bleed_source_files:
+        return image
+    h, w = image.shape[:2]
     img = image.astype(np.float32)
 
-    flat = img.reshape(-1, 3)
-    bright = flat.mean(axis=1)
-    bright_pixels = flat[bright >= np.percentile(bright, 75)]
-    parchment_color = (
-        bright_pixels.mean(axis=0)
-        if len(bright_pixels) > 0
-        else np.array([218, 200, 170], dtype=np.float32)
-    )
-    parchment_brightness = float(parchment_color.mean()) / 255.0
+    # 1. Load a random bleed source (different rendered text).
+    bleed_path = random.choice(bleed_source_files)
+    bleed_raw = cv2.imread(str(bleed_path))
+    if bleed_raw is None:
+        return image
+    bleed_gray = cv2.cvtColor(bleed_raw, cv2.COLOR_BGR2GRAY).astype(np.float32)
 
-    # 1. Heavy whole-image Gaussian blur — spreads each stroke outward.
-    blur_choices = [
-        max(9, (h // 4) | 1),
-        max(9, (h // 3) | 1),
-        max(11, ((h * 2) // 5) | 1),
-    ]
-    blur_k = random.choice(blur_choices)
-    img_blurred = cv2.GaussianBlur(img, (blur_k, blur_k), 0)
+    # 2. Convert to ink-density mask: 0 on the source's parchment, 1 on
+    #    its ink. Threshold-style remap rather than a flat invert so light
+    #    grey shading from antialiasing doesn't read as faint ghost ink.
+    bleed_mask = np.clip((220.0 - bleed_gray) / 180.0, 0.0, 1.0)
 
-    # 2. Ink-targeted fade of the blurred copy toward parchment, so the
-    #    halo reads as lighter than the original ink but still darker
-    #    than untouched parchment. Mid-range fade so the min-composite
-    #    halo is visible without dominating original strokes.
-    gray_b = (img_blurred.mean(axis=2) / 255.0).astype(np.float32)
-    ink_density_b = np.clip(
-        (parchment_brightness - gray_b) / max(parchment_brightness, 0.01), 0.0, 1.0
-    )
-    halo_fade = ink_density_b * random.uniform(0.30, 0.50)
-    halo_fade_3d = halo_fade[..., None]
-    img_halo = img_blurred * (1.0 - halo_fade_3d) + parchment_color * halo_fade_3d
+    # 3. Resize to current image shape. Source images are line crops with
+    #    similar aspect to the current line, so a direct resize works.
+    bleed_mask = cv2.resize(bleed_mask, (w, h), interpolation=cv2.INTER_LINEAR)
 
-    # 3. Composite halo UNDER original via per-pixel min.
-    img = np.minimum(img, img_halo)
+    # 4. Verso simulation: horizontal flip (50 %) and small vertical shift
+    #    so the ghost doesn't sit perfectly under the current baseline.
+    if random.random() < 0.5:
+        bleed_mask = bleed_mask[:, ::-1].copy()
+    y_shift = random.randint(-h // 3, h // 3)
+    if y_shift != 0:
+        shifted = np.zeros_like(bleed_mask)
+        if y_shift > 0:
+            shifted[y_shift:, :] = bleed_mask[:-y_shift, :]
+        else:
+            shifted[:y_shift, :] = bleed_mask[-y_shift:, :]
+        bleed_mask = shifted
+
+    # 5. Heavy Gaussian blur — ink diffusion through parchment fibres.
+    blur_k = max(7, (h // 4) | 1)
+    bleed_mask = cv2.GaussianBlur(bleed_mask, (blur_k, blur_k), 0)
+
+    # 6. Protect existing ink: only darken pixels that are currently
+    #    bright (parchment). Without this guard the bleed would also
+    #    deepen the current strokes, which is wrong — bleed-through is
+    #    a parchment phenomenon, not an enhancement of recto ink.
+    gray_orig = (img.mean(axis=2) / 255.0).astype(np.float32)
+    parchment_mask = np.clip((gray_orig - 0.30) / 0.50, 0.0, 1.0)
+
+    # 7. Apply as multiplicative darkening. Multiplier 0.50–0.80 sets the
+    #    maximum ghost darkness; the bleed_mask × parchment_mask product
+    #    decides where and how much.
+    darken_amt = random.uniform(0.50, 0.80)  # 1.0 = no darkening, 0 = black
+    ghost_factor = bleed_mask * parchment_mask
+    multiplier = 1.0 - (1.0 - darken_amt) * ghost_factor
+    img = img * multiplier[..., None]
 
     return img.clip(0, 255).astype(np.uint8)
 
@@ -580,7 +599,7 @@ def apply_page_creases(image, **kwargs):
     if extreme_crease:
         # Sigma >= ~40% of line height covers essentially the whole line
         # — most ink pixels feel the fade.
-        fade_sigma = max(8.0, h * 0.40) * random.uniform(0.90, 1.20)
+        fade_sigma = max(8.0, h * 0.25) * random.uniform(0.85, 1.15)
     else:
         fade_sigma = max(8.0, h * 0.10) * random.uniform(0.85, 1.15)
     base_fade = np.exp(-(dist_from_crease**2) / (2 * fade_sigma**2))
@@ -601,7 +620,7 @@ def apply_page_creases(image, **kwargs):
 
     # Smooth fade mask (noise-modulated Gaussian).
     if extreme_crease:
-        fade_strength = random.uniform(0.90, 1.0)
+        fade_strength = random.uniform(0.65, 0.85)
     else:
         fade_strength = random.uniform(0.60, 0.85)
     smooth_fade = base_fade * wear_noise * fade_strength
@@ -631,7 +650,7 @@ def apply_page_creases(image, **kwargs):
 
     # Combine smooth fade with abrasion spots; spots win where they're
     # stronger (so missing-fragment effect dominates locally).
-    fade_cap = 0.97 if extreme_crease else 0.92
+    fade_cap = 0.88 if extreme_crease else 0.92
     combined_fade = np.clip(np.maximum(smooth_fade, spot_mask), 0, fade_cap)
 
     # Asymmetric warp (paper fiber compression).
@@ -679,7 +698,7 @@ def apply_page_creases(image, **kwargs):
         # rather than rubbed-fold damage.
         n_zones = random.randint(1, 3)
         zone_weight = np.zeros((1, w), dtype=np.float32)
-        zone_sigma = w * random.uniform(0.08, 0.16)
+        zone_sigma = w * random.uniform(0.06, 0.11)
         x_axis = np.arange(w, dtype=np.float32).reshape(1, -1)
         for _ in range(n_zones):
             zone_cx = random.uniform(w * 0.08, w * 0.92)
@@ -699,22 +718,22 @@ def apply_page_creases(image, **kwargs):
         smudge_mask = cv2.GaussianBlur(smudge_mask, (soft_k, soft_k), 0)
         smudge_mask = np.clip(smudge_mask, 0.0, 1.0)
 
-        # 1. Local Gaussian blur (smudges letter edges into illegibility).
-        blur_k = max(13, (min(h, w) // 8) | 1)
+        # 1. Local Gaussian blur (smudges letter edges). Moderate kernel
+        #    so letter shapes are still recognisable inside the zone.
+        blur_k = max(7, (min(h, w) // 14) | 1)
         img_blurred = cv2.GaussianBlur(img, (blur_k, blur_k), 0)
-        m3 = smudge_mask[..., None]
+        m3 = (smudge_mask * 0.85)[..., None]  # blend rather than full replace
         img = img * (1.0 - m3) + img_blurred * m3
 
-        # 2. Strong local ink fade — heavy but not saturated, so when this
-        #    branch fires together with extreme_wear in the aged-parchment
-        #    pass the result is degraded-but-still-recognisable, not a
-        #    blank flatten. Uses the FRESH (post-smudge-blur) ink density.
+        # 2. Moderate local ink fade — degraded but not erased. Even
+        #    inside the most-damaged smudge zone, the model should still
+        #    have enough ink residue to learn the letter shapes.
         gray_s = (img.mean(axis=2) / 255.0).astype(np.float32)
         ink_density_s = np.clip(
             (parchment_brightness - gray_s) / max(parchment_brightness, 0.01), 0.0, 1.0
         )
-        local_fade = smudge_mask * (0.55 + 0.45 * ink_density_s) * random.uniform(0.92, 1.0)
-        local_fade_3d = np.clip(local_fade, 0.0, 0.98)[..., None]
+        local_fade = smudge_mask * (0.30 + 0.30 * ink_density_s) * random.uniform(0.80, 0.95)
+        local_fade_3d = np.clip(local_fade, 0.0, 0.80)[..., None]
         img = img * (1.0 - local_fade_3d) + parchment_color * local_fade_3d
 
         # Refresh ink_density for the band fade below, so its ink-targeting
@@ -752,7 +771,7 @@ def apply_page_creases(image, **kwargs):
     return img.clip(0, 255).astype(np.uint8)
 
 
-def apply_augmentation_techniques(input_image, parchment_files, seed=None):
+def apply_augmentation_techniques(input_image, parchment_files, bleed_source_files=None, seed=None):
     """
     The pipeline:
       1. Ink degradation — morphological erosion/dilation + PixelDropout.
@@ -784,6 +803,8 @@ def apply_augmentation_techniques(input_image, parchment_files, seed=None):
     # Bind parchment_files into composite_on_parchment so it matches the
     # signature A.Lambda expects: fn(image=..., **albumentations_kwargs).
     bound_composite = functools.partial(composite_on_parchment, parchment_files=parchment_files)
+    # Bind a (possibly empty) bleed-source list into apply_ink_bleed.
+    bound_ink_bleed = functools.partial(apply_ink_bleed, bleed_source_files=bleed_source_files)
 
     transform_real_bg = A.ReplayCompose(
         [
@@ -801,7 +822,7 @@ def apply_augmentation_techniques(input_image, parchment_files, seed=None):
             # 2b. Whole-line ink bleed (ink diffused into parchment fibres,
             #     letter edges fuzzed). Distinct phenomenon from rubbed-fold
             #     damage — letters stay mostly readable but visibly "wet".
-            A.Lambda(image=apply_ink_bleed, name="ink_bleed", p=0.15),
+            A.Lambda(image=bound_ink_bleed, name="ink_bleed", p=0.15),
             # 2c. Hard damage (heavy verso bleed + uneven tone + yellow tint).
             #     Fires on a minority of samples so the HTR model sees a mix
             #     of clean and severely damaged folios.
@@ -913,6 +934,13 @@ def batch_augment_directory(
     image_paths = sorted(input_dir.glob("*.png")) + sorted(input_dir.glob("*.jpg"))
     assert image_paths, f"No images found in {input_dir}"
 
+    # The full source-image pool is also used as the ink-bleed source
+    # pool: every other rendered line is a candidate "verso text" that
+    # can show through the current line as bleed-through. Captured here
+    # before sample_size trimming so the bleed pool retains variety even
+    # in preview mode.
+    bleed_source_files = list(image_paths)
+
     # Sampling mode: keep only the first N source images for a quick
     # preview run. Useful for verifying the pipeline produces what you
     # expect before kicking off the full batch.
@@ -953,7 +981,9 @@ def batch_augment_directory(
         for j in range(n_augmentations):
             call_seed = None if seed is None else seed + i * n_augmentations + j
             try:
-                out = apply_augmentation_techniques(img, parchment_files, seed=call_seed)
+                out = apply_augmentation_techniques(
+                    img, parchment_files, bleed_source_files=bleed_source_files, seed=call_seed
+                )
             except Exception as exc:
                 logger.error(f"Augmentation failed for {img_path.name} variant {j}: {exc}")
                 n_skipped += 1
