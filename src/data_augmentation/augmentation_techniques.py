@@ -449,22 +449,23 @@ def apply_torn_edges(image, **kwargs):
 def apply_ink_bleed(image, **kwargs):
     """Simulate ink spreading into the parchment fibres ("ink bleed").
 
-    Produces the same visual look as the middle (blurred) region of the
-    extreme_crease smudge patches, but applied UNIFORMLY across the whole
-    line: strokes become heavy soft ghosts that have lost their sharp
-    edges, the text is still partially legible, but it reads as if the
-    ink had bled out into the parchment fibres rather than staying as a
-    crisp stroke.
+    Applied as a SOFT MASK / OVERLAY on top of the original image rather
+    than as a destructive replacement: the original sharp strokes stay
+    visible (so the model still has clean ground truth to train against),
+    while a soft tinted halo appears around each letter where the ink
+    has diffused into the surrounding parchment.
 
-    Recipe (iter9-style):
-      1. Heavy whole-image Gaussian blur (kernel ~h/4 to h/3) → strokes
-         spread out into halo blobs.
-      2. Ink-targeted fade of the blurred copy toward parchment colour
-         (strength 0.45–0.70). Ink pixels fade more than parchment
-         pixels, so the blurred ink reads as a soft tinted ghost.
-      3. REPLACE the original with the blurred-and-faded version (no
-         overlay) — this is what produces the "ink has bled" rather
-         than "ink with a halo" look.
+    Recipe:
+      1. Heavy whole-image Gaussian blur (kernel ~h/4 to h/3) — produces
+         a "spread" version where each stroke has bled outward into the
+         neighbouring parchment.
+      2. Ink-targeted fade of the blurred copy toward parchment so the
+         halo is darker than parchment but lighter than original ink.
+      3. ``np.minimum(original, halo)`` composite. Per-pixel min keeps
+         the darker of the two: original sharp strokes win wherever they
+         exist (text stays readable, and combines cleanly with any
+         further damage downstream), and the halo darkens parchment
+         around letters where there's no original ink to win.
     """
     h = image.shape[0]
     img = image.astype(np.float32)
@@ -479,7 +480,7 @@ def apply_ink_bleed(image, **kwargs):
     )
     parchment_brightness = float(parchment_color.mean()) / 255.0
 
-    # 1. Heavy whole-image Gaussian blur.
+    # 1. Heavy whole-image Gaussian blur — spreads each stroke outward.
     blur_choices = [
         max(9, (h // 4) | 1),
         max(9, (h // 3) | 1),
@@ -488,16 +489,20 @@ def apply_ink_bleed(image, **kwargs):
     blur_k = random.choice(blur_choices)
     img_blurred = cv2.GaussianBlur(img, (blur_k, blur_k), 0)
 
-    # 2. Ink-targeted fade of the blurred copy toward parchment.
+    # 2. Ink-targeted fade of the blurred copy toward parchment, so the
+    #    halo reads as lighter than the original ink but still darker
+    #    than untouched parchment. Mid-range fade so the min-composite
+    #    halo is visible without dominating original strokes.
     gray_b = (img_blurred.mean(axis=2) / 255.0).astype(np.float32)
     ink_density_b = np.clip(
         (parchment_brightness - gray_b) / max(parchment_brightness, 0.01), 0.0, 1.0
     )
-    fade = (0.35 + 0.35 * ink_density_b) * random.uniform(0.85, 1.0)
-    fade_3d = np.clip(fade, 0.0, 0.85)[..., None]
+    halo_fade = ink_density_b * random.uniform(0.30, 0.50)
+    halo_fade_3d = halo_fade[..., None]
+    img_halo = img_blurred * (1.0 - halo_fade_3d) + parchment_color * halo_fade_3d
 
-    # 3. Replace original with blurred-and-faded version.
-    img = img_blurred * (1.0 - fade_3d) + parchment_color * fade_3d
+    # 3. Composite halo UNDER original via per-pixel min.
+    img = np.minimum(img, img_halo)
 
     return img.clip(0, 255).astype(np.uint8)
 
