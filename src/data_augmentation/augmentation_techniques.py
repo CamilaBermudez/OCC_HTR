@@ -478,21 +478,26 @@ def apply_ink_bleed(image, **kwargs):
     )
     parchment_brightness = float(parchment_color.mean()) / 255.0
 
-    # 1. Whole-image blur blended over original at strong intensity.
-    #    Kernel ~h/6 to h/3 so adjacent strokes merge into bled blobs;
-    #    blend close to 1.0 so the blurred copy dominates.
+    # 1. ERODE the image to expand dark regions — this physically widens
+    #    each ink stroke into the surrounding parchment, the way real ink
+    #    diffuses through the fibres. Without this, downstream blur alone
+    #    just softens edges and reads as a slightly-defocused photo rather
+    #    than bled ink.
+    erode_iters = random.randint(1, 3)
+    img = cv2.erode(img, np.ones((3, 3), dtype=np.uint8), iterations=erode_iters)
+
+    # 2. Strong whole-image Gaussian blur so the thickened strokes
+    #    feather into a halo around the original letters.
     blur_choices = [
         max(7, (h // 6) | 1),
         max(7, (h // 5) | 1),
         max(7, (h // 4) | 1),
     ]
     blur_k = random.choice(blur_choices)
-    img_blurred = cv2.GaussianBlur(img, (blur_k, blur_k), 0)
-    bleed_strength = random.uniform(0.75, 1.0)
-    img = img * (1.0 - bleed_strength) + img_blurred * bleed_strength
+    img = cv2.GaussianBlur(img, (blur_k, blur_k), 0)
 
-    # 2. Moderate ink-targeted fade so the bled ink reads as diffused
-    #    rather than just blurred-but-dense.
+    # 3. Moderate ink-targeted fade so the spread ink reads as diffused
+    #    rather than uniformly thick.
     gray = (img.mean(axis=2) / 255.0).astype(np.float32)
     ink_density = np.clip((parchment_brightness - gray) / max(parchment_brightness, 0.01), 0.0, 1.0)
     fade = ink_density * random.uniform(0.20, 0.45)
@@ -728,13 +733,14 @@ def apply_page_creases(image, **kwargs):
     img = img * (1.0 - fade_3d) + parchment_color * fade_3d
 
     # Visible fold groove: a narrow Gaussian darkening at the crease centre,
-    # separate from the wear. Real folds show both: the wear (lighter
-    # patches where ink rubbed off, applied above) AND a subtle dark line
-    # right at the fold itself (this).
-    groove_sigma = random.uniform(0.6, 1.2)
-    groove_strength = random.uniform(0.12, 0.22)
-    groove_mask = groove_strength * np.exp(-(dist_from_crease**2) / (2 * groove_sigma**2))
-    img = img * (1.0 - groove_mask[..., None])
+    # separate from the wear. Skipped in extreme_crease mode — the smudge
+    # patches there already convey damage, and an additional dark hairline
+    # crossing the line reads as a digital cut rather than a real fold.
+    if not extreme_crease:
+        groove_sigma = random.uniform(0.6, 1.2)
+        groove_strength = random.uniform(0.12, 0.22)
+        groove_mask = groove_strength * np.exp(-(dist_from_crease**2) / (2 * groove_sigma**2))
+        img = img * (1.0 - groove_mask[..., None])
 
     # Subtle warm-yellow discoloration concentrated at the crease, weighted
     # by the base fade so it's strongest at the centre and falls off outward.
