@@ -485,6 +485,17 @@ def apply_page_creases(image, **kwargs):
         else np.array([218, 200, 170], dtype=np.float32)
     )
 
+    # Capture ink density on the ORIGINAL (un-faded) input. The extreme
+    # smudge-patch step later needs to know where the letters actually
+    # were; recomputing it on the already-band-faded image gives a
+    # near-uniform low value and the smudge falls on parchment instead
+    # of text.
+    parchment_brightness = float(parchment_color.mean()) / 255.0
+    gray_orig = (img.mean(axis=2) / 255.0).astype(np.float32)
+    ink_density_orig = np.clip(
+        (parchment_brightness - gray_orig) / max(parchment_brightness, 0.01), 0.0, 1.0
+    )
+
     # 2D coordinate grids.
     y_grid = np.arange(h, dtype=np.float32).reshape(-1, 1)
     x_grid = np.arange(w, dtype=np.float32).reshape(1, -1)
@@ -585,8 +596,57 @@ def apply_page_creases(image, **kwargs):
     # blend toward parchment lightens the whole band uniformly, making it
     # look like a brighter stripe rather than rubbed-away letters.
     gray = (img.mean(axis=2) / 255.0).astype(np.float32)
-    parchment_brightness = float(parchment_color.mean()) / 255.0
     ink_density = np.clip((parchment_brightness - gray) / max(parchment_brightness, 0.01), 0.0, 1.0)
+
+    # EXTREME mode only: add multiple irregular SMUDGE PATCHES *before*
+    # the band fade. Each patch is a region where letter edges are
+    # heavily blurred AND ink is nearly fully faded toward parchment —
+    # this is what makes individual characters/syllables in the damaged
+    # area disappear while their neighbours remain readable. Applied
+    # BEFORE band fade because once band fade converts ink pixels to
+    # parchment-colour, the local-fade step has no remaining ink budget
+    # to consume and the smudge becomes visually invisible.
+    if extreme_crease:
+        # Higher-frequency noise produces many small patches (a few
+        # characters wide each).
+        smudge_noise = np.random.rand(max(6, h // 4), max(16, w // 12)).astype(np.float32)
+        smudge_field = cv2.resize(smudge_noise, (w, h), interpolation=cv2.INTER_CUBIC)
+        smudge_field = np.clip(smudge_field, 0.0, 1.0)
+        # Bias HARD by ink density (dilated) so patches reliably form
+        # ON the letters. No y_weight: it pulled patch mass off the text.
+        ink_dilated = cv2.dilate(ink_density_orig, np.ones((5, 5), dtype=np.uint8), iterations=2)
+        smudge_field = smudge_field * (0.05 + ink_dilated)
+        # Top ~40% of weighted area becomes a patch.
+        smudge_threshold = float(np.percentile(smudge_field, 60))
+        smudge_mask = (smudge_field > smudge_threshold).astype(np.float32)
+        soft_k = max(5, (min(h, w) // 30) | 1)
+        smudge_mask = cv2.GaussianBlur(smudge_mask, (soft_k, soft_k), 0)
+        smudge_mask = np.clip(smudge_mask, 0.0, 1.0)
+
+        # 1. Local Gaussian blur (smudges letter edges into illegibility).
+        blur_k = max(13, (min(h, w) // 8) | 1)
+        img_blurred = cv2.GaussianBlur(img, (blur_k, blur_k), 0)
+        m3 = smudge_mask[..., None]
+        img = img * (1.0 - m3) + img_blurred * m3
+
+        # 2. Strong local ink fade — heavy but not saturated, so when this
+        #    branch fires together with extreme_wear in the aged-parchment
+        #    pass the result is degraded-but-still-recognisable, not a
+        #    blank flatten. Uses the FRESH (post-smudge-blur) ink density.
+        gray_s = (img.mean(axis=2) / 255.0).astype(np.float32)
+        ink_density_s = np.clip(
+            (parchment_brightness - gray_s) / max(parchment_brightness, 0.01), 0.0, 1.0
+        )
+        local_fade = smudge_mask * (0.55 + 0.45 * ink_density_s) * random.uniform(0.92, 1.0)
+        local_fade_3d = np.clip(local_fade, 0.0, 0.98)[..., None]
+        img = img * (1.0 - local_fade_3d) + parchment_color * local_fade_3d
+
+        # Refresh ink_density for the band fade below, so its ink-targeting
+        # uses the post-smudge image.
+        gray = (img.mean(axis=2) / 255.0).astype(np.float32)
+        ink_density = np.clip(
+            (parchment_brightness - gray) / max(parchment_brightness, 0.01), 0.0, 1.0
+        )
 
     # Modulate the combined fade by ink density: parchment pixels get only
     # a tiny share of the fade (keeps the band continuity), ink pixels get
