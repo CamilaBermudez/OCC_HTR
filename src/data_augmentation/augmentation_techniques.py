@@ -449,25 +449,26 @@ def apply_torn_edges(image, **kwargs):
 def apply_ink_bleed(image, **kwargs):
     """Simulate ink spreading into the parchment fibres ("ink bleed").
 
-    Different phenomenon from the localized crease-damage smudge: ink
-    bleed applies UNIFORMLY across the whole line. Real iron-gall ink on
-    poorly-sized parchment (or parchment that has been re-wetted, e.g.
-    by humidity / water damage / verso bleed-through) diffuses outward
-    from each stroke, blurring letter edges and softly fading the ink.
+    Produces the same visual look as the middle (blurred) region of the
+    extreme_crease smudge patches, but applied UNIFORMLY across the whole
+    line: strokes become heavy soft ghosts that have lost their sharp
+    edges, the text is still partially legible, but it reads as if the
+    ink had bled out into the parchment fibres rather than staying as a
+    crisp stroke.
 
-    Two visual ingredients:
-      1. Whole-image Gaussian blur (kernel ~h/10 to h/6) blended at
-         random strength 0.40–0.85 → letter edges go soft / fuzzy.
-      2. Mild ink-targeted fade (10–30 %) → spread-out ink reads
-         lighter than a sharp original stroke.
-
-    Designed to be a *separate* mode from the rubbed-fold smudge: text
-    stays mostly readable but visibly "wet" / spread, not erased.
+    Recipe (iter9-style):
+      1. Heavy whole-image Gaussian blur (kernel ~h/4 to h/3) → strokes
+         spread out into halo blobs.
+      2. Ink-targeted fade of the blurred copy toward parchment colour
+         (strength 0.45–0.70). Ink pixels fade more than parchment
+         pixels, so the blurred ink reads as a soft tinted ghost.
+      3. REPLACE the original with the blurred-and-faded version (no
+         overlay) — this is what produces the "ink has bled" rather
+         than "ink with a halo" look.
     """
     h = image.shape[0]
     img = image.astype(np.float32)
 
-    # Local parchment color (fade target).
     flat = img.reshape(-1, 3)
     bright = flat.mean(axis=1)
     bright_pixels = flat[bright >= np.percentile(bright, 75)]
@@ -478,31 +479,25 @@ def apply_ink_bleed(image, **kwargs):
     )
     parchment_brightness = float(parchment_color.mean()) / 255.0
 
-    # 1. ERODE the image to expand dark regions — this physically widens
-    #    each ink stroke into the surrounding parchment, the way real ink
-    #    diffuses through the fibres. Without this, downstream blur alone
-    #    just softens edges and reads as a slightly-defocused photo rather
-    #    than bled ink.
-    erode_iters = random.randint(1, 3)
-    img = cv2.erode(img, np.ones((3, 3), dtype=np.uint8), iterations=erode_iters)
-
-    # 2. Strong whole-image Gaussian blur so the thickened strokes
-    #    feather into a halo around the original letters.
+    # 1. Heavy whole-image Gaussian blur.
     blur_choices = [
-        max(7, (h // 6) | 1),
-        max(7, (h // 5) | 1),
-        max(7, (h // 4) | 1),
+        max(9, (h // 4) | 1),
+        max(9, (h // 3) | 1),
+        max(11, ((h * 2) // 5) | 1),
     ]
     blur_k = random.choice(blur_choices)
-    img = cv2.GaussianBlur(img, (blur_k, blur_k), 0)
+    img_blurred = cv2.GaussianBlur(img, (blur_k, blur_k), 0)
 
-    # 3. Moderate ink-targeted fade so the spread ink reads as diffused
-    #    rather than uniformly thick.
-    gray = (img.mean(axis=2) / 255.0).astype(np.float32)
-    ink_density = np.clip((parchment_brightness - gray) / max(parchment_brightness, 0.01), 0.0, 1.0)
-    fade = ink_density * random.uniform(0.20, 0.45)
-    fade_3d = fade[..., None]
-    img = img * (1.0 - fade_3d) + parchment_color * fade_3d
+    # 2. Ink-targeted fade of the blurred copy toward parchment.
+    gray_b = (img_blurred.mean(axis=2) / 255.0).astype(np.float32)
+    ink_density_b = np.clip(
+        (parchment_brightness - gray_b) / max(parchment_brightness, 0.01), 0.0, 1.0
+    )
+    fade = (0.35 + 0.35 * ink_density_b) * random.uniform(0.85, 1.0)
+    fade_3d = np.clip(fade, 0.0, 0.85)[..., None]
+
+    # 3. Replace original with blurred-and-faded version.
+    img = img_blurred * (1.0 - fade_3d) + parchment_color * fade_3d
 
     return img.clip(0, 255).astype(np.uint8)
 
