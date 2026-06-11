@@ -332,16 +332,26 @@ def apply_aged_parchment_effects(image, **kwargs):
 
     # 2. Global ink wear — low-frequency noise field that fades ink
     #    unevenly across the whole line, not just one localised band.
+    #    With ~18% probability, switch to an EXTREME mode that pushes
+    #    the wear field toward 1.0 across most pixels and applies full
+    #    strength — this is the "hardest damage" tail that matches the
+    #    near-ghost lines seen in worn manuscripts.
     if random.random() < 0.60:
+        extreme_wear = random.random() < 0.18
         noise_h = max(6, h // 8)
         noise_w = max(16, w // 25)
         coarse = np.random.rand(noise_h, noise_w).astype(np.float32)
         wear_field = cv2.resize(coarse, (w, h), interpolation=cv2.INTER_CUBIC)
-        # Clip cubic-interpolation overshoot before the power (negatives ** 1.4 → NaN).
         wear_field = np.clip(wear_field, 0.0, 1.0)
-        # Power < 1 spreads the wear over more pixels (extreme cases worse).
-        wear_field = wear_field**1.4
-        global_strength = random.uniform(0.55, 0.98)
+        if extreme_wear:
+            # Power < 1 PUSHES values up toward 1: most pixels end up in
+            # the high-wear regime. Combined with global_strength near 1.0
+            # this fades ink-rich pixels nearly to parchment.
+            wear_field = wear_field**0.55
+            global_strength = random.uniform(0.92, 1.0)
+        else:
+            wear_field = wear_field**1.4
+            global_strength = random.uniform(0.55, 0.98)
         wear_fade = global_strength * wear_field * ink_mask
         wear_3d = wear_fade[..., None]
         img = img * (1.0 - wear_3d) + parchment_color * wear_3d
@@ -487,40 +497,70 @@ def apply_page_creases(image, **kwargs):
     crease_y_per_x = crease_y + wave_amp * np.sin(x_grid * wave_freq * 2 * np.pi + wave_phase)
     dist_from_crease = y_grid - crease_y_per_x
 
+    # With ~18% probability, switch to an EXTREME mode that widens the
+    # fade band to cover most of the line height, raises fade strength
+    # close to 1.0, and ups the abrasion-spot count/size/strength. This
+    # is the "centuries-old crease where this row of text is nearly gone"
+    # tail of the damage distribution.
+    extreme_crease = random.random() < 0.18
+
     # Base fade profile (Gaussian falloff from the crease).
-    fade_sigma = max(8.0, h * 0.10) * random.uniform(0.85, 1.15)
+    if extreme_crease:
+        # Sigma >= ~40% of line height covers essentially the whole line
+        # — most ink pixels feel the fade.
+        fade_sigma = max(8.0, h * 0.40) * random.uniform(0.90, 1.20)
+    else:
+        fade_sigma = max(8.0, h * 0.10) * random.uniform(0.85, 1.15)
     base_fade = np.exp(-(dist_from_crease**2) / (2 * fade_sigma**2))
 
     # Mechanical-wear noise: medium-frequency multiplicative texture so the
-    # fade isn't a smooth gradient. Modulates between 0.4× and 1.0×.
-    noise_h = max(8, h // 6)
-    noise_w = max(32, w // 20)
+    # fade isn't a smooth gradient. In EXTREME mode use a higher-frequency
+    # grid so the texture reads as parchment-fibre rubbing rather than a
+    # smooth wash. Modulates between 0.4× and 1.0×.
+    if extreme_crease:
+        noise_h = max(12, h // 3)
+        noise_w = max(64, w // 8)
+    else:
+        noise_h = max(8, h // 6)
+        noise_w = max(32, w // 20)
     coarse_noise = np.random.rand(noise_h, noise_w).astype(np.float32)
     wear_noise = cv2.resize(coarse_noise, (w, h), interpolation=cv2.INTER_CUBIC)
     wear_noise = 0.4 + 0.6 * wear_noise
 
     # Smooth fade mask (noise-modulated Gaussian).
-    fade_strength = random.uniform(0.60, 0.85)
+    if extreme_crease:
+        fade_strength = random.uniform(0.90, 1.0)
+    else:
+        fade_strength = random.uniform(0.60, 0.85)
     smooth_fade = base_fade * wear_noise * fade_strength
 
     # Abrasion spots — small Gaussian patches of heavy fading concentrated
     # near the crease line, creating the "letter fragments missing" effect.
     spot_mask = np.zeros((h, w), dtype=np.float32)
-    n_spots = random.randint(10, 25)
+    if extreme_crease:
+        n_spots = random.randint(30, 60)
+        spot_radius_range = (3.5, 8.0)
+        spot_strength_range = (0.80, 0.97)
+        spot_y_jitter = fade_sigma * 0.6
+    else:
+        n_spots = random.randint(10, 25)
+        spot_radius_range = (1.5, 4.5)
+        spot_strength_range = (0.55, 0.90)
+        spot_y_jitter = fade_sigma * 0.4
     crease_y_flat = crease_y_per_x[0]  # (w,)
     for _ in range(n_spots):
         spot_x = random.randint(0, w - 1)
-        # Spots stay tight around the crease (within ~0.4 σ of fade).
-        spot_y_target = crease_y_flat[spot_x] + random.uniform(-fade_sigma * 0.4, fade_sigma * 0.4)
-        spot_radius = random.uniform(1.5, 4.5)
-        spot_strength = random.uniform(0.55, 0.90)
+        spot_y_target = crease_y_flat[spot_x] + random.uniform(-spot_y_jitter, spot_y_jitter)
+        spot_radius = random.uniform(*spot_radius_range)
+        spot_strength = random.uniform(*spot_strength_range)
         dist_sq = (x_grid - spot_x) ** 2 + (y_grid - spot_y_target) ** 2
         spot = spot_strength * np.exp(-dist_sq / (2 * spot_radius**2))
         spot_mask = np.maximum(spot_mask, spot)
 
     # Combine smooth fade with abrasion spots; spots win where they're
     # stronger (so missing-fragment effect dominates locally).
-    combined_fade = np.clip(np.maximum(smooth_fade, spot_mask), 0, 0.92)
+    fade_cap = 0.97 if extreme_crease else 0.92
+    combined_fade = np.clip(np.maximum(smooth_fade, spot_mask), 0, fade_cap)
 
     # Asymmetric warp (paper fiber compression).
     warp_sigma = fade_sigma * 0.7
