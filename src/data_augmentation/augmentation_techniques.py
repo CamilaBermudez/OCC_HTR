@@ -612,12 +612,27 @@ def apply_page_creases(image, **kwargs):
         smudge_noise = np.random.rand(max(6, h // 4), max(16, w // 12)).astype(np.float32)
         smudge_field = cv2.resize(smudge_noise, (w, h), interpolation=cv2.INTER_CUBIC)
         smudge_field = np.clip(smudge_field, 0.0, 1.0)
+        # Restrict damage to 1–3 LOCALIZED zones along x. Real fold damage
+        # is concentrated in specific portions of a row; without this gate
+        # the smudge spreads across the whole line and reads as ink bleed
+        # rather than rubbed-fold damage.
+        n_zones = random.randint(1, 3)
+        zone_weight = np.zeros((1, w), dtype=np.float32)
+        zone_sigma = w * random.uniform(0.08, 0.16)
+        x_axis = np.arange(w, dtype=np.float32).reshape(1, -1)
+        for _ in range(n_zones):
+            zone_cx = random.uniform(w * 0.08, w * 0.92)
+            zone_weight = np.maximum(
+                zone_weight,
+                np.exp(-((x_axis - zone_cx) ** 2) / (2 * zone_sigma**2)),
+            )
         # Bias HARD by ink density (dilated) so patches reliably form
-        # ON the letters. No y_weight: it pulled patch mass off the text.
+        # ON the letters within the chosen zones.
         ink_dilated = cv2.dilate(ink_density_orig, np.ones((5, 5), dtype=np.uint8), iterations=2)
-        smudge_field = smudge_field * (0.05 + ink_dilated)
-        # Top ~40% of weighted area becomes a patch.
-        smudge_threshold = float(np.percentile(smudge_field, 60))
+        smudge_field = smudge_field * zone_weight * (0.05 + ink_dilated)
+        # Threshold relative to the in-zone mass: 80th percentile of
+        # weighted values keeps only the most-damaged patch interiors.
+        smudge_threshold = float(np.percentile(smudge_field, 80))
         smudge_mask = (smudge_field > smudge_threshold).astype(np.float32)
         soft_k = max(5, (min(h, w) // 30) | 1)
         smudge_mask = cv2.GaussianBlur(smudge_mask, (soft_k, soft_k), 0)
