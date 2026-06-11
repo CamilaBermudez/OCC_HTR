@@ -446,6 +446,62 @@ def apply_torn_edges(image, **kwargs):
     return img.clip(0, 255).astype(np.uint8)
 
 
+def apply_ink_bleed(image, **kwargs):
+    """Simulate ink spreading into the parchment fibres ("ink bleed").
+
+    Different phenomenon from the localized crease-damage smudge: ink
+    bleed applies UNIFORMLY across the whole line. Real iron-gall ink on
+    poorly-sized parchment (or parchment that has been re-wetted, e.g.
+    by humidity / water damage / verso bleed-through) diffuses outward
+    from each stroke, blurring letter edges and softly fading the ink.
+
+    Two visual ingredients:
+      1. Whole-image Gaussian blur (kernel ~h/10 to h/6) blended at
+         random strength 0.40–0.85 → letter edges go soft / fuzzy.
+      2. Mild ink-targeted fade (10–30 %) → spread-out ink reads
+         lighter than a sharp original stroke.
+
+    Designed to be a *separate* mode from the rubbed-fold smudge: text
+    stays mostly readable but visibly "wet" / spread, not erased.
+    """
+    h = image.shape[0]
+    img = image.astype(np.float32)
+
+    # Local parchment color (fade target).
+    flat = img.reshape(-1, 3)
+    bright = flat.mean(axis=1)
+    bright_pixels = flat[bright >= np.percentile(bright, 75)]
+    parchment_color = (
+        bright_pixels.mean(axis=0)
+        if len(bright_pixels) > 0
+        else np.array([218, 200, 170], dtype=np.float32)
+    )
+    parchment_brightness = float(parchment_color.mean()) / 255.0
+
+    # 1. Whole-image blur blended over original at strong intensity.
+    #    Kernel ~h/6 to h/3 so adjacent strokes merge into bled blobs;
+    #    blend close to 1.0 so the blurred copy dominates.
+    blur_choices = [
+        max(7, (h // 6) | 1),
+        max(7, (h // 5) | 1),
+        max(7, (h // 4) | 1),
+    ]
+    blur_k = random.choice(blur_choices)
+    img_blurred = cv2.GaussianBlur(img, (blur_k, blur_k), 0)
+    bleed_strength = random.uniform(0.75, 1.0)
+    img = img * (1.0 - bleed_strength) + img_blurred * bleed_strength
+
+    # 2. Moderate ink-targeted fade so the bled ink reads as diffused
+    #    rather than just blurred-but-dense.
+    gray = (img.mean(axis=2) / 255.0).astype(np.float32)
+    ink_density = np.clip((parchment_brightness - gray) / max(parchment_brightness, 0.01), 0.0, 1.0)
+    fade = ink_density * random.uniform(0.20, 0.45)
+    fade_3d = fade[..., None]
+    img = img * (1.0 - fade_3d) + parchment_color * fade_3d
+
+    return img.clip(0, 255).astype(np.uint8)
+
+
 def apply_page_creases(image, **kwargs):
     """Simulate a centuries-old parchment fold with realistic ink degradation.
 
@@ -736,11 +792,15 @@ def apply_augmentation_techniques(input_image, parchment_files, seed=None):
             #     foxing spots, micro-pitting around dense ink. Each
             #     sub-effect has its own internal probability.
             A.Lambda(image=apply_aged_parchment_effects, name="aged_parchment", p=0.7),
-            # 2b. Hard damage (heavy verso bleed + uneven tone + yellow tint).
+            # 2b. Whole-line ink bleed (ink diffused into parchment fibres,
+            #     letter edges fuzzed). Distinct phenomenon from rubbed-fold
+            #     damage — letters stay mostly readable but visibly "wet".
+            A.Lambda(image=apply_ink_bleed, name="ink_bleed", p=0.15),
+            # 2c. Hard damage (heavy verso bleed + uneven tone + yellow tint).
             #     Fires on a minority of samples so the HTR model sees a mix
             #     of clean and severely damaged folios.
             A.Lambda(image=apply_page_creases, name="page_creases", p=0.40),
-            # 2c. Torn / ragged edge on top, bottom, or both. Small fraction
+            # 2d. Torn / ragged edge on top, bottom, or both. Small fraction
             #     of samples so the model occasionally sees clipped-page
             #     conditions without being overwhelmed by them.
             A.Lambda(image=apply_torn_edges, name="torn_edges", p=0.15),
