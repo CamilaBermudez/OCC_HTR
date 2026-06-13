@@ -129,6 +129,7 @@ def get_parchment_crops(
     keep_page: int = 3,
     edge_threshold: float = 6.0,
     min_brightness: float = 100.0,
+    max_blue_fraction: float = 0.002,
     seed: int = 0,
     plot_: bool = False,
 ):
@@ -142,6 +143,14 @@ def get_parchment_crops(
     gutter, margins) have near-zero Canny edges and would otherwise
     slip through the edge-density filter, contaminating the parchment
     pool with solid black patches.
+
+    `max_blue_fraction` rejects crops whose share of saturated-blue
+    pixels (B − R > 30 AND B > 80) exceeds the threshold. Illuminated
+    initials and their marginal frames are painted with strong blue
+    pigment; a crop that catches even a corner of one will inject a
+    blue rectangle into every augmented sample that lands on it. Canny
+    barely sees these solid-colour regions, so they otherwise pass the
+    edge-density filter.
     """
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
@@ -169,6 +178,7 @@ def get_parchment_crops(
             continue
 
         candidates: list[tuple[float, np.ndarray]] = []
+        n_pixels = crop_size * crop_size
         for _ in range(candidates_page):
             y = random.randint(0, h - crop_size)
             x = random.randint(0, w - crop_size)
@@ -178,6 +188,16 @@ def get_parchment_crops(
             # scoring by Canny — uniformly dark regions have ~0 edge
             # density and would otherwise outrank real parchment.
             if float(gray.mean()) < min_brightness:
+                continue
+            # Reject illuminated-initial frames (saturated blue pigment).
+            # Canny is blind to large solid colour regions, so a blue patch
+            # would slip through the edge filter.
+            blue_pixels = int(
+                (
+                    (crop[..., 2].astype(int) - crop[..., 0].astype(int) > 30) & (crop[..., 2] > 80)
+                ).sum()
+            )
+            if blue_pixels / n_pixels > max_blue_fraction:
                 continue
             edges = cv2.Canny(gray, 50, 150)
             score = float(edges.mean())
@@ -241,11 +261,23 @@ def composite_on_parchment(image, parchment_files, **kwargs):
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY).astype(np.float32) / 255.0
     ink = np.clip((0.55 - gray) / 0.35, 0.0, 1.0)
 
+    # Low-frequency noise — word/letter-scale density variation (some
+    # words have more pigment than others, like a quill being refilled
+    # mid-line).
     nh, nw = max(8, h // 15), max(8, w // 15)
     coarse = np.random.rand(nh, nw).astype(np.float32)
     noise = cv2.resize(coarse, (w, h), interpolation=cv2.INTER_CUBIC)
     noise = np.clip(noise * 1.3 + 0.1, 0.4, 1.0)
-    ink = ink * noise
+    # High-frequency noise — within-stroke density variation that breaks
+    # the digital uniformity of the rendered glyph. Real quill strokes
+    # skip and pool: a single downstroke isn't a solid black bar.
+    fh, fw = max(16, h // 4), max(16, w // 4)
+    fine_coarse = np.random.rand(fh, fw).astype(np.float32)
+    fine_noise = cv2.resize(fine_coarse, (w, h), interpolation=cv2.INTER_CUBIC)
+    # Clip toward 1.0 so the noise mostly *lightens* parts of strokes
+    # (skipping quill) rather than darkening them further.
+    fine_noise = np.clip(fine_noise * 0.7 + 0.5, 0.55, 1.0)
+    ink = ink * noise * fine_noise
 
     bleed = np.zeros_like(ink)
     if random.random() < 0.6:
@@ -256,9 +288,31 @@ def composite_on_parchment(image, parchment_files, **kwargs):
     ink = ink[..., None]
     bleed = bleed[..., None]
 
-    ink_mult = np.array([0.27, 0.22, 0.17], dtype=np.float32)
+    # Iron-gall ink reads as a saturated red-brown, not jet black. Channel
+    # multipliers (R > G > B with a wide spread) push dense-ink pixels toward
+    # ~RGB(80, 50, 25) on a typical parchment crop — matches the warm sepia
+    # of the reference manuscripts rather than the near-black we had before.
+    ink_mult_brown = np.array([0.32, 0.22, 0.13], dtype=np.float32)
+    # Rubric red (cinnabar / minium): the second ink the scribes used for
+    # capitulum headers and section initials. Lower B than brown and higher
+    # R, so dense-ink pixels read as a saturated dark red on parchment.
+    ink_mult_red = np.array([0.55, 0.15, 0.10], dtype=np.float32)
+    # Per-pixel selector: only pixels with very strong red dominance get
+    # the red multiplier. Brown ink (60, 40, 20) and warm parchment have
+    # R > G > B by ~20, so a naive R - max(G,B) > 0 test would blend them
+    # toward red too — needs a hard offset to reject. Rubric red glyphs
+    # upstream are painted at RUBRIC_RED ≈ (140, 30, 25), giving R - max
+    # (G,B) ≈ 110 which trips this cleanly.
+    img_f = image.astype(np.float32)
+    red_score = np.clip(
+        (img_f[..., 0] - np.maximum(img_f[..., 1], img_f[..., 2]) - 40.0) / 50.0,
+        0.0,
+        1.0,
+    )[..., None]
+    ink_mult_per_pixel = (1.0 - red_score) * ink_mult_brown + red_score * ink_mult_red
+
     bleed_mult = np.array([0.88, 0.83, 0.72], dtype=np.float32)
-    out = bg_crop * (bleed_mult**bleed) * (ink_mult**ink)
+    out = bg_crop * (bleed_mult**bleed) * (ink_mult_per_pixel**ink)
     return out.clip(0, 255).astype(np.uint8)
 
 
@@ -447,65 +501,98 @@ def apply_torn_edges(image, **kwargs):
 
 
 def apply_ink_bleed(image, bleed_source_files=None, **kwargs):
-    """Simulate verso ink bleed-through: faint ghost text from the back
-    of the parchment showing through to the front.
+    """Simulate verso ink bleed-through: faint mirrored ghost text from
+    the back of the parchment showing through to the front.
 
     The recto (current line) stays SHARP and READABLE. The bleed appears
-    as faint blurred ghost text in the parchment background:
+    as faint blurred ghost text in the parchment background, including
+    in margins/gaps where there's no recto ink — exactly what you see on
+    a real folio with multiple rows of verso text bleeding through.
 
-      1. Pick a *different* rendered line from the source pool.
-      2. Convert to an ink-density mask (the verso text's strokes).
-      3. Optionally horizontally flip (verso reads mirrored on recto).
-      4. Randomly shift vertically — verso baselines don't align with
-         recto, so ghost letters often sit between or astride the
-         current line.
-      5. Heavily Gaussian-blur the mask — diffusion through parchment
-         fibres softens stroke edges.
-      6. Apply as a multiplicative DARKENING gated by a parchment-only
-         mask, so the current ink is left untouched (only the
-         background picks up the ghost).
+    Recipe:
+      1. Build a synthetic "verso page" by stacking 2-4 *different*
+         rendered lines from the source pool at random vertical
+         positions, each squashed to ~50-80% height so several rows fit
+         vertically. Without this stacking the ghost is a single thin
+         band; the reference photos show ghost text across the whole
+         crop height.
+      2. Mirror horizontally (verso reads mirrored on the recto).
+      3. Heavily Gaussian-blur the combined mask — diffusion through
+         parchment fibres softens stroke edges into a wash.
+      4. Gate by a parchment-only mask (gray>0.30) so existing recto
+         ink isn't muddied.
+      5. Multiplicative darkening plus a subtle warm-brown tint so the
+         ghost reads as oxidised iron-gall, not grey.
     """
     if not bleed_source_files:
         return image
     h, w = image.shape[:2]
     img = image.astype(np.float32)
 
-    bleed_path = random.choice(bleed_source_files)
-    bleed_raw = cv2.imread(str(bleed_path))
-    if bleed_raw is None:
+    # 1. Synthetic verso page — multiple ghost lines stacked vertically.
+    #    Each line gets a light pre-blur before placement so its own edges
+    #    don't survive as hard rectangles after the global blur (this was
+    #    the corner-block artifact in the previous iteration).
+    verso = np.zeros((h, w), dtype=np.float32)
+    n_lines = random.randint(2, 4)
+    placed = 0
+    pre_blur_k = max(3, (h // 18) | 1)
+    for _ in range(n_lines * 2):  # extra attempts in case some loads fail
+        if placed >= n_lines:
+            break
+        bleed_raw = cv2.imread(str(random.choice(bleed_source_files)))
+        if bleed_raw is None:
+            continue
+        bleed_gray = cv2.cvtColor(bleed_raw, cv2.COLOR_BGR2GRAY).astype(np.float32)
+        line_mask = np.clip((220.0 - bleed_gray) / 180.0, 0.0, 1.0)
+        line_h_scale = random.uniform(0.45, 0.80)
+        new_h = max(8, int(round(h * line_h_scale)))
+        line_resized = cv2.resize(line_mask, (w, new_h), interpolation=cv2.INTER_LINEAR)
+        line_resized = cv2.GaussianBlur(line_resized, (pre_blur_k, pre_blur_k), 0)
+        y_off = random.randint(-new_h // 2, h - new_h // 2)
+        y0, y1 = max(0, y_off), min(h, y_off + new_h)
+        src_y0 = max(0, -y_off)
+        src_y1 = src_y0 + (y1 - y0)
+        if y1 > y0 and src_y1 > src_y0:
+            verso[y0:y1, :] = np.maximum(verso[y0:y1, :], line_resized[src_y0:src_y1, :])
+            placed += 1
+    if placed == 0:
         return image
-    bleed_gray = cv2.cvtColor(bleed_raw, cv2.COLOR_BGR2GRAY).astype(np.float32)
 
-    # Ink-density mask of the bleed source. Threshold-style remap so
-    # antialiasing greys don't read as faint ghosts on their own.
-    bleed_mask = np.clip((220.0 - bleed_gray) / 180.0, 0.0, 1.0)
+    # 2. Mirror horizontally — verso reads mirrored on the recto.
+    if random.random() < 0.85:
+        verso = verso[:, ::-1].copy()
 
-    bleed_mask = cv2.resize(bleed_mask, (w, h), interpolation=cv2.INTER_LINEAR)
+    # 3. Heavy diffusion through parchment fibres. Big kernel so individual
+    #    letter forms blur into a wash and the ghost reads as a stain
+    #    rather than a sharp imprint.
+    blur_k = max(13, (h // 3) | 1)
+    verso = cv2.GaussianBlur(verso, (blur_k, blur_k), 0)
+    # Gentle renormalisation: re-scale only if the blur dropped the peak
+    # well below 1.0, but cap the scale so a single dense stroke can't
+    # blow out the whole field.
+    vmax = float(verso.max())
+    if vmax > 0.05:
+        verso = verso / max(vmax, 0.55)
+        verso = np.clip(verso, 0.0, 1.0)
 
-    if random.random() < 0.5:
-        bleed_mask = bleed_mask[:, ::-1].copy()
-    y_shift = random.randint(-h // 3, h // 3)
-    if y_shift != 0:
-        shifted = np.zeros_like(bleed_mask)
-        if y_shift > 0:
-            shifted[y_shift:, :] = bleed_mask[:-y_shift, :]
-        else:
-            shifted[:y_shift, :] = bleed_mask[-y_shift:, :]
-        bleed_mask = shifted
-
-    blur_k = max(7, (h // 4) | 1)
-    bleed_mask = cv2.GaussianBlur(bleed_mask, (blur_k, blur_k), 0)
-
-    # Protect existing ink: only darken parchment-side pixels.
+    # 4. Parchment-only gate — preserve sharp recto ink.
     gray_orig = (img.mean(axis=2) / 255.0).astype(np.float32)
-    parchment_mask = np.clip((gray_orig - 0.30) / 0.50, 0.0, 1.0)
+    parchment_gate = np.clip((gray_orig - 0.30) / 0.50, 0.0, 1.0)
+    ghost_factor = verso * parchment_gate
 
-    # Multiplicative darkening: 1.0 = no change, lower = darker ghost.
-    # Range tuned so the ghost is faint and readable as background.
-    darken_amt = random.uniform(0.60, 0.80)
-    ghost_factor = bleed_mask * parchment_mask
+    # 5. Multiplicative darkening + warm brown tint. Strength tuned so the
+    #    ghost is clearly visible across the whole crop but stays faint
+    #    enough that the recto remains the dominant signal.
+    darken_amt = random.uniform(0.55, 0.75)
     multiplier = 1.0 - (1.0 - darken_amt) * ghost_factor
     img = img * multiplier[..., None]
+
+    # Warm brown tint: iron-gall ink browns as it migrates through the
+    # parchment, so the ghost reads brown rather than grey.
+    tint = np.array([1.00, 0.94, 0.82], dtype=np.float32)
+    tint_mix = (ghost_factor * 0.5)[..., None]
+    img = img * (1.0 - tint_mix) + (img * tint) * tint_mix
 
     return img.clip(0, 255).astype(np.uint8)
 
@@ -735,15 +822,9 @@ def apply_page_creases(image, **kwargs):
     fade_3d = ink_targeted_fade[..., None]
     img = img * (1.0 - fade_3d) + parchment_color * fade_3d
 
-    # Visible fold groove: a narrow Gaussian darkening at the crease centre,
-    # separate from the wear. Skipped in extreme_crease mode — the smudge
-    # patches there already convey damage, and an additional dark hairline
-    # crossing the line reads as a digital cut rather than a real fold.
-    if not extreme_crease:
-        groove_sigma = random.uniform(0.6, 1.2)
-        groove_strength = random.uniform(0.12, 0.22)
-        groove_mask = groove_strength * np.exp(-(dist_from_crease**2) / (2 * groove_sigma**2))
-        img = img * (1.0 - groove_mask[..., None])
+    # (Fold-groove hairline removed: at line-crop scale a narrow Gaussian
+    #  darkening reads as a digital cut across the text — the band wear
+    #  and abrasion spots already convey the fold without it.)
 
     # Subtle warm-yellow discoloration concentrated at the crease, weighted
     # by the base fade so it's strongest at the centre and falls off outward.
@@ -792,10 +873,13 @@ def apply_augmentation_techniques(input_image, parchment_files, bleed_source_fil
 
     transform_real_bg = A.ReplayCompose(
         [
-            # 1. Ink degradation BEFORE composite. Bias toward erosion —
-            #    real quill strokes have hairline thins the rendered font lacks.
-            A.Morphological(scale=(1, 2), operation="dilation", p=0.5),
-            A.Morphological(scale=(1, 3), operation="erosion", p=0.7),
+            # 1. Ink degradation BEFORE composite. Strongly bias toward
+            #    erosion — the rendered Brokenscript font is uniformly thick,
+            #    while real quill strokes have hairline thins, especially
+            #    on upstrokes. Erosion brings the synthetic glyphs closer
+            #    to the delicate quill character of the reference scans.
+            A.Morphological(scale=(1, 2), operation="dilation", p=0.25),
+            A.Morphological(scale=(1, 3), operation="erosion", p=0.85),
             A.PixelDropout(dropout_prob=0.02, drop_value=255, p=0.5),
             # 2. Substrate swap with translucent ink + bleed-through (custom).
             A.Lambda(image=bound_composite, name="composite_on_parchment", p=1.0),

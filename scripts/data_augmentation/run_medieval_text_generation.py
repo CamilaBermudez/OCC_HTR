@@ -72,6 +72,28 @@ def main():
         help="Probability of substituting 'r' after a round letter (default: 0.70).",
     )
     parser.add_argument(
+        "--p-tironian-et",
+        type=float,
+        default=0.0,
+        help="Probability of inserting ⁊ after each sentence terminator (.?!). "
+        "Requires --et-stamp-dir; default: 0.0 (disabled).",
+    )
+    parser.add_argument(
+        "--et-stamp-dir",
+        required=False,
+        help="Directory of cropped ⁊ glyphs (PNG/JPG) from real manuscript "
+        "pages. Each crop should show one ⁊ on parchment; alpha is derived "
+        "from pixel darkness, so no transparency work is required.",
+    )
+    parser.add_argument(
+        "--c-stamp-dir",
+        required=False,
+        help="Directory of cropped illuminated 'C' initials from real "
+        "manuscript pages. When the literal word 'Capitol' appears, the "
+        "C is composited from this folder and the rest of the word is "
+        "rendered in rubric red. Pass an empty/non-existent path to disable.",
+    )
+    parser.add_argument(
         "--base-seed",
         type=int,
         default=42,
@@ -136,6 +158,9 @@ def main():
         p_long_s_begin=args.p_long_s_begin,
         p_long_s_middle=args.p_long_s_middle,
         p_rotunda_r=args.p_rotunda_r,
+        p_tironian_et=args.p_tironian_et,
+        et_stamp_dir=Path(args.et_stamp_dir) if args.et_stamp_dir else None,
+        c_stamp_dir=Path(args.c_stamp_dir) if args.c_stamp_dir else None,
         base_seed=args.base_seed,
         categories_filter=categories_filter,
         max_samples=args.max_samples,

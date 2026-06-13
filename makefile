@@ -54,10 +54,23 @@ FONT_RENDER_SIZE?=60
 P_LONG_S_BEGIN?=0.95
 P_LONG_S_MIDDLE?=0.80
 P_ROTUNDA_R?=0.70
+# Tironian-et (⁊) insertion at sentence ends. Requires ET_STAMP_DIR to
+# point at a directory of cropped ⁊ glyphs from real manuscript pages
+# (PNG/JPG, one glyph each, on parchment); set P_TIRONIAN_ET>0 to enable.
+P_TIRONIAN_ET?=0.30
+ET_STAMP_DIR?=./glyphs/et
+# Illuminated-'C' stamps for the "Capitol" rubric. When the literal word
+# "Capitol" appears in the input, the C is composited from this folder
+# and the rest of the word ("apitol") is rendered in rubric red.
+C_STAMP_DIR?=./glyphs/C_capitol
 PARCHMENT_PAGES_DIR=./data/raw/original_manuscript/reproduction14453_100
 PARCHMENT_CROPS_DIR=./data/processed/synthetic_samples/parchment_crops
 PARCHMENT_CROPS_PATH=./data/processed/synthetic_samples/parchment_crops/parchments_20260608_082718
 PARCHMENT_MIN_BRIGHTNESS?=100
+# Max fraction of saturated-blue pixels allowed in a parchment crop.
+# Filters out illuminated-initial frames (blue pigment) that Canny doesn't
+# catch. 0.002 = 0.2%; bump higher if you want to be more permissive.
+PARCHMENT_MAX_BLUE_FRACTION?=0.002
 AUGMENTED_IMAGES_DIR=./data/processed/synthetic_samples/augmented_images
 AUGMENTED_RUN_PATH=./data/processed/synthetic_samples/augmented_images/aug_20260609_170621
 CORRECTED_LABELS_DIR=./data/processed/synthetic_samples/img_labels
@@ -208,6 +221,9 @@ medieval_text_generation:
 			--p-long-s-begin $(P_LONG_S_BEGIN) \
 			--p-long-s-middle $(P_LONG_S_MIDDLE) \
 			--p-rotunda-r $(P_ROTUNDA_R) \
+			--p-tironian-et $(P_TIRONIAN_ET) \
+			--et-stamp-dir $(ET_STAMP_DIR) \
+			--c-stamp-dir $(C_STAMP_DIR) \
 			--base-seed $(BASE_SEED)
 
 
@@ -215,7 +231,8 @@ extract_parchment_crops:
 	$(PYTHON) scripts/data_augmentation/run_augmentation_techniques.py \
 			--input-folder $(PARCHMENT_PAGES_DIR) \
 			--output-folder $(PARCHMENT_CROPS_DIR) \
-			--min-brightness $(PARCHMENT_MIN_BRIGHTNESS)
+			--min-brightness $(PARCHMENT_MIN_BRIGHTNESS) \
+			--max-blue-fraction $(PARCHMENT_MAX_BLUE_FRACTION)
 
 
 # Full run (default — same as before)

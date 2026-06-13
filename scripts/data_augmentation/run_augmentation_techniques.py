@@ -70,6 +70,15 @@ def main():
         "that would otherwise pass the Canny filter. Default: 100.0.",
     )
     parser.add_argument(
+        "--max-blue-fraction",
+        required=False,
+        type=float,
+        default=0.002,
+        help="Reject crops whose share of saturated-blue pixels exceeds "
+        "this (0.0-1.0). Filters out illuminated-initial frames whose blue "
+        "pigment Canny doesn't see. Default: 0.002 (0.2%%).",
+    )
+    parser.add_argument(
         "--seed",
         required=False,
         type=int,
@@ -114,6 +123,7 @@ def main():
         keep_page=args.keep_per_page,
         edge_threshold=args.edge_threshold,
         min_brightness=args.min_brightness,
+        max_blue_fraction=args.max_blue_fraction,
         seed=args.seed,
         plot_=args.plot_parchments,
     )
