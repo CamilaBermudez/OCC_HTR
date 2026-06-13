@@ -61,12 +61,59 @@ ABBREV_MAP: dict[str, list[tuple[str, str, bool]]] = {
     ],
     "r": [("r_tilde", "r̃", False)],
 }
+# Per-folder height multiplier applied on top of `font_size` when loading
+# abbreviation stamps. Defaults to 1.0 (the original target). Override
+# for folders whose source crops put the tilde unusually close to the
+# base letter — in those crops the trimmed bbox is mostly base-letter,
+# so resizing to the same target height makes the base letter visibly
+# taller than the surrounding x-height. e_tilde and o_tilde have h/w
+# bbox ratios around 1.35 (vs ~1.05 for n_tilde / m_tilde), which is
+# exactly that situation; 0.85x brings them back in line.
+ABBREV_HEIGHT_SCALE: dict[str, float] = {
+    "e_tilde": 0.55,
+    "o_tilde": 0.55,
+    "m_tilde": 0.55,
+    "r_tilde": 0.55,
+}
 # Lemma + colour for the capitulum rubric. When the literal word
 # "Capitol" appears mid-text, the C is composited from a real-manuscript
 # stamp (illuminated initial) and the rest of the word ("apitol") is
 # rendered in rubric red. The label string keeps the plain "Capitol".
 CAPITOL_WORD = "Capitol"
 RUBRIC_RED: tuple[int, int, int] = (140, 30, 25)
+
+# Pattern-substring stamps: scribal-abbreviation ligatures and special
+# letters that cover multiple base characters (syllables) or whole-word
+# matches. Each entry: (regex, stamp_folder, probability, has_descender).
+# When a pattern matches in the rendered text the substring is replaced
+# IN THE IMAGE by a stamp from the folder, with the given probability.
+# The label keeps the matched substring as-is so the model learns the
+# mapping from the visual stamp to the original characters.
+#
+# Sorted longest-first so multi-char patterns win over their substrings
+# (e.g. "cum" beats "um", "an" beats "n" — though "n" isn't in this
+# table; it's handled by ABBREV_MAP which uses a separate code path).
+PATTERN_STAMPS_CFG: list[tuple[str, str, float, bool]] = [
+    (r"cum", "cum", 0.80, False),
+    (r"\bo\b", "O_", 1.00, False),  # standalone "o" (space-o-space)
+    (r"am", "am", 0.80, False),
+    (r"an", "an", 0.80, False),
+    (r"au", "au", 0.80, False),
+    (r"em", "em", 0.80, False),
+    (r"ma", "ma", 0.80, False),
+    (r"me", "me", 0.80, False),
+    (r"mi", "mi", 0.80, False),
+    (r"mu", "mu", 0.80, False),
+    (r"nu", "nu", 0.80, False),
+    (r"um", "um", 0.80, False),
+    (r"un", "un", 0.80, False),
+    (r"x", "x", 1.00, False),
+]
+
+# Purely-decorative line-end glyph. When p_end_decor fires, a stamp from
+# this folder is composited at the very end of the rendered line. The
+# label is NOT modified — this is a visual mark only.
+END_DECOR_FOLDER = "end_decor"
 
 
 def setup_medieval_text_logging(logs_dir: str | Path, run_name: str):
@@ -114,6 +161,7 @@ def apply_medieval_substitutions(
     p_tironian_et: float = 0.0,
     p_abbreviation: float = 0.0,
     max_abbreviation_per_line: int = 3,
+    max_abbreviation_per_word: int = 1,
     round_letters: set[str] = ROUND_LETTERS,
     rng: random.Random | None = None,
 ) -> str:
@@ -131,6 +179,12 @@ def apply_medieval_substitutions(
             continue
         chars = list(tok)
         n = len(chars)
+        # Per-word cap. Even at the line level we'd often see two
+        # abbreviations land in the same word (e.g. "autr̃ẽiat" — both r̃
+        # and ẽ firing), which crowds the glyphs visually and is not how
+        # the reference manuscript distributes them. Resetting this
+        # counter per token keeps a clean one-mark-per-word density.
+        abbrev_in_word = 0
         for i, ch in enumerate(chars):
             if ch == "s" and i < n - 1:
                 p = p_long_s_begin if i == 0 else p_long_s_middle
@@ -148,12 +202,14 @@ def apply_medieval_substitutions(
                 p_abbreviation > 0.0
                 and ch in ABBREV_MAP
                 and abbrev_count < max_abbreviation_per_line
+                and abbrev_in_word < max_abbreviation_per_word
             ):
                 if rng.random() < p_abbreviation:
                     # Pick a variant; only the label matters for the
                     # string. The stamp folder is consumed at render time.
                     chars[i] = rng.choice(ABBREV_MAP[ch])[1]
                     abbrev_count += 1
+                    abbrev_in_word += 1
         out_parts.append("".join(chars))
     result = "".join(out_parts)
     if p_tironian_et > 0.0:
@@ -185,6 +241,7 @@ def load_glyph_stamps(
     alpha_floor_gray: int = 210,
     alpha_full_gray: int = 80,
     trim_whitespace: bool = False,
+    source_alpha_threshold: int = 200,
 ) -> list[Image.Image]:
     """Load all `*.png` / `*.jpg` crops from `stamp_dir`, derive a soft alpha
     from pixel darkness, recolour the ink to ``fg``, and resize so each
@@ -220,12 +277,38 @@ def load_glyph_stamps(
     fg_rgb = np.array(fg, dtype=np.float32)
     for p in paths:
         try:
-            raw = Image.open(p).convert("RGB")
+            raw = Image.open(p).convert("RGBA")
         except Exception:
             continue
-        arr = np.asarray(raw, dtype=np.float32)
+        arr_rgba = np.asarray(raw, dtype=np.float32)
+        arr = arr_rgba[..., :3]
         gray = arr.mean(axis=2)
-        alpha = np.clip((alpha_floor_gray - gray) / span, 0.0, 1.0)
+        # Darkness-derived alpha: parchment greys → transparent, dark ink
+        # → opaque. Works for the older rectangular crops where the whole
+        # PNG is opaque against a light parchment background.
+        darkness_alpha = np.clip((alpha_floor_gray - gray) / span, 0.0, 1.0)
+        # Source alpha (from a non-rectangular crop or an editor that
+        # already exported transparency). Where the user explicitly cut
+        # away background, this is 0 — wins over darkness keying, so
+        # transparent borders aren't accidentally darkened back in by
+        # the recolour step.
+        #
+        # A non-rectangular crop done in an image editor produces an
+        # effectively binary mask (alpha=255 inside, 0 outside) with a
+        # 1–2 pixel anti-aliased band at the cut edge. Those boundary
+        # pixels carry mid-range alpha *and* mid-range grey, so the
+        # darkness keying treats them as faint ink — recoloured to dark
+        # brown, they show up as a halo around the glyph. Snapping any
+        # source alpha below `source_alpha_threshold` to 0 hardens the
+        # cut edge. Fully-opaque inputs (alpha=255 everywhere) are
+        # unaffected: they still fall through to pure darkness keying.
+        source_alpha_raw = arr_rgba[..., 3]
+        source_alpha = np.where(
+            source_alpha_raw >= source_alpha_threshold,
+            source_alpha_raw / 255.0,
+            0.0,
+        )
+        alpha = np.minimum(darkness_alpha, source_alpha)
         if trim_whitespace:
             # Crop to the bounding box of the ink area so the resized stamp
             # fills target_height with ink rather than border whitespace.
@@ -265,6 +348,9 @@ def _tokenize_for_render(
     e_stamps: list[Image.Image] | None,
     abbrev_stamps: dict[str, list[Image.Image]] | None,
     abbrev_descenders: set[str] | None,
+    pattern_stamps: list[tuple[str, list[Image.Image], float, bool]] | None,
+    end_decor_stamps: list[Image.Image] | None,
+    p_end_decor: float,
     fg: tuple[int, int, int],
     fg_red: tuple[int, int, int],
     rng: random.Random,
@@ -305,6 +391,21 @@ def _tokenize_for_render(
         # Longest first so multi-char sequences win over partial matches.
         for label in sorted(abbrev_stamps.keys(), key=len, reverse=True):
             parts.append(re.escape(label))
+    # Pattern stamps (syllable ligatures, standalone-o, x). The regex
+    # engine scans left-to-right and picks the FIRST alternative that
+    # matches at each starting position — so a pattern like "am" at
+    # position 0 of "am̃i" would greedily consume "a"+"m" before the
+    # engine ever gets to position 1, where the m̃ abbreviation lives,
+    # leaving the combining tilde (U+0303) orphaned and rendered as a
+    # missing-glyph box. The negative lookahead below prevents pattern
+    # stamps from matching when their final character is followed by a
+    # combining diacritic, so abbreviation labels always win in that
+    # case. The lookahead is appended in code (not baked into
+    # PATTERN_STAMPS_CFG) so the config stays readable.
+    NO_COMBINING_NEXT = r"(?![̀-ͯ])"
+    if pattern_stamps:
+        for ps in pattern_stamps:
+            parts.append(ps[0] + NO_COMBINING_NEXT)
     pattern = re.compile("|".join(parts))
 
     pos = 0
@@ -348,11 +449,40 @@ def _tokenize_for_render(
             else:
                 tokens.append(("text", match, fg, 0, 0))
         else:
-            # Defensive: shouldn't happen, but fall back to plain text.
-            tokens.append(("text", match, fg, 0, 0))
+            # Try pattern stamps. Iterate by regex (in declaration order
+            # so longer entries listed first in PATTERN_STAMPS_CFG win)
+            # and use the first one whose full regex matches the match.
+            handled = False
+            if pattern_stamps:
+                for ps in pattern_stamps:
+                    pat_regex, ps_stamps, ps_prob, ps_has_desc = ps
+                    if re.fullmatch(pat_regex, match):
+                        if rng.random() < ps_prob:
+                            align = "baseline-descender" if ps_has_desc else "baseline"
+                            tokens.append(("stamp", rng.choice(ps_stamps), 0, 0, align))
+                        else:
+                            # Probability didn't fire: render as plain text.
+                            tokens.append(("text", match, fg, 0, 0))
+                        handled = True
+                        break
+            if not handled:
+                # Defensive: shouldn't reach here. Fall back to plain text.
+                tokens.append(("text", match, fg, 0, 0))
         pos = m.end()
     if pos < len(text):
         tokens.append(("text", text[pos:], fg, 0, 0))
+
+    # End-of-line decoration: a purely-visual stamp pasted at the very
+    # end of the rendered line with probability p_end_decor. The label
+    # is NOT modified — the model is expected to learn to ignore this
+    # mark since it has no corresponding character in the transcription.
+    # Skip when the line already ends with ⁊ (Tironian et): the et mark
+    # IS itself a line terminator in this manuscript, so doubling it up
+    # with another end-of-line decoration looks redundant.
+    line_ends_with_et = text.rstrip().endswith(TIRONIAN_ET)
+    if end_decor_stamps and not line_ends_with_et and rng.random() < p_end_decor:
+        tokens.append(("stamp", rng.choice(end_decor_stamps), 1, 0))
+
     return tokens
 
 
@@ -368,6 +498,9 @@ def render_text_to_image(
     e_stamps: list[Image.Image] | None = None,
     abbrev_stamps: dict[str, list[Image.Image]] | None = None,
     abbrev_descenders: set[str] | None = None,
+    pattern_stamps: list[tuple[str, list[Image.Image], float, bool]] | None = None,
+    end_decor_stamps: list[Image.Image] | None = None,
+    p_end_decor: float = 0.0,
     p_capital_e: float = 0.0,
     fg_red: tuple[int, int, int] = RUBRIC_RED,
     rng: random.Random | None = None,
@@ -397,6 +530,9 @@ def render_text_to_image(
         e_stamps,
         abbrev_stamps,
         abbrev_descenders,
+        pattern_stamps,
+        end_decor_stamps,
+        p_end_decor,
         fg,
         fg_red,
         rng,
@@ -543,6 +679,9 @@ def generate_medieval_text_dataset(
     p_abbreviation: float = 0.0,
     abbrev_base_dir: str | Path | None = None,
     max_abbreviation_per_line: int = 3,
+    max_abbreviation_per_word: int = 1,
+    enable_pattern_stamps: bool = False,
+    p_end_decor: float = 0.0,
     base_seed: int = 42,
     categories_filter: set[str] | None = None,
     max_samples: int | None = None,
@@ -592,6 +731,9 @@ def generate_medieval_text_dataset(
         "p_abbreviation": p_abbreviation,
         "abbrev_base_dir": str(abbrev_base_dir) if abbrev_base_dir else None,
         "max_abbreviation_per_line": max_abbreviation_per_line,
+        "max_abbreviation_per_word": max_abbreviation_per_word,
+        "enable_pattern_stamps": enable_pattern_stamps,
+        "p_end_decor": p_end_decor,
         "base_seed": base_seed,
         "categories_filter": sorted(categories_filter) if categories_filter else None,
         "max_samples": max_samples,
@@ -670,13 +812,16 @@ def generate_medieval_text_dataset(
                 stamp_dir = abbrev_base / folder
                 if has_descender:
                     abbrev_descenders.add(label)
-                # 1.0× font height after a tight whitespace trim. Renderer
-                # handles descender letters (p, q) by shifting them down
-                # by font descent so the base letter actually sits on the
-                # baseline rather than floating above it.
+                # 1.0× font height after a tight whitespace trim (default),
+                # with per-folder overrides in ABBREV_HEIGHT_SCALE for crops
+                # where the diacritic-to-letter spacing inflates the base
+                # letter (e_tilde, o_tilde). Renderer handles descender
+                # letters (p, q) separately by shifting them down by font
+                # descent so the base letter sits on the baseline.
+                scale = ABBREV_HEIGHT_SCALE.get(folder, 1.0)
                 stamps = load_glyph_stamps(
                     stamp_dir,
-                    target_height=int(font_size * 1.0),
+                    target_height=int(font_size * scale),
                     trim_whitespace=True,
                 )
                 if stamps:
@@ -687,6 +832,49 @@ def generate_medieval_text_dataset(
                         f"no stamps in {stamp_dir}, skipping"
                     )
     effective_p_abbrev = p_abbreviation if abbrev_stamps else 0.0
+
+    # Pattern stamps (syllable ligatures + standalone-o + x). Loaded from
+    # PATTERN_STAMPS_CFG. 0.6× font height (vs 1.0× for single-letter
+    # abbreviations) because these are pure-body ligatures: the crops
+    # contain x-height letters with at most a small flourish above, no
+    # full ascender/descender like p̃ / q̃ have. At 1.0× the stamp body
+    # was ~1.7× the surrounding 'n' x-height and visually dominated the
+    # line; 0.6× brings the base letters in line with body text while
+    # still leaving room for the diacritic flourish above x-height.
+    pattern_stamps: list[tuple[str, list[Image.Image], float, bool]] = []
+    if enable_pattern_stamps and abbrev_base_dir:
+        abbrev_base = Path(abbrev_base_dir)
+        for pat_regex, folder, prob, has_desc in PATTERN_STAMPS_CFG:
+            stamps = load_glyph_stamps(
+                abbrev_base / folder,
+                target_height=int(font_size * 0.6),
+                trim_whitespace=True,
+            )
+            if stamps:
+                pattern_stamps.append((pat_regex, stamps, prob, has_desc))
+            else:
+                logger.warning(
+                    f"pattern stamp /{pat_regex}/ ({folder}): "
+                    f"no stamps in {abbrev_base / folder}, skipping"
+                )
+
+    # End-of-line decoration: optional purely-visual mark with no label
+    # contribution. Slightly taller than body text — these decorations
+    # often extend a bit above x-height in the manuscript.
+    end_decor_stamps: list[Image.Image] = []
+    if p_end_decor > 0.0 and abbrev_base_dir:
+        end_decor_stamps = load_glyph_stamps(
+            Path(abbrev_base_dir) / END_DECOR_FOLDER,
+            target_height=int(font_size * 1.10),
+            trim_whitespace=True,
+        )
+        if not end_decor_stamps:
+            logger.warning(
+                f"p_end_decor={p_end_decor} but no stamps in "
+                f"{Path(abbrev_base_dir) / END_DECOR_FOLDER}; "
+                "end-of-line decoration disabled."
+            )
+    effective_p_end_decor = p_end_decor if end_decor_stamps else 0.0
 
     labels: dict[str, dict] = {}
     rendered = 0
@@ -713,6 +901,7 @@ def generate_medieval_text_dataset(
             p_tironian_et=effective_p_et,
             p_abbreviation=effective_p_abbrev,
             max_abbreviation_per_line=max_abbreviation_per_line,
+            max_abbreviation_per_word=max_abbreviation_per_word,
             rng=rng,
         )
 
@@ -726,6 +915,9 @@ def generate_medieval_text_dataset(
                 e_stamps=e_stamps or None,
                 abbrev_stamps=abbrev_stamps or None,
                 abbrev_descenders=abbrev_descenders or None,
+                pattern_stamps=pattern_stamps or None,
+                end_decor_stamps=end_decor_stamps or None,
+                p_end_decor=effective_p_end_decor,
                 p_capital_e=effective_p_e,
                 rng=rng,
             )

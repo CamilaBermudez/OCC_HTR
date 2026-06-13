@@ -132,6 +132,33 @@ def main():
         "modest --p-abbreviation. Default: 3.",
     )
     parser.add_argument(
+        "--max-abbreviation-per-word",
+        type=int,
+        default=1,
+        help="Hard cap on abbreviation substitutions per WORD. Two stamps "
+        "landing in the same word (e.g. 'autr̃ẽiat' with both r̃ and ẽ) "
+        "looks crowded and unlike the reference manuscript. Default: 1.",
+    )
+    parser.add_argument(
+        "--enable-pattern-stamps",
+        action="store_true",
+        help="Enable syllable / ligature pattern stamps (am, an, au, cum, "
+        "em, ma, me, mi, mu, nu, um, un, x, standalone-o). Each pattern "
+        "has its own probability (~80%%, with x and standalone-o at "
+        "100%%) defined in PATTERN_STAMPS_CFG. Stamps are loaded from "
+        "subfolders of --abbrev-base-dir matching the folder name in "
+        "the config.",
+    )
+    parser.add_argument(
+        "--p-end-decor",
+        type=float,
+        default=0.0,
+        help="Probability of pasting a purely-decorative end-of-line "
+        "stamp from <abbrev-base-dir>/end_decor/. The label is NOT "
+        "modified — the model must learn to ignore the mark. Default: "
+        "0.0 (disabled).",
+    )
+    parser.add_argument(
         "--base-seed",
         type=int,
         default=42,
@@ -204,6 +231,9 @@ def main():
         p_abbreviation=args.p_abbreviation,
         abbrev_base_dir=Path(args.abbrev_base_dir) if args.abbrev_base_dir else None,
         max_abbreviation_per_line=args.max_abbreviation_per_line,
+        max_abbreviation_per_word=args.max_abbreviation_per_word,
+        enable_pattern_stamps=args.enable_pattern_stamps,
+        p_end_decor=args.p_end_decor,
         base_seed=args.base_seed,
         categories_filter=categories_filter,
         max_samples=args.max_samples,

@@ -44,40 +44,27 @@ DICT_EVAL_OUTPUT_DIR=./data/processed/dictionary_eval
 #========= synthetic data augmentation ========
 COMETA_CORPUS_DIR=./data/raw/COMETA_medieval_corpus
 CATEGORIZED_SAMPLES_DIR=./data/processed/synthetic_seeds
-CATEGORIZED_SAMPLES_JSON=./data/processed/synthetic_seeds/categorize_20260607_171608/cometa_categorized.json
+CATEGORIZED_SAMPLES_JSON=./data/processed/synthetic_seeds/categorize_20260613_214958/cometa_categorized.json
 WORD_PATTERNS?=am,ma
 SUBSTRING_PATTERNS?=
 MEDIEVAL_TEXT_DIR=./data/processed/synthetic_text
-MEDIEVAL_TEXT_RUN_PATH=./data/processed/synthetic_text/medieval_text_20260607_224326
+MEDIEVAL_TEXT_RUN_PATH=./data/processed/synthetic_text/medieval_text_20260613_210228
 RENDERING_FONT_PATH=./fonts/merged_font_code_cmpl2.ttf
 FONT_RENDER_SIZE?=60
 P_LONG_S_BEGIN?=0.95
 P_LONG_S_MIDDLE?=0.80
 P_ROTUNDA_R?=0.70
-# Tironian-et (⁊) insertion at sentence ends. Requires ET_STAMP_DIR to
-# point at a directory of cropped ⁊ glyphs from real manuscript pages
-# (PNG/JPG, one glyph each, on parchment); set P_TIRONIAN_ET>0 to enable.
 P_TIRONIAN_ET?=0.30
 ET_STAMP_DIR?=./glyphs/et
-# Illuminated-'C' stamps for the "Capitol" rubric. When the literal word
-# "Capitol" appears in the input, the C is composited from this folder
-# and the rest of the word ("apitol") is rendered in rubric red.
 C_STAMP_DIR?=./glyphs/C_capitol
-# Illuminated 'E' stamps for sentence-starting E-words. Fires when a word
-# begins with E or e (multi-letter, so the standalone conjunction "e" is
-# excluded); the rest of the word is rendered in rubric red. Probability
-# gates the swap so most E-words still render as plain font glyphs.
 P_CAPITAL_E?=0.40
 E_STAMP_DIR?=./glyphs/E_capitol
-# Scribal-abbreviation stamps: per-character probability of swapping a
-# base letter (a/e/l/m/n/o/p/q/r) for a stamp from the matching subfolder
-# under ABBREV_BASE_DIR (e_tilde/, q_tilde/, etc.). The folder→label
-# mapping is hard-coded in ABBREV_MAP inside the source module.
-# MAX_ABBREVIATION_PER_LINE caps the total stamps per line so long
-# sentences don't accumulate too many at the per-character rate.
 P_ABBREVIATION?=0.10
 ABBREV_BASE_DIR?=./glyphs
 MAX_ABBREVIATION_PER_LINE?=3
+ENABLE_PATTERN_STAMPS?=1
+# End-of-line decoration: purely visual, no label contribution.
+P_END_DECOR?=0.3
 PARCHMENT_PAGES_DIR=./data/raw/original_manuscript/reproduction14453_100
 PARCHMENT_CROPS_DIR=./data/processed/synthetic_samples/parchment_crops
 PARCHMENT_CROPS_PATH=./data/processed/synthetic_samples/parchment_crops/parchments_20260608_082718
@@ -244,6 +231,8 @@ medieval_text_generation:
 			--p-abbreviation $(P_ABBREVIATION) \
 			--abbrev-base-dir $(ABBREV_BASE_DIR) \
 			--max-abbreviation-per-line $(MAX_ABBREVIATION_PER_LINE) \
+			$(if $(ENABLE_PATTERN_STAMPS),--enable-pattern-stamps) \
+			--p-end-decor $(P_END_DECOR) \
 			--base-seed $(BASE_SEED)
 
 
