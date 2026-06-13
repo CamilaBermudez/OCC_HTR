@@ -63,6 +63,21 @@ ET_STAMP_DIR?=./glyphs/et
 # "Capitol" appears in the input, the C is composited from this folder
 # and the rest of the word ("apitol") is rendered in rubric red.
 C_STAMP_DIR?=./glyphs/C_capitol
+# Illuminated 'E' stamps for sentence-starting E-words. Fires when a word
+# begins with E or e (multi-letter, so the standalone conjunction "e" is
+# excluded); the rest of the word is rendered in rubric red. Probability
+# gates the swap so most E-words still render as plain font glyphs.
+P_CAPITAL_E?=0.40
+E_STAMP_DIR?=./glyphs/E_capitol
+# Scribal-abbreviation stamps: per-character probability of swapping a
+# base letter (a/e/l/m/n/o/p/q/r) for a stamp from the matching subfolder
+# under ABBREV_BASE_DIR (e_tilde/, q_tilde/, etc.). The folder→label
+# mapping is hard-coded in ABBREV_MAP inside the source module.
+# MAX_ABBREVIATION_PER_LINE caps the total stamps per line so long
+# sentences don't accumulate too many at the per-character rate.
+P_ABBREVIATION?=0.10
+ABBREV_BASE_DIR?=./glyphs
+MAX_ABBREVIATION_PER_LINE?=3
 PARCHMENT_PAGES_DIR=./data/raw/original_manuscript/reproduction14453_100
 PARCHMENT_CROPS_DIR=./data/processed/synthetic_samples/parchment_crops
 PARCHMENT_CROPS_PATH=./data/processed/synthetic_samples/parchment_crops/parchments_20260608_082718
@@ -224,6 +239,11 @@ medieval_text_generation:
 			--p-tironian-et $(P_TIRONIAN_ET) \
 			--et-stamp-dir $(ET_STAMP_DIR) \
 			--c-stamp-dir $(C_STAMP_DIR) \
+			--p-capital-e $(P_CAPITAL_E) \
+			--e-stamp-dir $(E_STAMP_DIR) \
+			--p-abbreviation $(P_ABBREVIATION) \
+			--abbrev-base-dir $(ABBREV_BASE_DIR) \
+			--max-abbreviation-per-line $(MAX_ABBREVIATION_PER_LINE) \
 			--base-seed $(BASE_SEED)
 
 

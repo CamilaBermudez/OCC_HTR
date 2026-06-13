@@ -94,6 +94,44 @@ def main():
         "rendered in rubric red. Pass an empty/non-existent path to disable.",
     )
     parser.add_argument(
+        "--p-capital-e",
+        type=float,
+        default=0.0,
+        help="Probability of swapping a word-initial E/e for an illuminated "
+        "E stamp (with the rest of the word rendered in rubric red). "
+        "Requires --e-stamp-dir; default: 0.0 (disabled).",
+    )
+    parser.add_argument(
+        "--e-stamp-dir",
+        required=False,
+        help="Directory of cropped illuminated 'E' initials. Used with "
+        "--p-capital-e to render some sentence-starting E-words in the "
+        "rubric style.",
+    )
+    parser.add_argument(
+        "--p-abbreviation",
+        type=float,
+        default=0.0,
+        help="Per-character probability of swapping a base letter "
+        "(a/e/l/m/n/o/p/q/r) for a scribal-abbreviation stamp (ñ, q̃, "
+        "õ, …). Requires --abbrev-base-dir; default: 0.0 (disabled).",
+    )
+    parser.add_argument(
+        "--abbrev-base-dir",
+        required=False,
+        help="Root directory containing subfolders of abbreviation stamps "
+        "(e_tilde/, n_tilde/, q_tilde/, etc.). The mapping from folder "
+        "name to label is hard-coded in ABBREV_MAP.",
+    )
+    parser.add_argument(
+        "--max-abbreviation-per-line",
+        type=int,
+        default=3,
+        help="Hard cap on abbreviation substitutions per input line. "
+        "Without this a long sentence ends up with 5-8 stamps even at "
+        "modest --p-abbreviation. Default: 3.",
+    )
+    parser.add_argument(
         "--base-seed",
         type=int,
         default=42,
@@ -161,6 +199,11 @@ def main():
         p_tironian_et=args.p_tironian_et,
         et_stamp_dir=Path(args.et_stamp_dir) if args.et_stamp_dir else None,
         c_stamp_dir=Path(args.c_stamp_dir) if args.c_stamp_dir else None,
+        p_capital_e=args.p_capital_e,
+        e_stamp_dir=Path(args.e_stamp_dir) if args.e_stamp_dir else None,
+        p_abbreviation=args.p_abbreviation,
+        abbrev_base_dir=Path(args.abbrev_base_dir) if args.abbrev_base_dir else None,
+        max_abbreviation_per_line=args.max_abbreviation_per_line,
         base_seed=args.base_seed,
         categories_filter=categories_filter,
         max_samples=args.max_samples,

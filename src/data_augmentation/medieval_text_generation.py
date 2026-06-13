@@ -32,6 +32,27 @@ ROUND_LETTERS: set[str] = set("bdhopvwy")
 LONG_S = "ſ"  # U+017F
 ROTUNDA_R = "ꝛ"  # U+A75B
 TIRONIAN_ET = "⁊"  # U+204A
+# Scribal abbreviation marks. Each entry maps a lowercase trigger letter
+# to one or more (stamp_folder, label) variants. When a trigger letter
+# fires (probability p_abbreviation), one variant is chosen at random:
+# its `label` string replaces the trigger char in the medieval_text, and
+# its `stamp_folder` is composited at that position during rendering.
+#
+# Why stamps and not combining-mark fonts? Most of these glyphs use
+# combining diacritics (U+0303, U+0363, U+0365, etc.) that the current
+# fonts in fonts/ don't carry — they render as missing-glyph boxes.
+# Using real-manuscript crops lets the visual match the scribe's hand
+# exactly.
+ABBREV_MAP: dict[str, list[tuple[str, str]]] = {
+    "e": [("e_tilde", "ẽ")],
+    "l": [("l_tilde", "l'")],
+    "m": [("m_tilde", "m̃")],
+    "n": [("n_tilde", "ñ")],
+    "o": [("o_tilde", "õ")],
+    "p": [("p_tilde", "p̃")],
+    "q": [("q_circle", "q°"), ("q_i", "qͥ"), ("q_tilde", "q̃")],
+    "r": [("r_tilde", "r̃")],
+}
 # Lemma + colour for the capitulum rubric. When the literal word
 # "Capitol" appears mid-text, the C is composited from a real-manuscript
 # stamp (illuminated initial) and the rest of the word ("apitol") is
@@ -83,11 +104,18 @@ def apply_medieval_substitutions(
     p_long_s_middle: float = 0.80,
     p_rotunda_r: float = 0.70,
     p_tironian_et: float = 0.0,
+    p_abbreviation: float = 0.0,
+    max_abbreviation_per_line: int = 3,
     round_letters: set[str] = ROUND_LETTERS,
     rng: random.Random | None = None,
 ) -> str:
     rng = rng if rng is not None else random.Random()
     out_parts: list[str] = []
+    # Cap the total number of scribal-abbreviation substitutions per line.
+    # Without this, a long line with many trigger letters (e/n/m/o/q/r…)
+    # ends up with 5–8 abbreviations even at modest per-char probability,
+    # which crowds the result well past real-manuscript density.
+    abbrev_count = 0
     # Split keeping whitespace separators so we can identify word boundaries.
     for tok in re.split(r"(\s+)", text):
         if not tok or tok.isspace():
@@ -100,9 +128,24 @@ def apply_medieval_substitutions(
                 p = p_long_s_begin if i == 0 else p_long_s_middle
                 if rng.random() < p:
                     chars[i] = LONG_S
-            elif ch == "r" and i > 0 and chars[i - 1].lower() in round_letters:
+                    continue
+            if ch == "r" and i > 0 and chars[i - 1].lower() in round_letters:
+                # Rotunda-r wins precedence for round-letter+r; if it
+                # doesn't fire the r stays plain (no abbreviation fallback,
+                # because rͣ in that position would be visually odd).
                 if rng.random() < p_rotunda_r:
                     chars[i] = ROTUNDA_R
+                    continue
+            if (
+                p_abbreviation > 0.0
+                and ch in ABBREV_MAP
+                and abbrev_count < max_abbreviation_per_line
+            ):
+                if rng.random() < p_abbreviation:
+                    # Pick a variant; only the label matters for the
+                    # string. The stamp folder is consumed at render time.
+                    chars[i] = rng.choice(ABBREV_MAP[ch])[1]
+                    abbrev_count += 1
         out_parts.append("".join(chars))
     result = "".join(out_parts)
     if p_tironian_et > 0.0:
@@ -133,6 +176,7 @@ def load_glyph_stamps(
     fg: tuple[int, int, int] = (60, 40, 20),
     alpha_floor_gray: int = 210,
     alpha_full_gray: int = 80,
+    trim_whitespace: bool = False,
 ) -> list[Image.Image]:
     """Load all `*.png` / `*.jpg` crops from `stamp_dir`, derive a soft alpha
     from pixel darkness, recolour the ink to ``fg``, and resize so each
@@ -174,6 +218,20 @@ def load_glyph_stamps(
         arr = np.asarray(raw, dtype=np.float32)
         gray = arr.mean(axis=2)
         alpha = np.clip((alpha_floor_gray - gray) / span, 0.0, 1.0)
+        if trim_whitespace:
+            # Crop to the bounding box of the ink area so the resized stamp
+            # fills target_height with ink rather than border whitespace.
+            # Critical for inline abbreviation stamps: with whitespace
+            # padding, bottom-aligning to baseline lifts the base letter
+            # above where the surrounding glyphs sit.
+            mask = alpha > 0.05
+            if mask.any():
+                row_any = np.any(mask, axis=1)
+                col_any = np.any(mask, axis=0)
+                y0, y1 = int(np.argmax(row_any)), int(len(row_any) - np.argmax(row_any[::-1]))
+                x0, x1 = int(np.argmax(col_any)), int(len(col_any) - np.argmax(col_any[::-1]))
+                arr = arr[y0:y1, x0:x1]
+                alpha = alpha[y0:y1, x0:x1]
         # Recolour the stamp to the rendering ink colour. Background pixels
         # have alpha~0 so their RGB doesn't matter; the ink area gets a
         # uniform dark fg that survives erosion in the augmentation step.
@@ -192,25 +250,50 @@ def _tokenize_for_render(
     text: str,
     et_stamps: list[Image.Image] | None,
     c_stamps: list[Image.Image] | None,
+    e_stamps: list[Image.Image] | None,
+    abbrev_stamps: dict[str, list[Image.Image]] | None,
     fg: tuple[int, int, int],
     fg_red: tuple[int, int, int],
     rng: random.Random,
+    p_capital_e: float = 0.0,
 ) -> list[tuple]:
     """Convert ``text`` into a flat list of render tokens. Each token is:
 
       ("text", string, colour, pad_left, pad_right)
       ("stamp", PIL.Image, pad_left, pad_right)
 
-    Matches:
+    Matches (in pattern priority order):
       - the literal word ``Capitol`` (\\b-delimited): becomes a C stamp
-        followed by ``apitol`` in ``fg_red``. If no c_stamps are
-        provided, falls back to rendering the whole word in ``fg_red``.
+        followed by ``apitol`` in ``fg_red``. Always fires when c_stamps
+        are provided. Falls back to the word in ``fg_red`` otherwise.
       - the character ⁊: becomes a ⁊ stamp surrounded by small pads. If
         no et_stamps are provided, the ⁊ passes through to the font
         (which usually shows a missing-glyph box).
+      - any multi-letter word starting with E or e: with probability
+        ``p_capital_e`` becomes an E stamp followed by the word's tail
+        in regular ``fg`` (the manuscript's enlarged E is not a rubric
+        — it's the same iron-gall ink as the body, just larger).
+        Single-letter "e" (the conjunction "and") is excluded by the
+        ``[A-Za-z]+`` tail.
+      - any scribal-abbreviation label present in ``abbrev_stamps`` keys
+        (e.g. ñ, q̃, õ, …): becomes a stamp from the matching pool.
+        The presence of an abbreviation label in ``text`` is taken as
+        signal that the substitution step already fired; the renderer
+        always stamps it. Labels are matched longest-first so that
+        e.g. ``q°`` wins over the leading ``q`` alone.
     """
     tokens: list[tuple] = []
-    pattern = re.compile(rf"\b{re.escape(CAPITOL_WORD)}\b|{re.escape(TIRONIAN_ET)}")
+    parts = [
+        rf"\b{re.escape(CAPITOL_WORD)}\b",
+        re.escape(TIRONIAN_ET),
+        r"\b[Ee][A-Za-z]+",
+    ]
+    if abbrev_stamps:
+        # Longest first so multi-char sequences win over partial matches.
+        for label in sorted(abbrev_stamps.keys(), key=len, reverse=True):
+            parts.append(re.escape(label))
+    pattern = re.compile("|".join(parts))
+
     pos = 0
     for m in pattern.finditer(text):
         if m.start() > pos:
@@ -221,15 +304,30 @@ def _tokenize_for_render(
                 tokens.append(("stamp", rng.choice(et_stamps), 1, 1))
             else:
                 tokens.append(("text", TIRONIAN_ET, fg, 0, 0))
-        else:  # "Capitol"
+        elif match == CAPITOL_WORD:
             if c_stamps:
                 # C stamp absorbs the leading "C"; no right-pad so "apitol"
                 # joins it as a single word visually.
                 tokens.append(("stamp", rng.choice(c_stamps), 1, 0))
                 tokens.append(("text", CAPITOL_WORD[1:], fg_red, 0, 0))
             else:
-                # Fallback: just colour the word red.
                 tokens.append(("text", CAPITOL_WORD, fg_red, 0, 0))
+        elif abbrev_stamps and match in abbrev_stamps:
+            # 5th element "baseline" so the base letter aligns with the
+            # surrounding text instead of being centred (which would lift
+            # it above the baseline).
+            tokens.append(("stamp", rng.choice(abbrev_stamps[match]), 0, 0, "baseline"))
+        elif re.fullmatch(r"[Ee][A-Za-z]+", match):
+            if e_stamps and rng.random() < p_capital_e:
+                # Brown stamp + brown tail — illuminated E is a size feature
+                # in this manuscript, not a colour rubric.
+                tokens.append(("stamp", rng.choice(e_stamps), 1, 0))
+                tokens.append(("text", match[1:], fg, 0, 0))
+            else:
+                tokens.append(("text", match, fg, 0, 0))
+        else:
+            # Defensive: shouldn't happen, but fall back to plain text.
+            tokens.append(("text", match, fg, 0, 0))
         pos = m.end()
     if pos < len(text):
         tokens.append(("text", text[pos:], fg, 0, 0))
@@ -245,6 +343,9 @@ def render_text_to_image(
     bg: tuple[int, int, int] = (240, 230, 200),
     et_stamps: list[Image.Image] | None = None,
     c_stamps: list[Image.Image] | None = None,
+    e_stamps: list[Image.Image] | None = None,
+    abbrev_stamps: dict[str, list[Image.Image]] | None = None,
+    p_capital_e: float = 0.0,
     fg_red: tuple[int, int, int] = RUBRIC_RED,
     rng: random.Random | None = None,
 ) -> Image.Image:
@@ -266,7 +367,17 @@ def render_text_to_image(
     function takes the original single-draw fast path.
     """
     rng = rng if rng is not None else random.Random()
-    tokens = _tokenize_for_render(text, et_stamps, c_stamps, fg, fg_red, rng)
+    tokens = _tokenize_for_render(
+        text,
+        et_stamps,
+        c_stamps,
+        e_stamps,
+        abbrev_stamps,
+        fg,
+        fg_red,
+        rng,
+        p_capital_e,
+    )
 
     # Fast path: a single plain text token in fg only — no stamps, no red.
     if len(tokens) == 1 and tokens[0][0] == "text" and tokens[0][2] == fg:
@@ -311,29 +422,62 @@ def render_text_to_image(
     pad_unit = max(4, text_h // 12)
 
     # Total advance width = sum(token advances) + sum(left+right pads * pad_unit).
-    total_pad = sum((t[2] + t[3]) if t[0] == "stamp" else (t[3] + t[4]) for t in tokens) * pad_unit
+    def _stamp_pad(t):
+        return t[2] + t[3]
+
+    def _text_pad(t):
+        return t[3] + t[4]
+
+    total_pad = sum(_stamp_pad(t) if t[0] == "stamp" else _text_pad(t) for t in tokens) * pad_unit
     total_w = sum(m[0] for m in metrics) + total_pad + 2 * margin
     total_h = text_h + 2 * margin
 
     img = Image.new("RGBA", (total_w, total_h), bg + (255,))
     draw = ImageDraw.Draw(img)
     cursor_x = margin
-    baseline_y = margin - max_top
+    # PIL's draw.text((x, y), ...) anchors the bbox TOP at y. To put each
+    # token's bbox top at y=margin (in the canvas), we draw at:
+    #     y_draw = margin - max_top
+    # The actual text BASELINE (where the bottom of 'n' sits) is one
+    # ascent below the top of the bbox of an ascender letter; computed
+    # from the font's metrics so it doesn't depend on which letters
+    # happen to be in the line.
+    y_draw = margin - max_top
+    text_baseline = y_draw + font.getmetrics()[0]
     for i, t in enumerate(tokens):
         adv, dx = metrics[i]
         if t[0] == "text":
             _, s, colour, pad_l, pad_r = t
             cursor_x += pad_l * pad_unit
             if s:
-                draw.text((cursor_x + dx, baseline_y), s, fill=colour, font=font)
+                draw.text((cursor_x + dx, y_draw), s, fill=colour, font=font)
                 cursor_x += adv
             cursor_x += pad_r * pad_unit
         else:  # stamp
-            _, stamp, pad_l, pad_r = t
+            # Optional 5th element selects vertical alignment:
+            #   "center"   (default) — vertically centred in the text band,
+            #               used for decorative initials (⁊, C, E) where
+            #               the stamp is itself the whole glyph.
+            #   "baseline" — stamp BOTTOM sits on the text baseline so the
+            #               base letter (n in ñ, etc.) lines up with
+            #               surrounding lowercase letters; the diacritic
+            #               sticks up above x-height naturally.
+            _, stamp, pad_l, pad_r = t[:4]
+            alignment = t[4] if len(t) >= 5 else "center"
             cursor_x += pad_l * pad_unit
-            stamp_y = margin + max(0, (text_h - stamp.height) // 2)
-            img.paste(stamp, (cursor_x, stamp_y), stamp)
-            cursor_x += stamp.width + pad_r * pad_unit
+            if alignment == "baseline":
+                stamp_y = text_baseline - stamp.height
+                # Small visual nudge left to compensate for the side-
+                # bearing that was lost when we trimmed whitespace from
+                # the source crop. Keep it modest — a larger overlap
+                # crowds adjacent stamps (rẽteñ-style clusters).
+                bearing = max(1, text_h // 40)
+                img.paste(stamp, (cursor_x - bearing, stamp_y), stamp)
+                cursor_x += stamp.width - bearing + pad_r * pad_unit
+            else:
+                stamp_y = margin + max(0, (text_h - stamp.height) // 2)
+                img.paste(stamp, (cursor_x, stamp_y), stamp)
+                cursor_x += stamp.width + pad_r * pad_unit
 
     return img.convert("RGB")
 
@@ -362,6 +506,11 @@ def generate_medieval_text_dataset(
     p_tironian_et: float = 0.0,
     et_stamp_dir: str | Path | None = None,
     c_stamp_dir: str | Path | None = None,
+    p_capital_e: float = 0.0,
+    e_stamp_dir: str | Path | None = None,
+    p_abbreviation: float = 0.0,
+    abbrev_base_dir: str | Path | None = None,
+    max_abbreviation_per_line: int = 3,
     base_seed: int = 42,
     categories_filter: set[str] | None = None,
     max_samples: int | None = None,
@@ -406,6 +555,11 @@ def generate_medieval_text_dataset(
         "p_tironian_et": p_tironian_et,
         "et_stamp_dir": str(et_stamp_dir) if et_stamp_dir else None,
         "c_stamp_dir": str(c_stamp_dir) if c_stamp_dir else None,
+        "p_capital_e": p_capital_e,
+        "e_stamp_dir": str(e_stamp_dir) if e_stamp_dir else None,
+        "p_abbreviation": p_abbreviation,
+        "abbrev_base_dir": str(abbrev_base_dir) if abbrev_base_dir else None,
+        "max_abbreviation_per_line": max_abbreviation_per_line,
         "base_seed": base_seed,
         "categories_filter": sorted(categories_filter) if categories_filter else None,
         "max_samples": max_samples,
@@ -450,6 +604,59 @@ def generate_medieval_text_dataset(
                 "Capitol rubric stamps disabled for this run."
             )
 
+    # Illuminated-E stamps for sentence-starting words. Loaded in the
+    # regular iron-gall brown fg — unlike the C-Capitol rubric, the
+    # decorative E in this manuscript is just an enlarged version of the
+    # normal body ink, so the rest of the E-word also reads as normal
+    # text (no red tail). Fires only when both a stamp pool and a non-
+    # zero probability are configured. 1.3× font height matches the
+    # ascender of the manuscript's larger initial.
+    e_stamps: list[Image.Image] = []
+    if p_capital_e > 0.0 and e_stamp_dir:
+        e_stamps = load_glyph_stamps(
+            e_stamp_dir,
+            target_height=int(font_size * 1.3),
+            # Default fg=(60, 40, 20) — brown ink, same as the body text.
+        )
+        if not e_stamps:
+            logger.warning(
+                f"p_capital_e={p_capital_e} but no stamps found in "
+                f"{e_stamp_dir}; E-word initial disabled for this run."
+            )
+    effective_p_e = p_capital_e if e_stamps else 0.0
+
+    # Scribal-abbreviation stamps. Each variant in ABBREV_MAP points at a
+    # subfolder under `abbrev_base_dir`; load whichever folders exist.
+    # Sized to 1.15× font height — base char sits on baseline and the
+    # diacritic ascends a little above the regular ascender line.
+    abbrev_stamps: dict[str, list[Image.Image]] = {}
+    if p_abbreviation > 0.0 and abbrev_base_dir:
+        abbrev_base = Path(abbrev_base_dir)
+        for trigger, variants in ABBREV_MAP.items():
+            for folder, label in variants:
+                stamp_dir = abbrev_base / folder
+                # 1.0× font height: after trimming whitespace the stamp is
+                # all ink (base letter + diacritic). Source crops vary in
+                # how tightly they were originally cut — the simpler ones
+                # (n_tilde, r_tilde, e_tilde) tend to be tighter, so a
+                # smaller target_height made *those* visibly shrink while
+                # the others looked fine. 1.0× keeps the small ones
+                # readable at the cost of the chunkier stamps reaching a
+                # touch above the surrounding x-height.
+                stamps = load_glyph_stamps(
+                    stamp_dir,
+                    target_height=int(font_size * 1.0),
+                    trim_whitespace=True,
+                )
+                if stamps:
+                    abbrev_stamps[label] = stamps
+                else:
+                    logger.warning(
+                        f"abbreviation '{label}' (trigger '{trigger}'): "
+                        f"no stamps in {stamp_dir}, skipping"
+                    )
+    effective_p_abbrev = p_abbreviation if abbrev_stamps else 0.0
+
     labels: dict[str, dict] = {}
     rendered = 0
     skipped = 0
@@ -473,6 +680,8 @@ def generate_medieval_text_dataset(
             p_long_s_middle=p_long_s_middle,
             p_rotunda_r=p_rotunda_r,
             p_tironian_et=effective_p_et,
+            p_abbreviation=effective_p_abbrev,
+            max_abbreviation_per_line=max_abbreviation_per_line,
             rng=rng,
         )
 
@@ -483,6 +692,9 @@ def generate_medieval_text_dataset(
                 margin=margin,
                 et_stamps=et_stamps or None,
                 c_stamps=c_stamps or None,
+                e_stamps=e_stamps or None,
+                abbrev_stamps=abbrev_stamps or None,
+                p_capital_e=effective_p_e,
                 rng=rng,
             )
         except Exception as exc:
