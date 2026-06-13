@@ -33,25 +33,33 @@ LONG_S = "ſ"  # U+017F
 ROTUNDA_R = "ꝛ"  # U+A75B
 TIRONIAN_ET = "⁊"  # U+204A
 # Scribal abbreviation marks. Each entry maps a lowercase trigger letter
-# to one or more (stamp_folder, label) variants. When a trigger letter
-# fires (probability p_abbreviation), one variant is chosen at random:
-# its `label` string replaces the trigger char in the medieval_text, and
-# its `stamp_folder` is composited at that position during rendering.
+# to one or more (stamp_folder, label, has_descender) variants. When a
+# trigger letter fires (probability p_abbreviation), one variant is
+# chosen at random: its `label` string replaces the trigger char in the
+# medieval_text, and its `stamp_folder` is composited at that position
+# during rendering. The `has_descender` flag tells the renderer to shift
+# the stamp down by the font's descent so the base letter sits on the
+# baseline (otherwise a p/q stamp's descender forces the whole glyph to
+# float above where it should be).
 #
 # Why stamps and not combining-mark fonts? Most of these glyphs use
 # combining diacritics (U+0303, U+0363, U+0365, etc.) that the current
 # fonts in fonts/ don't carry — they render as missing-glyph boxes.
 # Using real-manuscript crops lets the visual match the scribe's hand
 # exactly.
-ABBREV_MAP: dict[str, list[tuple[str, str]]] = {
-    "e": [("e_tilde", "ẽ")],
-    "l": [("l_tilde", "l'")],
-    "m": [("m_tilde", "m̃")],
-    "n": [("n_tilde", "ñ")],
-    "o": [("o_tilde", "õ")],
-    "p": [("p_tilde", "p̃")],
-    "q": [("q_circle", "q°"), ("q_i", "qͥ"), ("q_tilde", "q̃")],
-    "r": [("r_tilde", "r̃")],
+ABBREV_MAP: dict[str, list[tuple[str, str, bool]]] = {
+    "e": [("e_tilde", "ẽ", False)],
+    "l": [("l_tilde", "l'", False)],
+    "m": [("m_tilde", "m̃", False)],
+    "n": [("n_tilde", "ñ", False)],
+    "o": [("o_tilde", "õ", False)],
+    "p": [("p_tilde", "p̃", True)],
+    "q": [
+        ("q_circle", "q°", True),
+        ("q_i", "qͥ", True),
+        ("q_tilde", "q̃", True),
+    ],
+    "r": [("r_tilde", "r̃", False)],
 }
 # Lemma + colour for the capitulum rubric. When the literal word
 # "Capitol" appears mid-text, the C is composited from a real-manuscript
@@ -224,7 +232,11 @@ def load_glyph_stamps(
             # Critical for inline abbreviation stamps: with whitespace
             # padding, bottom-aligning to baseline lifts the base letter
             # above where the surrounding glyphs sit.
-            mask = alpha > 0.05
+            # Threshold 0.20 (not 0.05) so faint anti-aliasing greys at
+            # the crop edges don't keep border padding alive — that was
+            # making inconsistently-cropped source stamps render at
+            # different effective sizes after resize.
+            mask = alpha > 0.20
             if mask.any():
                 row_any = np.any(mask, axis=1)
                 col_any = np.any(mask, axis=0)
@@ -252,6 +264,7 @@ def _tokenize_for_render(
     c_stamps: list[Image.Image] | None,
     e_stamps: list[Image.Image] | None,
     abbrev_stamps: dict[str, list[Image.Image]] | None,
+    abbrev_descenders: set[str] | None,
     fg: tuple[int, int, int],
     fg_red: tuple[int, int, int],
     rng: random.Random,
@@ -313,10 +326,19 @@ def _tokenize_for_render(
             else:
                 tokens.append(("text", CAPITOL_WORD, fg_red, 0, 0))
         elif abbrev_stamps and match in abbrev_stamps:
-            # 5th element "baseline" so the base letter aligns with the
-            # surrounding text instead of being centred (which would lift
-            # it above the baseline).
-            tokens.append(("stamp", rng.choice(abbrev_stamps[match]), 0, 0, "baseline"))
+            # 5th element selects vertical alignment.
+            #   "baseline-descender" for p̃, q̃, q°, qͥ — letters whose
+            #     base glyph has a descender. The stamp must shift DOWN
+            #     by the font's descent or the base letter floats above
+            #     the baseline (because the descender portion of the
+            #     stamp would otherwise sit at the baseline instead).
+            #   "baseline" for non-descender letters (n, m, e, o, l, r):
+            #     stamp BOTTOM aligned to baseline.
+            if abbrev_descenders and match in abbrev_descenders:
+                align = "baseline-descender"
+            else:
+                align = "baseline"
+            tokens.append(("stamp", rng.choice(abbrev_stamps[match]), 0, 0, align))
         elif re.fullmatch(r"[Ee][A-Za-z]+", match):
             if e_stamps and rng.random() < p_capital_e:
                 # Brown stamp + brown tail — illuminated E is a size feature
@@ -345,6 +367,7 @@ def render_text_to_image(
     c_stamps: list[Image.Image] | None = None,
     e_stamps: list[Image.Image] | None = None,
     abbrev_stamps: dict[str, list[Image.Image]] | None = None,
+    abbrev_descenders: set[str] | None = None,
     p_capital_e: float = 0.0,
     fg_red: tuple[int, int, int] = RUBRIC_RED,
     rng: random.Random | None = None,
@@ -373,6 +396,7 @@ def render_text_to_image(
         c_stamps,
         e_stamps,
         abbrev_stamps,
+        abbrev_descenders,
         fg,
         fg_red,
         rng,
@@ -465,8 +489,16 @@ def render_text_to_image(
             _, stamp, pad_l, pad_r = t[:4]
             alignment = t[4] if len(t) >= 5 else "center"
             cursor_x += pad_l * pad_unit
-            if alignment == "baseline":
-                stamp_y = text_baseline - stamp.height
+            if alignment in ("baseline", "baseline-descender"):
+                if alignment == "baseline-descender":
+                    # Descender letters (p, q): shift the stamp DOWN by
+                    # the font's descent so the base letter rests on the
+                    # baseline and the descender hangs below it, like a
+                    # native lowercase p/q would.
+                    descent_shift = font.getmetrics()[1]
+                    stamp_y = text_baseline + descent_shift - stamp.height
+                else:
+                    stamp_y = text_baseline - stamp.height
                 # Small visual nudge left to compensate for the side-
                 # bearing that was lost when we trimmed whitespace from
                 # the source crop. Keep it modest — a larger overlap
@@ -630,19 +662,18 @@ def generate_medieval_text_dataset(
     # Sized to 1.15× font height — base char sits on baseline and the
     # diacritic ascends a little above the regular ascender line.
     abbrev_stamps: dict[str, list[Image.Image]] = {}
+    abbrev_descenders: set[str] = set()
     if p_abbreviation > 0.0 and abbrev_base_dir:
         abbrev_base = Path(abbrev_base_dir)
         for trigger, variants in ABBREV_MAP.items():
-            for folder, label in variants:
+            for folder, label, has_descender in variants:
                 stamp_dir = abbrev_base / folder
-                # 1.0× font height: after trimming whitespace the stamp is
-                # all ink (base letter + diacritic). Source crops vary in
-                # how tightly they were originally cut — the simpler ones
-                # (n_tilde, r_tilde, e_tilde) tend to be tighter, so a
-                # smaller target_height made *those* visibly shrink while
-                # the others looked fine. 1.0× keeps the small ones
-                # readable at the cost of the chunkier stamps reaching a
-                # touch above the surrounding x-height.
+                if has_descender:
+                    abbrev_descenders.add(label)
+                # 1.0× font height after a tight whitespace trim. Renderer
+                # handles descender letters (p, q) by shifting them down
+                # by font descent so the base letter actually sits on the
+                # baseline rather than floating above it.
                 stamps = load_glyph_stamps(
                     stamp_dir,
                     target_height=int(font_size * 1.0),
@@ -694,6 +725,7 @@ def generate_medieval_text_dataset(
                 c_stamps=c_stamps or None,
                 e_stamps=e_stamps or None,
                 abbrev_stamps=abbrev_stamps or None,
+                abbrev_descenders=abbrev_descenders or None,
                 p_capital_e=effective_p_e,
                 rng=rng,
             )
