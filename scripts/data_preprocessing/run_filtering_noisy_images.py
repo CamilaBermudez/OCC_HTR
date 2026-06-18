@@ -39,6 +39,31 @@ def main():
         help="List of density thresholds (example: --density-thresholds 0.001 0.997)",
     )
 
+    parser.add_argument(
+        "--kraken-json-dir",
+        required=False,
+        help="Directory of kraken segmentation JSONs (one per page). "
+        "When provided, kept images whose width is above the wide-line "
+        "threshold are split at their horizontal midpoint and re-saved "
+        "with reading-order-aware fractional indices (e.g. line_24p5). "
+        "Pass an empty value to disable.",
+    )
+    parser.add_argument(
+        "--wide-percentile",
+        type=float,
+        default=99.0,
+        help="Percentile of the kept-image width distribution above "
+        "which a line is considered for splitting (default: 99).",
+    )
+    parser.add_argument(
+        "--wide-min-ratio-to-median",
+        type=float,
+        default=1.5,
+        help="A line is only split when its width is *also* at least "
+        "this multiple of the median width (default: 1.5). Stops the "
+        "splitter from triggering on borderline-wide-but-typical lines.",
+    )
+
     args = parser.parse_args()
 
     binarized_src = (
@@ -63,6 +88,8 @@ def main():
         args.run_name or f"filter_{binarized_src.name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     )
 
+    kraken_json_dir = Path(args.kraken_json_dir) if args.kraken_json_dir else None
+
     result = run_filtering_pipeline(
         binarized_src=binarized_src,
         extracted_src=extracted_src,
@@ -71,6 +98,9 @@ def main():
         run_name=run_name,
         size_thresholds=args.size_thresholds,
         density_thresholds=args.density_thresholds,
+        kraken_json_dir=kraken_json_dir,
+        wide_percentile=args.wide_percentile,
+        wide_min_ratio_to_median=args.wide_min_ratio_to_median,
     )
 
     print(f"\n{'=' * 50}")
@@ -79,6 +109,12 @@ def main():
     print(f"Analyzed:   {result.get('total_analyzed', 0)}")
     print(f"Kept:       {result.get('kept', 0)}")
     print(f"Removed:    {result.get('removed', 0)}")
+    wide = result.get("wide_line_split")
+    if wide:
+        print(
+            f"Wide split: {wide['n_split']} of {wide['n_wide']} candidates "
+            f"(skipped {wide['n_skipped']})"
+        )
     print(f"Output:     {result.get('output_dir')}")
     print(f"Tracking:   {result.get('tracking_csv')}")
     print(f"{'=' * 50}\n")

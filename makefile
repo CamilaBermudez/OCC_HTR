@@ -14,10 +14,10 @@ IMAGES_SEGMENTS_PATH=./data/processed/segmented_images/segmentation_20260618_111
 
 EXTRACTED_LINES_DIR=./data/processed/extracted_lines
 CROP_TYPE?=polygon
-EXTRACTED_LINES_PATH=./data/processed/extracted_lines/extraction_20260515_102608
+EXTRACTED_LINES_PATH=./data/processed/extracted_lines/extraction_20260618_115939
 BINARIZED_IMAGES_DIR=./data/processed/binarized_images
 BINARIZED_METHOD?=otsu_gaussian
-BINARIZED_IMAGES_PATH=./data/processed/binarized_images/20260515_104214
+BINARIZED_IMAGES_PATH=./data/processed/binarized_images/20260618_121033
 FILTERED_IMAGES_DIR=./data/processed/filtered_images
 FILTERED_ORIGINAL_LINES_PATH=./data/processed/filtered_images/20260515_104416/original/kept
 RESIZED_IMAGES_DIR=./data/processed/resized_samples
@@ -155,7 +155,8 @@ filter_images:
 	$(PYTHON) scripts/data_preprocessing/run_filtering_noisy_images.py \
 		--binarized-src $(BINARIZED_IMAGES_PATH) \
 		--extracted-src $(EXTRACTED_LINES_PATH) \
-		--dst-base-dir $(FILTERED_IMAGES_DIR)
+		--dst-base-dir $(FILTERED_IMAGES_DIR) \
+		--kraken-json-dir $(IMAGES_SEGMENTS_PATH)
 
 resize_images:
 	$(PYTHON) scripts/data_preprocessing/run_resize_image.py \

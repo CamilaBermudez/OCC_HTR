@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 from collections import defaultdict
@@ -10,7 +11,13 @@ from pathlib import Path
 import cv2 as cv
 import numpy as np
 import pandas as pd
+from PIL import Image
 from tqdm import tqdm
+
+from src.data_preprocessing.image_segmentation import (
+    _find_column_spans_by_projection,
+    _line_baseline_midpoint,
+)
 
 
 def setup_simple_logging(logs_dir: str, run_name: str | None = None):
@@ -405,6 +412,260 @@ def filter_noisy_lines(
     return img_remove, df_tracking, filter_counts
 
 
+_LINE_FILENAME_RE = re.compile(r"^(.+)_line_(\d+(?:p\d+)?)$")
+
+
+def _parse_line_filename(stem: str) -> tuple[str, float] | None:
+    """Parse '<page>_line_<id>' → (page, id_as_float) or None.
+
+    Supports the existing integer convention (line_24) and the
+    fractional convention we introduce here for split right-halves
+    (line_24p5 → 24.5). 'p' is used as the decimal separator because
+    a literal '.' would break the trailing '.png' parser and a '_'
+    would conflict with how an underscored multi-token page name
+    would look.
+    """
+    m = _LINE_FILENAME_RE.match(stem)
+    if not m:
+        return None
+    page, idx_str = m.group(1), m.group(2)
+    if "p" in idx_str:
+        whole, frac = idx_str.split("p", 1)
+        idx = float(whole) + float(f"0.{frac}")
+    else:
+        idx = float(idx_str)
+    return page, idx
+
+
+def _format_split_line_index(idx_float: float) -> str:
+    """Format e.g. 24.5 → '24p5' for the right-half filename."""
+    whole = int(idx_float)
+    frac = idx_float - whole
+    # Strip trailing zeros from the fractional part: 0.50 → '5', not '50'.
+    frac_str = f"{frac:.6f}".split(".")[1].rstrip("0") or "0"
+    return f"{whole}p{frac_str}"
+
+
+def _column_of_each_line(json_data: dict, page_width: int) -> list[int]:
+    """Return a per-line list of column indices.
+
+    Uses the same projection-based column detection that runs at
+    segmentation time, so the column boundaries here match whatever
+    reorder_lines_reading_order saw when it numbered the lines in
+    reading order.
+    """
+    lines = json_data.get("lines", []) or []
+    if not lines:
+        return []
+    line_ranges: list[tuple[int, int]] = []
+    for line in lines:
+        bl = line.get("baseline")
+        if isinstance(bl, list) and len(bl) >= 2:
+            line_ranges.append((int(bl[0][0]), int(bl[-1][0])))
+        else:
+            bnd = line.get("boundary")
+            if isinstance(bnd, list) and bnd:
+                xs = [int(p[0]) for p in bnd]
+                line_ranges.append((min(xs), max(xs)))
+            else:
+                line_ranges.append((0, 0))
+    spans = _find_column_spans_by_projection(line_ranges, page_width)
+    if not spans:
+        return [0] * len(lines)
+    column_midpoints = [(left + right) / 2.0 for left, right in spans]
+    column_of_line: list[int] = []
+    for line in lines:
+        cx, _ = _line_baseline_midpoint(line)
+        nearest = 0
+        best = abs(cx - column_midpoints[0])
+        for i, mid in enumerate(column_midpoints[1:], start=1):
+            d = abs(cx - mid)
+            if d < best:
+                best = d
+                nearest = i
+        column_of_line.append(nearest)
+    return column_of_line
+
+
+def _split_wide_image_pair(img_paths: list[Path], right_half_stem: str) -> int:
+    """Split each image in `img_paths` at its horizontal midpoint.
+
+    Left half overwrites the original file; right half is written next
+    to it with stem `right_half_stem`. Returns the number of files
+    actually split (some paths may not exist in every kept folder).
+    """
+    n_split = 0
+    for img_path in img_paths:
+        if not img_path.exists():
+            continue
+        with Image.open(img_path) as im:
+            w, h = im.size
+            mid = w // 2
+            left = im.crop((0, 0, mid, h))
+            right = im.crop((mid, 0, w, h))
+        right_path = img_path.parent / f"{right_half_stem}{img_path.suffix}"
+        # Save right first so we can't end up with only the overwritten
+        # left half if something fails halfway through.
+        right.save(right_path, optimize=True)
+        left.save(img_path, optimize=True)
+        n_split += 1
+    return n_split
+
+
+def split_wide_kept_images(
+    binarised_kept_dir: Path,
+    original_kept_dir: Path | None,
+    kraken_json_dir: Path,
+    *,
+    percentile: float = 99.0,
+    min_ratio_to_median: float = 1.5,
+    logger: logging.Logger | None = None,
+) -> dict:
+    """Detect and split unusually-wide line crops in the kept folders.
+
+    Wide lines are usually kraken merging the top row of two adjacent
+    columns into a single record. We detect them by width statistics
+    (above ``percentile`` AND above ``min_ratio_to_median`` × the
+    median), then for each one look up the corresponding kraken JSON
+    to determine column structure, split the image at its midpoint,
+    and save a right half with a fractional reading-order index that
+    sorts between the last index of the current column and the first
+    index of the next column (e.g. between 24 and 25 → 24p5).
+
+    Skips lines that already live in the rightmost column (no next
+    column to give the right half a 'between' position) or that come
+    from a single-column page.
+    """
+    log = logger or logging.getLogger("filtering")
+    if not binarised_kept_dir.is_dir():
+        log.warning(f"split_wide: kept dir not found: {binarised_kept_dir}")
+        return {"n_wide": 0, "n_split": 0, "n_skipped": 0}
+
+    image_exts = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
+    kept_files = [
+        f for f in binarised_kept_dir.rglob("*") if f.is_file() and f.suffix.lower() in image_exts
+    ]
+    if not kept_files:
+        return {"n_wide": 0, "n_split": 0, "n_skipped": 0}
+
+    widths: list[int] = []
+    for p in kept_files:
+        try:
+            with Image.open(p) as im:
+                widths.append(im.size[0])
+        except Exception:
+            widths.append(0)
+    widths_arr = np.asarray(widths)
+    median = float(np.median(widths_arr))
+    p_cutoff = float(np.percentile(widths_arr, percentile))
+    floor = max(p_cutoff, min_ratio_to_median * median)
+    log.info(
+        f"Wide-line detection: median width={median:.0f}, "
+        f"p{percentile:g}={p_cutoff:.0f}, effective threshold={floor:.0f}"
+    )
+
+    candidates = [(p, w) for p, w in zip(kept_files, widths, strict=False) if w > floor]
+    log.info(f"Found {len(candidates)} wide candidates above the threshold")
+
+    # Cache per-page (column_of_line, lines, page_width) to avoid re-reading
+    # each page's JSON for every wide line on it.
+    page_cache: dict[str, tuple[list[int], list[dict], int]] = {}
+
+    n_split = 0
+    n_skipped = 0
+    for img_path, width in candidates:
+        parsed = _parse_line_filename(img_path.stem)
+        if parsed is None:
+            log.warning(f"split_wide: cannot parse line filename: {img_path.name}")
+            n_skipped += 1
+            continue
+        page_name, line_idx_float = parsed
+        if not float(line_idx_float).is_integer():
+            # A previously-split right half — never split again.
+            n_skipped += 1
+            continue
+        line_idx = int(line_idx_float)
+
+        if page_name not in page_cache:
+            json_path = kraken_json_dir / f"{page_name}.json"
+            if not json_path.exists():
+                log.warning(f"split_wide: no JSON for {page_name} ({json_path})")
+                n_skipped += 1
+                continue
+            try:
+                data = json.loads(json_path.read_text(encoding="utf-8"))
+            except Exception as e:
+                log.warning(f"split_wide: cannot read JSON for {page_name}: {e}")
+                n_skipped += 1
+                continue
+            lines_in_json = data.get("lines", []) or []
+            # Page width proxy: rightmost line edge + small buffer; we
+            # don't have the source image at hand and the projection
+            # algorithm only needs an upper-bound width.
+            max_x = 0
+            for line in lines_in_json:
+                bl = line.get("baseline")
+                if isinstance(bl, list) and len(bl) >= 2:
+                    max_x = max(max_x, int(bl[-1][0]))
+            page_width = max_x + 100 if max_x else 1
+            col_of_line = _column_of_each_line(data, page_width)
+            page_cache[page_name] = (col_of_line, lines_in_json, page_width)
+
+        col_of_line, lines_in_json, _ = page_cache[page_name]
+        if line_idx >= len(col_of_line):
+            log.warning(
+                f"split_wide: line index {line_idx} out of range "
+                f"for page {page_name} ({len(col_of_line)} lines)"
+            )
+            n_skipped += 1
+            continue
+
+        current_col = col_of_line[line_idx]
+        n_cols = max(col_of_line) + 1 if col_of_line else 1
+        if n_cols < 2:
+            n_skipped += 1
+            continue
+        if current_col >= n_cols - 1:
+            # Wide line is in the rightmost column; no next column to
+            # place the right half into.
+            log.info(f"split_wide: skipping {img_path.name} — already in rightmost column")
+            n_skipped += 1
+            continue
+
+        last_of_current = max(i for i, c in enumerate(col_of_line) if c == current_col)
+        first_of_next = min(i for i, c in enumerate(col_of_line) if c == current_col + 1)
+        right_idx = (last_of_current + first_of_next) / 2.0
+        right_stem = f"{page_name}_line_{_format_split_line_index(right_idx)}"
+
+        # Also split the matching file in the original (color) kept dir
+        # if present, so the two staged outputs stay in lockstep.
+        paths_to_split = [img_path]
+        if original_kept_dir is not None:
+            try:
+                rel = img_path.relative_to(binarised_kept_dir)
+                paths_to_split.append(original_kept_dir / rel)
+            except ValueError:
+                pass
+
+        n_done = _split_wide_image_pair(paths_to_split, right_stem)
+        if n_done:
+            n_split += 1
+            log.info(
+                f"split: {img_path.name} (w={width}) → "
+                f"left={img_path.stem}, right={right_stem}  "
+                f"(column {current_col}, right-half index {right_idx})"
+            )
+
+    return {
+        "n_wide": len(candidates),
+        "n_split": n_split,
+        "n_skipped": n_skipped,
+        "threshold": float(floor),
+        "median_width": median,
+        "p_cutoff": p_cutoff,
+    }
+
+
 def run_filtering_pipeline(
     binarized_src: Path,
     extracted_src: Path,
@@ -413,6 +674,9 @@ def run_filtering_pipeline(
     run_name: str | None = None,
     size_thresholds: list[float] | None = None,
     density_thresholds: list[float] | None = None,
+    kraken_json_dir: Path | None = None,
+    wide_percentile: float = 99.0,
+    wide_min_ratio_to_median: float = 1.5,
 ) -> dict:
     if size_thresholds is None:
         size_thresholds = [0.03]
@@ -521,6 +785,31 @@ def run_filtering_pipeline(
         logger.warning(f"⚠ Extracted source folder not found: {extracted_src}")
         kept_orig = removed_orig = 0
 
+    # Optional wide-line split step. Runs on the KEPT folders only,
+    # after files are staged into the destination, so we never mutate
+    # the upstream binarised/extracted sources. Disabled when no
+    # kraken_json_dir is provided.
+    wide_stats: dict | None = None
+    if kraken_json_dir is not None:
+        logger.info("Scanning kept images for wide-line splits...")
+        binarised_kept_dir = run_output_dir / "binarized" / "kept"
+        original_kept_dir_path = (
+            run_output_dir / "original" / "kept" if extracted_src.is_dir() else None
+        )
+        wide_stats = split_wide_kept_images(
+            binarised_kept_dir=binarised_kept_dir,
+            original_kept_dir=original_kept_dir_path,
+            kraken_json_dir=Path(kraken_json_dir),
+            percentile=wide_percentile,
+            min_ratio_to_median=wide_min_ratio_to_median,
+            logger=logger,
+        )
+        logger.info(
+            f"Wide-line split: {wide_stats['n_split']} pairs created "
+            f"from {wide_stats['n_wide']} candidates "
+            f"({wide_stats['n_skipped']} skipped)"
+        )
+
     # Final summary. The kept/removed totals are per-IMAGE (each image
     # has one binarized file + one original file), so we report the
     # canonical per-image counts from the binarised source — NOT the
@@ -550,4 +839,5 @@ def run_filtering_pipeline(
         "removed": total_removed,
         "output_dir": str(run_output_dir),
         "tracking_csv": str(run_output_dir / "filter_tracking.csv"),
+        "wide_line_split": wide_stats,
     }
