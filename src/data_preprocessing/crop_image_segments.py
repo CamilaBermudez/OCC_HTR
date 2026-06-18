@@ -39,13 +39,35 @@ def setup_simple_logging(logs_dir: str, run_name: str | None = None):
     return logger, str(log_file)
 
 
-def extract_polygon(img_np, polygon):
+# Parchment background colour used when polygon-cropping a line. Matches
+# the default `bg` in `medieval_text_generation.render_text_to_image`
+# (240, 230, 200) so a cropped line on its parchment fill looks visually
+# the same family as a synthetic line — useful both for downstream
+# augmentation (no harsh black/parchment contrast) and for OCR models
+# that expect a parchment-toned background outside the text region.
+PARCHMENT_BG: tuple[int, int, int] = (240, 230, 200)
+
+
+def extract_polygon(img_np, polygon, bg_color: tuple[int, int, int] = PARCHMENT_BG):
+    """Crop the polygon region from ``img_np`` and replace outside-polygon
+    pixels with ``bg_color`` (RGB).
+
+    The crop is the axis-aligned bounding box of the polygon; pixels
+    *inside* the polygon come from the source image, pixels *outside*
+    are filled with the parchment colour.
+    """
     pts = np.array(polygon, dtype=np.int32)
     mask = np.zeros(img_np.shape[:2], dtype=np.uint8)
     cv2.fillPoly(mask, [pts], 255)
-    masked = cv2.bitwise_and(img_np, img_np, mask=mask)
+    # Build a parchment-coloured canvas of the same shape, then composite
+    # the image pixels where the polygon mask is set. Using np.where on
+    # the boolean mask broadcast across channels avoids the black halo
+    # that cv2.bitwise_and leaves outside the polygon.
+    canvas = np.full_like(img_np, fill_value=0)
+    canvas[:] = bg_color
+    composed = np.where(mask[:, :, None].astype(bool), img_np, canvas)
     x, y, w, h = cv2.boundingRect(pts)
-    cropped = masked[y : y + h, x : x + w]
+    cropped = composed[y : y + h, x : x + w]
     return cropped
 
 
