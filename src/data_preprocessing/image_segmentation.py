@@ -145,10 +145,14 @@ def _find_column_spans_by_projection(
 
     # Difference array: add 1 at x0, subtract 1 at x1+1. Cumulative sum
     # gives per-x coverage in O(n + page_width) rather than O(n·width).
+    # Both end-indices are clamped to [0, page_width] — when x1 reaches
+    # exactly page_width the `+1` would otherwise overflow the diff
+    # array, and any line whose right edge exceeds page_width simply
+    # contributes coverage up to the page edge.
     diff = [0] * (page_width + 1)
     for x0, x1 in line_x_ranges:
         a = max(0, min(page_width, x0))
-        b = max(0, min(page_width, x1)) + 1
+        b = max(0, min(page_width, x1 + 1))
         if b > a:
             diff[a] += 1
             diff[b] -= 1
@@ -261,21 +265,41 @@ def reorder_lines_reading_order(
 
     column_midpoints = [(cl + cr) / 2.0 for cl, cr in spans]
 
-    # Assign each line to the column whose midpoint is nearest its cx.
-    # cx (not x0) is the right key here: an indented line still has its
-    # midpoint inside the column body, so it lands in the right column
-    # — exactly the case that x0-nearest-centre gets wrong.
-    columns: list[list] = [[] for _ in column_midpoints]
+    # Assign each line to the LEFTMOST column whose right edge sits at
+    # or past the line's left edge (x0). This handles three cases in a
+    # single rule:
+    #   - normal line: x0 is inside its column's span → assigned to that
+    #     column.
+    #   - indented line: x0 is shifted right of the column's left margin
+    #     but still inside the column's span → same column.
+    #   - merged-column line (e.g. a wide top-of-page baseline kraken
+    #     produces by joining the first row of two adjacent columns into
+    #     one record): x0 is at the *left* edge of the leftmost column
+    #     the line touches; nearest-midpoint by cx puts it in the next
+    #     column over, but "first column whose right edge ≥ x0" places
+    #     it in the column where it visually starts. The filter step's
+    #     wide-image splitter then cuts it in half and inserts the right
+    #     half between this column and the next.
+    # We fall back to nearest-cx for lines whose x0 is past the right
+    # edge of every column (rare; happens for stray marginal noise).
+    columns: list[list] = [[] for _ in spans]
     for entry in decorated:
-        cx = entry[0][0]
-        nearest = 0
-        best = abs(cx - column_midpoints[0])
-        for i, mid in enumerate(column_midpoints[1:], start=1):
-            d = abs(cx - mid)
-            if d < best:
-                best = d
-                nearest = i
-        columns[nearest].append(entry)
+        x0 = entry[2][0]
+        assigned = None
+        for i, (_, col_right) in enumerate(spans):
+            if col_right >= x0:
+                assigned = i
+                break
+        if assigned is None:
+            cx = entry[0][0]
+            assigned = 0
+            best = abs(cx - column_midpoints[0])
+            for i, mid in enumerate(column_midpoints[1:], start=1):
+                d = abs(cx - mid)
+                if d < best:
+                    best = d
+                    assigned = i
+        columns[assigned].append(entry)
 
     ordered: list[dict] = []
     for col in columns:
@@ -304,13 +328,34 @@ def reorder_lines_reading_order(
     return ordered
 
 
-def apply_reading_order_to_json(json_path: Path, image_path: Path) -> None:
+def apply_reading_order_to_json(json_path: Path, image_path: Path | None = None) -> None:
     """Rewrite a kraken segmentation JSON so its ``lines`` are in reading
-    order. Uses the image to read the page width for column detection."""
+    order. The page width comes from the source image — passed explicitly
+    via ``image_path`` or resolved from the JSON's own ``imagename``
+    field (kraken records the original path there at segmentation time).
+
+    The JSON-side fallback exists because the JSON stem (``20_f_015v_016``)
+    rarely matches the original image filename verbatim (``20 - f. 015v - 016.jpg``),
+    so a naive caller doing ``rglob(f'{json_path.stem}.*')`` finds nothing
+    and silently skips the rewrite.
+    """
     with open(json_path, encoding="utf-8") as f:
         data = json.load(f)
     if "lines" not in data or not data["lines"]:
         return
+
+    if image_path is None:
+        recorded = data.get("imagename")
+        if not recorded:
+            raise FileNotFoundError(
+                f"No image_path passed and JSON has no 'imagename' field: {json_path}"
+            )
+        image_path = Path(recorded)
+        if not image_path.is_absolute():
+            image_path = json_path.parent.parent / image_path  # back out of the segmentation dir
+            if not image_path.exists():
+                image_path = Path.cwd() / recorded
+
     with Image.open(image_path) as im:
         page_width = im.size[0]
     data["lines"] = reorder_lines_reading_order(data["lines"], page_width=page_width)

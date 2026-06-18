@@ -474,16 +474,28 @@ def _column_of_each_line(json_data: dict, page_width: int) -> list[int]:
         return [0] * len(lines)
     column_midpoints = [(left + right) / 2.0 for left, right in spans]
     column_of_line: list[int] = []
-    for line in lines:
-        cx, _ = _line_baseline_midpoint(line)
-        nearest = 0
-        best = abs(cx - column_midpoints[0])
-        for i, mid in enumerate(column_midpoints[1:], start=1):
-            d = abs(cx - mid)
-            if d < best:
-                best = d
-                nearest = i
-        column_of_line.append(nearest)
+    for line, (x0, _x1) in zip(lines, line_ranges, strict=False):
+        # Assign to the leftmost column whose right edge is past the
+        # line's left edge — same rule reorder_lines_reading_order uses,
+        # so a merged-column line (e.g. one whose baseline starts at the
+        # left edge of column 2 but extends across column 3) lands in
+        # column 2 here too. Falls back to nearest-cx for lines whose
+        # x0 is past every column's right edge.
+        assigned = None
+        for i, (_, col_right) in enumerate(spans):
+            if col_right >= x0:
+                assigned = i
+                break
+        if assigned is None:
+            cx, _ = _line_baseline_midpoint(line)
+            assigned = 0
+            best = abs(cx - column_midpoints[0])
+            for i, mid in enumerate(column_midpoints[1:], start=1):
+                d = abs(cx - mid)
+                if d < best:
+                    best = d
+                    assigned = i
+        column_of_line.append(assigned)
     return column_of_line
 
 

@@ -14,17 +14,17 @@ IMAGES_SEGMENTS_PATH=./data/processed/segmented_images/segmentation_20260618_111
 
 EXTRACTED_LINES_DIR=./data/processed/extracted_lines
 CROP_TYPE?=polygon
-EXTRACTED_LINES_PATH=./data/processed/extracted_lines/extraction_20260618_115939
+EXTRACTED_LINES_PATH=./data/processed/extracted_lines/extraction_20260618_154440
 BINARIZED_IMAGES_DIR=./data/processed/binarized_images
 BINARIZED_METHOD?=otsu_gaussian
-BINARIZED_IMAGES_PATH=./data/processed/binarized_images/20260618_121033
+BINARIZED_IMAGES_PATH=./data/processed/binarized_images/20260618_155706
 FILTERED_IMAGES_DIR=./data/processed/filtered_images
-FILTERED_ORIGINAL_LINES_PATH=./data/processed/filtered_images/20260515_104416/original/kept
+FILTERED_ORIGINAL_LINES_PATH=./data/processed/filtered_images/20260618_160948/original/kept
 RESIZED_IMAGES_DIR=./data/processed/resized_samples
 RESIZING_TARGET_SIZE?=224
 #======= Ink-bleed detection ========
-INK_BLEED_OUTPUT_DIR=./data/processed/filtered_images/20260515_104416
-INK_BLEED_PERCENTILE?=75
+INK_BLEED_OUTPUT_DIR=./data/processed/filtered_images/20260618_160948
+INK_BLEED_PERCENTILE?=95
 INK_BLEED_W_BG_STD?=0.6
 INK_BLEED_W_INTERMEDIATE?=0.4
 #======= Tokenizer ========
