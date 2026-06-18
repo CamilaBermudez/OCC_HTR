@@ -16,7 +16,10 @@ def main():
             "Score every line image in --input-folder for ink bleed and "
             "write a JSON marking which images show signs of bleed. "
             "Uses Otsu-based background uniformity and intermediate-pixel "
-            "ratio as heuristics; threshold is tunable via --bleed-threshold."
+            "ratio as heuristics; the two metrics are min-max normalised "
+            "across the run before being combined. An image is flagged "
+            "when its composite score is above the --bleed-percentile of "
+            "the run's score distribution."
         )
     )
 
@@ -33,12 +36,14 @@ def main():
         "created. Default: data/processed/ink_bleed_detection",
     )
     parser.add_argument(
-        "--bleed-threshold",
+        "--bleed-percentile",
         type=float,
-        default=0.35,
-        help="An image is flagged as has_bleed if bleed_score >= this value "
-        "(default: 0.35). Inspect bleed_score_distribution in the output "
-        "JSON summary to recalibrate.",
+        default=75.0,
+        help="Percentile of the run's bleed-score distribution used as "
+        "the cutoff. Default 75.0 flags the top 25%% of images as "
+        "has_bleed; 90.0 = only top 10%%; 50.0 = top half. The actual "
+        "score cutoff derived from this percentile is recorded in the "
+        "output JSON summary as effective_threshold.",
     )
     parser.add_argument(
         "--w-bg-std",
@@ -73,7 +78,7 @@ def main():
     detect_ink_bleed(
         images_dir=Path(args.input_folder),
         output_base_dir=output_base_dir,
-        bleed_threshold=args.bleed_threshold,
+        bleed_percentile=args.bleed_percentile,
         w_bg_std=args.w_bg_std,
         w_intermediate=args.w_intermediate,
         logs_dir=logs_dir,

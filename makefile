@@ -24,7 +24,7 @@ RESIZED_IMAGES_DIR=./data/processed/resized_samples
 RESIZING_TARGET_SIZE?=224
 #======= Ink-bleed detection ========
 INK_BLEED_OUTPUT_DIR=./data/processed/filtered_images/20260515_104416
-INK_BLEED_THRESHOLD?=0.35
+INK_BLEED_PERCENTILE?=75
 INK_BLEED_W_BG_STD?=0.6
 INK_BLEED_W_INTERMEDIATE?=0.4
 #======= Tokenizer ========
@@ -164,14 +164,14 @@ resize_images:
 			--target-size $(RESIZING_TARGET_SIZE)
 
 
-# make detect_ink_bleed                              # default threshold 0.35
-# make detect_ink_bleed INK_BLEED_THRESHOLD=0.45     # stricter
+# make detect_ink_bleed                              # default p75 (top 25% flagged)
+# make detect_ink_bleed INK_BLEED_PERCENTILE=90     # stricter (only top 10%)
 # make detect_ink_bleed INK_BLEED_W_BG_STD=0.5 INK_BLEED_W_INTERMEDIATE=0.5
 detect_ink_bleed:
 	$(PYTHON) scripts/data_preprocessing/run_ink_bleed_detection.py \
 			--input-folder $(FILTERED_ORIGINAL_LINES_PATH) \
 			--output-base-dir $(INK_BLEED_OUTPUT_DIR) \
-			--bleed-threshold $(INK_BLEED_THRESHOLD) \
+			--bleed-percentile $(INK_BLEED_PERCENTILE) \
 			--w-bg-std $(INK_BLEED_W_BG_STD) \
 			--w-intermediate $(INK_BLEED_W_INTERMEDIATE)
 
