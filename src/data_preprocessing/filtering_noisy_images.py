@@ -521,9 +521,21 @@ def run_filtering_pipeline(
         logger.warning(f"⚠ Extracted source folder not found: {extracted_src}")
         kept_orig = removed_orig = 0
 
-    # Final summary
-    total_kept = kept_bin + kept_orig
-    total_removed = removed_bin + removed_orig
+    # Final summary. The kept/removed totals are per-IMAGE (each image
+    # has one binarized file + one original file), so we report the
+    # canonical per-image counts from the binarised source — NOT the
+    # sum across both file types, which would double-count every image.
+    # The original-vs-binarised pair is sanity-checked here and a
+    # warning is raised if they don't match (which would suggest one of
+    # the source folders is missing files).
+    total_kept = kept_bin
+    total_removed = removed_bin
+    if extracted_src.is_dir() and (kept_orig != kept_bin or removed_orig != removed_bin):
+        logger.warning(
+            "Binarised vs. original counts disagree — possible missing files. "
+            f"Binarised: kept={kept_bin}, removed={removed_bin}; "
+            f"Original: kept={kept_orig}, removed={removed_orig}"
+        )
 
     logger.info("Filtering complete")
     logger.info(f"Kept: {total_kept} | Removed: {total_removed}")
