@@ -10,7 +10,7 @@ IMAGES_SEGMENTS = ./data/processed/segmented_images
 MASKS_PATH = ./data/processed/img_layout/masks/20260515_092830
 FONT_SIZE?=50
 PLOTTED_BOUNDS_DIR=./data/processed/plotted_bounds
-IMAGES_SEGMENTS_PATH=./data/processed/segmented_images/segmentation_20260515_093010
+IMAGES_SEGMENTS_PATH=./data/processed/segmented_images/segmentation_20260618_111517
 
 EXTRACTED_LINES_DIR=./data/processed/extracted_lines
 CROP_TYPE?=polygon
@@ -48,7 +48,7 @@ CATEGORIZED_SAMPLES_JSON=./data/processed/synthetic_seeds/categorize_20260613_21
 WORD_PATTERNS?=am,ma
 SUBSTRING_PATTERNS?=
 MEDIEVAL_TEXT_DIR=./data/processed/synthetic_text
-MEDIEVAL_TEXT_RUN_PATH=./data/processed/synthetic_text/medieval_text_20260613_210228
+MEDIEVAL_TEXT_RUN_PATH=./data/processed/synthetic_text/medieval_text_20260613_215219
 RENDERING_FONT_PATH=./fonts/merged_font_code_cmpl2.ttf
 FONT_RENDER_SIZE?=60
 P_LONG_S_BEGIN?=0.95
@@ -74,7 +74,7 @@ PARCHMENT_MIN_BRIGHTNESS?=100
 # catch. 0.002 = 0.2%; bump higher if you want to be more permissive.
 PARCHMENT_MAX_BLUE_FRACTION?=0.002
 AUGMENTED_IMAGES_DIR=./data/processed/synthetic_samples/augmented_images
-AUGMENTED_RUN_PATH=./data/processed/synthetic_samples/augmented_images/aug_20260609_170621
+AUGMENTED_RUN_PATH=./data/processed/synthetic_samples/augmented_images/aug_20260613_220436
 CORRECTED_LABELS_DIR=./data/processed/synthetic_samples/img_labels
 MEDIEVAL_TEXT_LABELS=$(MEDIEVAL_TEXT_RUN_PATH)/labels.json
 LABEL_TEXT_FIELD?=original_text
@@ -86,14 +86,14 @@ SAMPLE_SIZE?=5
 #========= OCR fine-tuning ========
 FINETUNE_BASE_MODEL=./models/ocr/catmus-medieval.mlmodel
 FINETUNE_OUTPUT_DIR=./models/ocr/finetuned
-FINETUNE_AUG_FOLDER=$(AUGMENTED_RUN_PATH)
-FINETUNE_LABELS_JSON=$(CORRECTED_LABELS_DIR)/labels_20260609_170621/labels.json
-FINETUNE_VAL_FRACTION?=0.1
+FINETUNE_LABELS_JSON=$(CORRECTED_LABELS_DIR)/labels_20260613_220436/labels.json
+FINETUNE_VAL_FRACTION?=0.3
 FINETUNE_SEED?=42
-FINETUNE_LRATE?=1e-4
-FINETUNE_BATCH_SIZE?=1
+FINETUNE_LRATE?=1e-3
+FINETUNE_BATCH_SIZE?=30
 FINETUNE_LAG?=5
 FINETUNE_DEVICE?=cpu
+FINETUNE_EPOCHS?=-1
 SMOKE?=
 SMOKE_SIZE?=50
 SMOKE_EPOCHS?=2
@@ -280,9 +280,18 @@ correct_labels:
 # make finetune_ocr SMOKE=1 SMOKE_SIZE=20 SMOKE_EPOCHS=1
 # make finetune_ocr FINETUNE_DEVICE=cuda:0         # use GPU if available
 
+#KETOS_EARLY_STOP_MIN_DELTA=0.001 make finetune_ocr FINETUNE_EPOCHS=150 FINETUNE_DEVICE=mps
+# Stricter — requires 0.1pp improvement per epoch
+
+#KETOS_EARLY_STOP_MIN_DELTA=0.0 make finetune_ocr FINETUNE_EPOCHS=150 FINETUNE_DEVICE=mps
+# Reverts to the old Lightning default (any positive change counts)
+
+
+#PYTORCH_ENABLE_MPS_FALLBACK=1 make finetune_ocr FINETUNE_EPOCHS=150 FINETUNE_DEVICE=mps
+
 finetune_ocr:
 	$(PYTHON) scripts/ocr/run_finetune_ocr.py \
-			--augmented-folder $(FINETUNE_AUG_FOLDER) \
+			--augmented-folder $(AUGMENTED_RUN_PATH) \
 			--labels-json $(FINETUNE_LABELS_JSON) \
 			--base-model $(FINETUNE_BASE_MODEL) \
 			--output-base-dir $(FINETUNE_OUTPUT_DIR) \
@@ -292,6 +301,7 @@ finetune_ocr:
 			--batch-size $(FINETUNE_BATCH_SIZE) \
 			--lag $(FINETUNE_LAG) \
 			--device $(FINETUNE_DEVICE) \
+			--epochs $(FINETUNE_EPOCHS) \
 			$(if $(SMOKE),--smoke --smoke-size $(SMOKE_SIZE) --smoke-epochs $(SMOKE_EPOCHS))
 
 
