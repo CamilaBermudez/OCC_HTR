@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
+from tqdm import tqdm
 
 from src.utils.path_utils import format_filename
 
@@ -192,7 +193,7 @@ def plot_all_images_with_bounds(
     processed_count = 0
     error_count = 0
 
-    for idx, image_file in enumerate(image_files, start=1):
+    for image_file in tqdm(image_files, desc="Plotting", unit="img"):
         base_name = image_file.stem
         json_path_str, _, processed_name = format_filename(base_name, kraken_output_path)
         json_path = Path(json_path_str)
@@ -209,9 +210,6 @@ def plot_all_images_with_bounds(
             processed_count += 1
         else:
             error_count += 1
-
-        if idx % 20 == 0 or idx == len(image_files):
-            logger.info(f"Progress: {idx}/{len(image_files)} | OK: {processed_count}")
 
     logger.info(f"Done. Processed: {processed_count} | Errors/Skipped: {error_count}")
     logger.info(f"Output: {run_output_dir}")
