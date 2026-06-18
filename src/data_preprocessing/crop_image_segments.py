@@ -178,7 +178,7 @@ def crop_all_images(
     run_output_folder.mkdir(parents=True, exist_ok=True)
     success_count = 0
 
-    for idx, img_path in enumerate(tqdm(image_files, desc="Cropping", unit="file"), 1):
+    for img_path in tqdm(image_files, desc="Cropping", unit="file"):
         output_path_str, _, processed_name = format_filename(
             base_name=img_path.stem, output_folder=output_kraken_path
         )
@@ -191,9 +191,6 @@ def crop_all_images(
 
         if crop_image_segments(img_path, json_path, processed_name, file_output_dir, crop_type):
             success_count += 1
-
-        if idx % 20 == 0 or idx == len(image_files):
-            logger.info(f"Progress: {idx}/{len(image_files)} | OK: {success_count}")
 
     logger.info(f"Cropping complete: {success_count}/{len(image_files)} succeeded")
     logger.info(f"Output: {run_output_folder}")
