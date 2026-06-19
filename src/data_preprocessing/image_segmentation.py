@@ -7,12 +7,16 @@ import subprocess
 from pathlib import Path
 
 from dotenv import load_dotenv
-from kraken import serialization
-from kraken.containers import BaselineLine, BBoxLine, Segmentation
 from PIL import Image
 from tqdm import tqdm
 
 from src.utils.path_utils import format_filename, format_for_cli
+
+# kraken is imported lazily inside format_from_JSON_to_ALTO_XML.
+# Top-level kraken imports pull in scipy → numpy at module-import time,
+# which means any caller that just wants reorder_lines_reading_order or
+# the projection helper has to load the full ML stack — and fails when
+# that stack is in a half-upgraded state in a notebook kernel.
 
 
 def setup_simple_logging(logs_dir: str, run_name: str | None = None):
@@ -364,6 +368,10 @@ def apply_reading_order_to_json(json_path: Path, image_path: Path | None = None)
 
 
 def format_from_JSON_to_ALTO_XML(input_json_path, input_img_path, output_alto_path):
+    # Lazy kraken imports — see the comment at the top of the file.
+    from kraken import serialization
+    from kraken.containers import BaselineLine, BBoxLine, Segmentation
+
     with open(input_json_path, encoding="utf-8") as f:
         data = json.load(f)
     im = Image.open(input_img_path)
