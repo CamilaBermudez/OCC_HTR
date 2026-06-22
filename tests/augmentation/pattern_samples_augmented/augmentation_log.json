@@ -1,0 +1,551 @@
+{
+  "summary": {
+    "run": "pattern_samples_augmented",
+    "git": "5064a0f",
+    "input_dir": "tests/augmentation/_pattern_aug_input",
+    "output_dir": "tests/augmentation/pattern_samples_augmented",
+    "n_sources": 6,
+    "n_augmentations": 1,
+    "total_expected": 6,
+    "base_seed": 42,
+    "sample_size": null,
+    "parchment_dir": "tests/augmentation/parchment_crops",
+    "n_parchment_files": 53,
+    "timestamp": "2026-06-13T20:26:54",
+    "saved": 6,
+    "skipped": 0
+  },
+  "outputs": {
+    "pattern_00_aug00.png": {
+      "source": "pattern_00.png",
+      "variant_index": 0,
+      "seed": 42,
+      "n_applied": 9,
+      "transforms": [
+        {
+          "name": "Morphological",
+          "applied": false
+        },
+        {
+          "name": "Morphological",
+          "applied": true
+        },
+        {
+          "name": "PixelDropout",
+          "applied": false
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": false
+        },
+        {
+          "name": "Lambda",
+          "applied": false
+        },
+        {
+          "name": "Lambda",
+          "applied": false
+        },
+        {
+          "name": "HueSaturationValue",
+          "applied": true,
+          "params": {
+            "hue_shift": 0.2000860417813355,
+            "sat_shift": -9.499413632617614,
+            "val_shift": -11.65183892776766
+          }
+        },
+        {
+          "name": "OneOf",
+          "applied": true,
+          "transforms": [
+            {
+              "name": "ElasticTransform",
+              "applied": false
+            },
+            {
+              "name": "ElasticTransform",
+              "applied": true
+            }
+          ]
+        },
+        {
+          "name": "Affine",
+          "applied": true,
+          "params": {
+            "rotate": 1.960897838524227,
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            }
+          }
+        },
+        {
+          "name": "GaussianBlur",
+          "applied": true
+        },
+        {
+          "name": "GaussNoise",
+          "applied": true
+        },
+        {
+          "name": "PlasmaBrightnessContrast",
+          "applied": true,
+          "params": {
+            "brightness_factor": -0.1449978489554666,
+            "contrast_factor": -0.04499413632617615
+          }
+        }
+      ]
+    },
+    "pattern_01_aug00.png": {
+      "source": "pattern_01.png",
+      "variant_index": 0,
+      "seed": 43,
+      "n_applied": 14,
+      "transforms": [
+        {
+          "name": "Morphological",
+          "applied": true
+        },
+        {
+          "name": "Morphological",
+          "applied": true
+        },
+        {
+          "name": "PixelDropout",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "HueSaturationValue",
+          "applied": true,
+          "params": {
+            "hue_shift": 5.5697945810964224,
+            "sat_shift": -12.121335572092779,
+            "val_shift": -8.062016177563686
+          }
+        },
+        {
+          "name": "OneOf",
+          "applied": true,
+          "transforms": [
+            {
+              "name": "ElasticTransform",
+              "applied": false
+            },
+            {
+              "name": "ElasticTransform",
+              "applied": true
+            }
+          ]
+        },
+        {
+          "name": "Affine",
+          "applied": true,
+          "params": {
+            "rotate": -0.23405385766893838,
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            }
+          }
+        },
+        {
+          "name": "GaussianBlur",
+          "applied": true
+        },
+        {
+          "name": "GaussNoise",
+          "applied": true
+        },
+        {
+          "name": "PlasmaBrightnessContrast",
+          "applied": true,
+          "params": {
+            "brightness_factor": -0.010755135472589439,
+            "contrast_factor": -0.0712133557209278
+          }
+        }
+      ]
+    },
+    "pattern_02_aug00.png": {
+      "source": "pattern_02.png",
+      "variant_index": 0,
+      "seed": 44,
+      "n_applied": 10,
+      "transforms": [
+        {
+          "name": "Morphological",
+          "applied": false
+        },
+        {
+          "name": "Morphological",
+          "applied": true
+        },
+        {
+          "name": "PixelDropout",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": false
+        },
+        {
+          "name": "Lambda",
+          "applied": false
+        },
+        {
+          "name": "Lambda",
+          "applied": false
+        },
+        {
+          "name": "HueSaturationValue",
+          "applied": true,
+          "params": {
+            "hue_shift": 4.33577607283677,
+            "sat_shift": 2.2407323295854624,
+            "val_shift": -12.350015337068342
+          }
+        },
+        {
+          "name": "OneOf",
+          "applied": true,
+          "transforms": [
+            {
+              "name": "ElasticTransform",
+              "applied": true
+            },
+            {
+              "name": "ElasticTransform",
+              "applied": false
+            }
+          ]
+        },
+        {
+          "name": "Affine",
+          "applied": true,
+          "params": {
+            "rotate": -1.916747332785681,
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            }
+          }
+        },
+        {
+          "name": "GaussianBlur",
+          "applied": true
+        },
+        {
+          "name": "GaussNoise",
+          "applied": true
+        },
+        {
+          "name": "PlasmaBrightnessContrast",
+          "applied": true,
+          "params": {
+            "brightness_factor": -0.041605598179080744,
+            "contrast_factor": 0.07240732329585464
+          }
+        }
+      ]
+    },
+    "pattern_03_aug00.png": {
+      "source": "pattern_03.png",
+      "variant_index": 0,
+      "seed": 45,
+      "n_applied": 11,
+      "transforms": [
+        {
+          "name": "Morphological",
+          "applied": false
+        },
+        {
+          "name": "Morphological",
+          "applied": true
+        },
+        {
+          "name": "PixelDropout",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": false
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": false
+        },
+        {
+          "name": "HueSaturationValue",
+          "applied": true,
+          "params": {
+            "hue_shift": 3.9042256628072627,
+            "sat_shift": -13.362413152576668,
+            "val_shift": -9.918997695118954
+          }
+        },
+        {
+          "name": "OneOf",
+          "applied": true,
+          "transforms": [
+            {
+              "name": "ElasticTransform",
+              "applied": false
+            },
+            {
+              "name": "ElasticTransform",
+              "applied": true
+            }
+          ]
+        },
+        {
+          "name": "Affine",
+          "applied": true,
+          "params": {
+            "rotate": -1.0807485205061567,
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            }
+          }
+        },
+        {
+          "name": "GaussianBlur",
+          "applied": true
+        },
+        {
+          "name": "GaussNoise",
+          "applied": true
+        },
+        {
+          "name": "PlasmaBrightnessContrast",
+          "applied": true,
+          "params": {
+            "brightness_factor": -0.05239435842981842,
+            "contrast_factor": -0.0836241315257667
+          }
+        }
+      ]
+    },
+    "pattern_04_aug00.png": {
+      "source": "pattern_04.png",
+      "variant_index": 0,
+      "seed": 46,
+      "n_applied": 4,
+      "transforms": [
+        {
+          "name": "Morphological",
+          "applied": false
+        },
+        {
+          "name": "Morphological",
+          "applied": false
+        },
+        {
+          "name": "PixelDropout",
+          "applied": false
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": false
+        },
+        {
+          "name": "Lambda",
+          "applied": false
+        },
+        {
+          "name": "Lambda",
+          "applied": false
+        },
+        {
+          "name": "Lambda",
+          "applied": false
+        },
+        {
+          "name": "HueSaturationValue",
+          "applied": false
+        },
+        {
+          "name": "OneOf",
+          "applied": false,
+          "transforms": [
+            {
+              "name": "ElasticTransform",
+              "applied": false
+            },
+            {
+              "name": "ElasticTransform",
+              "applied": false
+            }
+          ]
+        },
+        {
+          "name": "Affine",
+          "applied": true,
+          "params": {
+            "rotate": 0.4186524278680306,
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            }
+          }
+        },
+        {
+          "name": "GaussianBlur",
+          "applied": true
+        },
+        {
+          "name": "GaussNoise",
+          "applied": true
+        },
+        {
+          "name": "PlasmaBrightnessContrast",
+          "applied": false
+        }
+      ]
+    },
+    "pattern_05_aug00.png": {
+      "source": "pattern_05.png",
+      "variant_index": 0,
+      "seed": 47,
+      "n_applied": 11,
+      "transforms": [
+        {
+          "name": "Morphological",
+          "applied": false
+        },
+        {
+          "name": "Morphological",
+          "applied": true
+        },
+        {
+          "name": "PixelDropout",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": false
+        },
+        {
+          "name": "Lambda",
+          "applied": true
+        },
+        {
+          "name": "Lambda",
+          "applied": false
+        },
+        {
+          "name": "HueSaturationValue",
+          "applied": true,
+          "params": {
+            "hue_shift": 3.441489967920784,
+            "sat_shift": -5.9265827282085155,
+            "val_shift": -9.847953886826202
+          }
+        },
+        {
+          "name": "OneOf",
+          "applied": true,
+          "transforms": [
+            {
+              "name": "ElasticTransform",
+              "applied": false
+            },
+            {
+              "name": "ElasticTransform",
+              "applied": true
+            }
+          ]
+        },
+        {
+          "name": "Affine",
+          "applied": true,
+          "params": {
+            "rotate": -2.295456387285787,
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            }
+          }
+        },
+        {
+          "name": "GaussianBlur",
+          "applied": true
+        },
+        {
+          "name": "GaussNoise",
+          "applied": true
+        },
+        {
+          "name": "PlasmaBrightnessContrast",
+          "applied": true,
+          "params": {
+            "brightness_factor": -0.06396275080198038,
+            "contrast_factor": -0.009265827282085165
+          }
+        }
+      ]
+    }
+  }
+}
