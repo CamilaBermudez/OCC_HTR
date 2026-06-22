@@ -38,3 +38,12 @@ __pycache__/
 /tests/augmentation/gallery/
 /tests/augmentation/page_creases/
 /tests/augmentation/torn/
+
+# build artifacts
+/occ_htr.egg-info/
+
+# OCR alignment scratch outputs
+/tests/ocr/AlbucE_aligned*.txt
+
+# Glyph backup archives
+/glyphs_backup_*.tar.gz
