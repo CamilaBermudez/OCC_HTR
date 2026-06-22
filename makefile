@@ -35,7 +35,7 @@ TOKENIZER_TYPE?=byte
 VOCAB_SIZE?=100
 #========= transcription ========
 TRANSCRIPTION_DIR=./data/processed/transcription
-IMAGE_INVENTORY=./data/processed/filtered_images/20260515_104416/filter_tracking.csv
+IMAGE_INVENTORY=./data/processed/filtered_images/20260618_160948/filter_tracking.csv
 TRANSCRIPTION_MODEL=./models/ocr/catmus-medieval.mlmodel
 #========= dictionary evaluation ========
 DICT_PATH=./data/raw/DOM_lemma_variants.json
