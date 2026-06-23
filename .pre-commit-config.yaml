@@ -3,9 +3,9 @@ repos:
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
-        exclude: '\.ipynb$'
+        exclude: '\.ipynb$|^tests/ocr/real_val_sample_.*\.gt\.txt$'
       - id: end-of-file-fixer
-        exclude: '\.ipynb$'
+        exclude: '\.ipynb$|^tests/ocr/real_val_sample_.*\.gt\.txt$'
       - id: check-added-large-files
         args: ['--maxkb=2048']
       - id: check-merge-conflict
