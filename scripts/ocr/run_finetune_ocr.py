@@ -89,9 +89,11 @@ def main():
     parser.add_argument(
         "--lrate",
         type=float,
-        default=1e-4,
-        help="Learning rate. Fine-tune default 1e-4 is an order of "
-        "magnitude below the ketos default (default: 1e-4).",
+        default=1e-5,
+        help="Learning rate. Fine-tune default 1e-5 keeps the base "
+        "catmus weights anchored; the original ketos default (1e-3) "
+        "overwrites real-manuscript features after a few epochs "
+        "(default: 1e-5).",
     )
     parser.add_argument(
         "--batch-size",
