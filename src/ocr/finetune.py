@@ -32,6 +32,25 @@ from pathlib import Path
 _AUG_FILENAME_RE = re.compile(r"^(.+)_aug\d+\.png$")
 
 
+def _sanitize_for_kraken(name: str) -> str:
+    """Replace dots inside the stem with underscores.
+
+    Kraken's ``parse_gt_path`` uses ``Path.with_suffix('')`` in a loop to
+    strip *every* suffix from the image path before looking up the
+    ``.gt.txt`` sibling, so a filename like ``RecChantC_ag.thes_l00086_aug00.png``
+    gets stripped back to ``RecChantC_ag`` and the resolver looks for
+    ``RecChantC_ag.gt.txt`` — which doesn't exist. Replacing the stem's
+    dots with underscores keeps the lookup stable while preserving the
+    file's extension (.png / .gt.txt).
+    """
+    if name.endswith(".gt.txt"):
+        stem, suffix = name[: -len(".gt.txt")], ".gt.txt"
+    else:
+        p = Path(name)
+        stem, suffix = p.stem, p.suffix
+    return stem.replace(".", "_") + suffix
+
+
 def setup_finetune_logging(logs_dir: str | Path, run_name: str):
     """File + console logger, same pattern as the other src/ scripts."""
     Path(logs_dir).mkdir(parents=True, exist_ok=True)
@@ -155,8 +174,9 @@ def stage_finetune_data(
             if not src_img.is_file():
                 missing_image += 1
                 continue
-            dst_img = split_dir / aug_name
-            dst_txt = split_dir / f"{src_img.stem}.gt.txt"
+            safe_name = _sanitize_for_kraken(aug_name)
+            dst_img = split_dir / safe_name
+            dst_txt = split_dir / _sanitize_for_kraken(f"{src_img.stem}.gt.txt")
             _link_or_copy(src_img, dst_img)
             dst_txt.write_text(labels[aug_name], encoding="utf-8")
             # Use .absolute() — NOT .resolve() — so the path stays at the
@@ -248,8 +268,8 @@ def mix_in_real_samples(
     def _stage(pair_list: list[tuple[Path, Path]], dst_dir: Path) -> list[Path]:
         out: list[Path] = []
         for img, gt in pair_list:
-            dst_img = dst_dir / img.name
-            dst_gt = dst_dir / gt.name
+            dst_img = dst_dir / _sanitize_for_kraken(img.name)
+            dst_gt = dst_dir / _sanitize_for_kraken(gt.name)
             _link_or_copy(img, dst_img)
             _link_or_copy(gt, dst_gt)
             out.append(dst_img.absolute())
