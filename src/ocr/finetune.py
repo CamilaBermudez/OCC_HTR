@@ -184,6 +184,104 @@ def stage_finetune_data(
     return train_list, val_list, stats
 
 
+def mix_in_real_samples(
+    *,
+    real_folder: Path,
+    staging_dir: Path,
+    train_list: Path,
+    val_list: Path,
+    n_real_train: int,
+    n_real_val: int,
+    real_replaces_synth_val: bool,
+    seed: int,
+    logger: logging.Logger,
+) -> dict:
+    """Drop real-manuscript ``<stem>.png + <stem>.gt.txt`` pairs into the
+    staging train/val splits so the fine-tune sees real data alongside
+    the synthetic augmentations.
+
+    Three reasons this is its own step instead of being folded into
+    ``stage_finetune_data``:
+      - The real folder uses kraken's ``<stem>.gt.txt`` convention
+        directly (no labels.json indirection, no ``_aug<NN>`` suffixes).
+      - Real samples are not grouped by source line — one image = one
+        sample — so the source-line split logic doesn't apply.
+      - It is optional: omit ``--real-folder`` and the call is skipped.
+
+    Behaviour:
+      - Sample ``n_real_train + n_real_val`` real pairs deterministically
+        (sorted by stem, then shuffled with ``seed``).
+      - First ``n_real_train`` go to train, next ``n_real_val`` to val.
+      - When ``real_replaces_synth_val`` is true, val_list is rewritten to
+        contain ONLY the real samples (the synthetic val accuracy was
+        useless precisely because val was 100% synthetic).
+      - When false, real val samples are appended to the synthetic val
+        list.
+      - Train always appends (real anchors mixed with synthetic).
+
+    Asserts: real samples must form ``.png + .gt.txt`` pairs.
+    """
+    real_folder = Path(real_folder)
+    assert real_folder.is_dir(), f"Real folder not found: {real_folder}"
+    pngs = sorted(real_folder.glob("*.png"))
+    pairs: list[tuple[Path, Path]] = []
+    for p in pngs:
+        gt = p.with_suffix(".gt.txt")
+        if gt.is_file():
+            pairs.append((p, gt))
+    assert pairs, f"No <stem>.png + <stem>.gt.txt pairs in {real_folder}"
+    needed = n_real_train + n_real_val
+    assert len(pairs) >= needed, (
+        f"Real folder has {len(pairs)} pairs but {needed} requested "
+        f"({n_real_train} train + {n_real_val} val). Either add more real "
+        f"samples or lower the counts."
+    )
+
+    rng = random.Random(seed)
+    rng.shuffle(pairs)
+    train_pairs = pairs[:n_real_train]
+    val_pairs = pairs[n_real_train : n_real_train + n_real_val]
+
+    train_dir = staging_dir / "train"
+    val_dir = staging_dir / "val"
+
+    def _stage(pair_list: list[tuple[Path, Path]], dst_dir: Path) -> list[Path]:
+        out: list[Path] = []
+        for img, gt in pair_list:
+            dst_img = dst_dir / img.name
+            dst_gt = dst_dir / gt.name
+            _link_or_copy(img, dst_img)
+            _link_or_copy(gt, dst_gt)
+            out.append(dst_img.absolute())
+        return out
+
+    real_train_paths = _stage(train_pairs, train_dir)
+    real_val_paths = _stage(val_pairs, val_dir)
+
+    # Append real train paths to the synthetic train list.
+    with open(train_list, "a", encoding="utf-8") as f:
+        for p in real_train_paths:
+            f.write(f"{p}\n")
+
+    if real_replaces_synth_val:
+        val_list.write_text("\n".join(str(p) for p in real_val_paths) + "\n", encoding="utf-8")
+    else:
+        with open(val_list, "a", encoding="utf-8") as f:
+            for p in real_val_paths:
+                f.write(f"{p}\n")
+
+    stats = {
+        "real_folder": str(real_folder),
+        "n_real_available": len(pairs),
+        "n_real_train": n_real_train,
+        "n_real_val": n_real_val,
+        "real_replaces_synth_val": real_replaces_synth_val,
+        "real_seed": seed,
+    }
+    logger.info(f"Mixed in real samples: {json.dumps(stats)}")
+    return stats
+
+
 def run_ketos_train(
     *,
     base_model: Path,
@@ -374,6 +472,10 @@ def finetune(
     device: str = "cpu",
     keep_all_checkpoints: bool = False,
     logs_dir: str | Path | None = None,
+    real_folder: str | Path | None = None,
+    n_real_train: int = 0,
+    n_real_val: int = 0,
+    real_replaces_synth_val: bool = True,
 ) -> Path:
     """End-to-end fine-tune: stage data, run ``ketos train``, return run dir.
 
@@ -472,6 +574,19 @@ def finetune(
         smoke_size=effective_smoke_size,
         logger=logger,
     )
+    if real_folder is not None and (n_real_train or n_real_val):
+        real_stats = mix_in_real_samples(
+            real_folder=Path(real_folder),
+            staging_dir=staging_dir,
+            train_list=train_list,
+            val_list=val_list,
+            n_real_train=n_real_train,
+            n_real_val=n_real_val,
+            real_replaces_synth_val=real_replaces_synth_val,
+            seed=seed,
+            logger=logger,
+        )
+        stats.update(real_stats)
     (run_dir / "stats.json").write_text(json.dumps(stats, indent=2), encoding="utf-8")
 
     rc = run_ketos_train(

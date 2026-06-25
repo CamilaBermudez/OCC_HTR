@@ -126,6 +126,41 @@ def main():
         required=False,
         help="Directory for the plain-text run log. Default: logs/finetune_ocr",
     )
+    parser.add_argument(
+        "--real-folder",
+        required=False,
+        help="Directory of real-manuscript line crops as <stem>.png + "
+        "<stem>.gt.txt pairs (kraken convention). When given together "
+        "with --n-real-train/--n-real-val, those samples are mixed into "
+        "the staged train and val splits so the model sees real data "
+        "alongside the synthetic augmentations.",
+    )
+    parser.add_argument(
+        "--n-real-train",
+        type=int,
+        default=0,
+        help="Number of real samples to include in TRAIN. Default 0 "
+        "(no mix-in). Without real samples in train the model has no "
+        "anchor to the real distribution and can catastrophically forget "
+        "the catmus base behaviour.",
+    )
+    parser.add_argument(
+        "--n-real-val",
+        type=int,
+        default=0,
+        help="Number of real samples to include in VAL. Default 0. With "
+        "--real-replaces-synth-val=true (the default) val_files.txt is "
+        "rewritten to contain ONLY these real samples, so val_accuracy "
+        "genuinely measures real-manuscript performance.",
+    )
+    parser.add_argument(
+        "--real-replaces-synth-val",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Whether real val samples replace (default) or append to "
+        "the synthetic val split. Use --no-real-replaces-synth-val to "
+        "keep the synthetic samples in val.",
+    )
 
     args = parser.parse_args()
 
@@ -159,6 +194,10 @@ def main():
         device=args.device,
         keep_all_checkpoints=args.keep_all_checkpoints,
         logs_dir=logs_dir,
+        real_folder=Path(args.real_folder) if args.real_folder else None,
+        n_real_train=args.n_real_train,
+        n_real_val=args.n_real_val,
+        real_replaces_synth_val=args.real_replaces_synth_val,
     )
 
 
