@@ -108,8 +108,8 @@ FINETUNE_EPOCHS?=-1
 # split into n_train + n_val so the model anchors to real data AND its
 # val_accuracy reflects real-manuscript performance.
 FINETUNE_REAL_FOLDER?=./tests/ocr/real_corrected_20260625
-FINETUNE_N_REAL_TRAIN?=20
-FINETUNE_N_REAL_VAL?=20
+FINETUNE_N_REAL_TRAIN?=60
+FINETUNE_N_REAL_VAL?=40
 SMOKE?=
 SMOKE_SIZE?=50
 SMOKE_EPOCHS?=2
