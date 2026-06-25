@@ -47,6 +47,9 @@ CATEGORIZED_SAMPLES_DIR=./data/processed/synthetic_seeds
 CATEGORIZED_SAMPLES_JSON=./data/processed/synthetic_seeds/categorize_20260613_214958/cometa_categorized.json
 WORD_PATTERNS?=am,ma
 SUBSTRING_PATTERNS?=
+# medical_texts_categorization: paragraph corpus cut into OCR-shaped pseudo-lines
+MEDICAL_TEXTS_CORPUS_DIR=./data/raw/medical_texts
+OCR_LINE_LENGTHS_JSON=./tests/ocr/ocr_line_lengths_20260625_120230.json
 MEDIEVAL_TEXT_DIR=./data/processed/synthetic_text
 MEDIEVAL_TEXT_RUN_PATH=./data/processed/synthetic_text/medieval_text_20260613_215219
 RENDERING_FONT_PATH=./fonts/merged_font_code_cmpl2.ttf
@@ -100,7 +103,7 @@ SMOKE_EPOCHS?=2
 
 PYTHON=uv run python
 
-.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images detect_ink_bleed unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels finetune_ocr clean
+.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images detect_ink_bleed unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medical_texts_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels finetune_ocr clean
 
 all: evaluate_yolo_performance
 
@@ -212,7 +215,20 @@ corpus_categorization:
 			--corpus-dir $(COMETA_CORPUS_DIR) \
 			--output-dir $(CATEGORIZED_SAMPLES_DIR) \
 			--word-patterns $(WORD_PATTERNS) \
-			--substring-patterns $(SUBSTRING_PATTERNS)
+			--substring-patterns "$(SUBSTRING_PATTERNS)"
+
+
+# Paragraph-style medical_texts corpus: cut into OCR-shaped pseudo-lines
+# (length sampled from the empirical OCR per-line distribution) and keep
+# every line — no pattern filtering.
+medical_texts_categorization:
+	$(PYTHON) scripts/data_augmentation/run_corpus_categorization.py \
+			--corpus-dir $(MEDICAL_TEXTS_CORPUS_DIR) \
+			--output-dir $(CATEGORIZED_SAMPLES_DIR) \
+			--cut-to-lines \
+			--line-lengths-json $(OCR_LINE_LENGTHS_JSON) \
+			--keep-all \
+			--output-filename medical_texts_categorized.json
 
 
 medieval_text_generation:

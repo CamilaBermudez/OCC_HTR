@@ -1,5 +1,7 @@
 /data/raw/original_manuscript/
 /data/raw/COMETA_medieval_corpus/
+/data/raw/medical_texts/
+/data/raw/medical_texts.zip
 /.venv
 .env
 /results/image_segmentation/

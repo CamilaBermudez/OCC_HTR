@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import json
 import os
 from pathlib import Path
 
@@ -72,6 +73,41 @@ def main():
         required=False,
         help="Subdirectory/log identifier for this run. " "Default: categorize_<timestamp>.",
     )
+    parser.add_argument(
+        "--cut-to-lines",
+        action="store_true",
+        help="Treat each corpus file as one stream of words and cut it into "
+        "pseudo-lines whose length is drawn from --line-lengths-json. Use for "
+        "paragraph-style sources (e.g. data/raw/medical_texts) that lack "
+        "manuscript-style line breaks.",
+    )
+    parser.add_argument(
+        "--line-lengths-json",
+        required=False,
+        help="Path to a JSON written by notebooks/ocr/ocr_line_length_stats.ipynb "
+        "(contains a 'lengths' list of per-line word counts). Required with "
+        "--cut-to-lines.",
+    )
+    parser.add_argument(
+        "--keep-all",
+        action="store_true",
+        help="Skip pattern filtering — every line becomes a sample under "
+        "category 'all'. Use with paragraph corpora where every line should "
+        "feed the synthetic-text generator.",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="RNG seed for --cut-to-lines length sampling (default: 42).",
+    )
+    parser.add_argument(
+        "--output-filename",
+        required=False,
+        default="cometa_categorized.json",
+        help="Name of the JSON file written under output-dir/run-name. "
+        "Default: cometa_categorized.json.",
+    )
 
     args = parser.parse_args()
 
@@ -95,18 +131,27 @@ def main():
     # Build the pattern dict from CLI flags. Whole-word patterns come from
     # --word-patterns; substring patterns from --substring-patterns (category
     # name prefixed with 'substring_' to avoid collisions with word patterns);
-    # the Roman-numeral pattern is the prebuilt strict matcher.
-    words = [w.strip() for w in args.word_patterns.split(",") if w.strip()]
-    substrings = [s.strip() for s in (args.substring_patterns or "").split(",") if s.strip()]
-    patterns = {w: word_pattern(w) for w in words}
-    patterns.update({f"substring_{s}": substring_pattern(s) for s in substrings})
-    if args.include_roman_numerals:
-        patterns["roman_numeral"] = has_roman_numeral
+    # the Roman-numeral pattern is the prebuilt strict matcher. Patterns are
+    # ignored when --keep-all is set.
+    patterns: dict | None = None
+    if not args.keep_all:
+        words = [w.strip() for w in args.word_patterns.split(",") if w.strip()]
+        substrings = [s.strip() for s in (args.substring_patterns or "").split(",") if s.strip()]
+        patterns = {w: word_pattern(w) for w in words}
+        patterns.update({f"substring_{s}": substring_pattern(s) for s in substrings})
+        if args.include_roman_numerals:
+            patterns["roman_numeral"] = has_roman_numeral
+        assert patterns, (
+            "No patterns selected. Pass --word-patterns, --substring-patterns, "
+            "--include-roman-numerals, or --keep-all."
+        )
 
-    assert patterns, (
-        "No patterns selected. Pass --word-patterns, --substring-patterns, "
-        "or --include-roman-numerals."
-    )
+    length_pool: list[int] | None = None
+    if args.cut_to_lines:
+        assert args.line_lengths_json, "--cut-to-lines requires --line-lengths-json"
+        lengths_doc = json.loads(Path(args.line_lengths_json).read_text(encoding="utf-8"))
+        length_pool = lengths_doc["lengths"]
+        assert length_pool, f"'lengths' field is empty in {args.line_lengths_json}"
 
     categorize_corpus(
         corpus_dir=corpus_dir,
@@ -114,6 +159,11 @@ def main():
         patterns=patterns,
         logs_dir=logs_dir,
         run_name=run_name,
+        output_filename=args.output_filename,
+        cut_to_lines=args.cut_to_lines,
+        length_pool=length_pool,
+        keep_all=args.keep_all,
+        seed=args.seed,
     )
 
 

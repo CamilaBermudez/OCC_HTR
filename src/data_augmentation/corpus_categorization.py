@@ -4,13 +4,46 @@ import datetime
 import json
 import logging
 import os
+import random
 import re
 import subprocess
 from collections import Counter, defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 LineMatcher = Callable[[str], bool]
+
+
+def _iter_file_lines(text: str) -> Iterator[str]:
+    """Yield non-empty stripped lines split on newlines."""
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line:
+            yield line
+
+
+def _iter_cut_lines(text: str, length_pool: list[int], rng: random.Random) -> Iterator[str]:
+    """Yield pseudo-lines built by cutting whitespace-tokenised text into
+    chunks of N words where N is drawn from ``length_pool``.
+
+    The pool is the empirical OCR line-length distribution (e.g. the list
+    of 13,647 per-line word counts collected by
+    ``notebooks/ocr/ocr_line_length_stats.ipynb``), so the resulting
+    pseudo-corpus has the same length shape as what the OCR model
+    actually produces. The final partial chunk is yielded as-is even if
+    it's shorter than the sampled length.
+    """
+    assert length_pool, "length_pool must be non-empty for cut mode"
+    words = text.split()
+    if not words:
+        return
+    i = 0
+    n = len(words)
+    while i < n:
+        target = rng.choice(length_pool)
+        chunk = words[i : i + target]
+        yield " ".join(chunk)
+        i += target
 
 
 def setup_categorization_logging(logs_dir: str | Path, run_name: str):
@@ -135,11 +168,34 @@ def categorize_corpus(
     logs_dir: str | Path | None = None,
     run_name: str | None = None,
     output_filename: str = "cometa_categorized.json",
+    cut_to_lines: bool = False,
+    length_pool: list[int] | None = None,
+    keep_all: bool = False,
+    seed: int = 42,
 ) -> dict:
+    """Scan a corpus and label every line that matches any of ``patterns``.
+
+    Two optional behaviours for source text without manuscript-style line
+    breaks (e.g. a transcribed paragraph corpus):
+
+    - ``cut_to_lines=True`` reads each file as one stream of words and
+      cuts it into pseudo-lines of length drawn from ``length_pool``
+      (typically the empirical OCR per-line word counts). This is the
+      "give me OCR-shaped fake lines from a paragraph corpus" mode.
+
+    - ``keep_all=True`` skips pattern filtering and emits every line
+      with category ``["all"]``. Use when you want every line of the
+      corpus to become a synthetic seed, not just lines containing
+      specific patterns. ``patterns`` may be ``None`` in this mode.
+    """
     corpus_dir = Path(corpus_dir)
     output_dir = Path(output_dir)
-    patterns = patterns if patterns is not None else dict(DEFAULT_PATTERNS)
-    assert patterns, "patterns is empty — pass DEFAULT_PATTERNS or a custom dict"
+    if not keep_all:
+        patterns = patterns if patterns is not None else dict(DEFAULT_PATTERNS)
+        assert patterns, "patterns is empty — pass DEFAULT_PATTERNS or a custom dict"
+    if cut_to_lines:
+        assert length_pool, "cut_to_lines=True requires a non-empty length_pool"
+    rng = random.Random(seed)
 
     if run_name is None:
         run_name = f"categorize_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -176,7 +232,11 @@ def categorize_corpus(
         "corpus_dir": str(corpus_dir),
         "output_path": str(output_path),
         "n_files": len(files),
-        "categories": list(patterns.keys()),
+        "categories": ["all"] if keep_all else list(patterns.keys()),
+        "cut_to_lines": cut_to_lines,
+        "keep_all": keep_all,
+        "length_pool_size": len(length_pool) if length_pool else 0,
+        "seed": seed,
     }
     logger.info(f"Config: {json.dumps(config_summary)}")
 
@@ -185,16 +245,18 @@ def categorize_corpus(
     per_cat_files: dict[str, set] = defaultdict(set)
 
     for path in files:
-        for i, raw in enumerate(
-            path.read_text(encoding=encoding, errors="replace").splitlines(),
-            start=1,
-        ):
-            line = raw.strip()
-            if not line:
-                continue
-            cats = [name for name, match in patterns.items() if match(line)]
-            if not cats:
-                continue
+        text = path.read_text(encoding=encoding, errors="replace")
+        if cut_to_lines:
+            line_iter = enumerate(_iter_cut_lines(text, length_pool, rng), start=1)
+        else:
+            line_iter = enumerate(_iter_file_lines(text), start=1)
+        for i, line in line_iter:
+            if keep_all:
+                cats = ["all"]
+            else:
+                cats = [name for name, match in patterns.items() if match(line)]
+                if not cats:
+                    continue
             samples[f"{path.name}:{i}"] = {"categories": cats, "text": line}
             for c in cats:
                 per_cat_count[c] += 1
@@ -207,8 +269,12 @@ def categorize_corpus(
             **config_summary,
             "timestamp": datetime.datetime.now().isoformat(timespec="seconds"),
             "total_lines_matched": len(samples),
-            "lines_per_category": {c: per_cat_count[c] for c in patterns},
-            "files_per_category": {c: sorted(per_cat_files[c]) for c in patterns},
+            "lines_per_category": {
+                c: per_cat_count[c] for c in (["all"] if keep_all else patterns)
+            },
+            "files_per_category": {
+                c: sorted(per_cat_files[c]) for c in (["all"] if keep_all else patterns)
+            },
             "multi_category_lines": multi_count,
         },
         "samples": samples,
@@ -219,7 +285,7 @@ def categorize_corpus(
     logger.info(
         f"Categorization complete: {len(samples)} lines matched, " f"{multi_count} multi-category"
     )
-    for c in patterns:
+    for c in ["all"] if keep_all else patterns:
         logger.info(
             f"  {c:<18} {per_cat_count[c]:>6} lines across " f"{len(per_cat_files[c])} file(s)"
         )
