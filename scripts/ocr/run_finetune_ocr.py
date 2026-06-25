@@ -141,22 +141,22 @@ def main():
         "alongside the synthetic augmentations.",
     )
     parser.add_argument(
-        "--n-real-train",
-        type=int,
-        default=0,
-        help="Number of real samples to include in TRAIN. Default 0 "
-        "(no mix-in). Without real samples in train the model has no "
-        "anchor to the real distribution and can catastrophically forget "
-        "the catmus base behaviour.",
+        "--real-train-frac",
+        type=float,
+        default=0.0,
+        help="Fraction of the real folder used as TRAIN mix-in (default "
+        "0.0 — no mix-in). Floor-rounded against the live folder count "
+        "so the split auto-scales as the corrected pool grows.",
     )
     parser.add_argument(
-        "--n-real-val",
-        type=int,
-        default=0,
-        help="Number of real samples to include in VAL. Default 0. With "
-        "--real-replaces-synth-val=true (the default) val_files.txt is "
-        "rewritten to contain ONLY these real samples, so val_accuracy "
-        "genuinely measures real-manuscript performance.",
+        "--real-val-frac",
+        type=float,
+        default=0.0,
+        help="Fraction of the real folder used as VAL (default 0.0). "
+        "With --real-replaces-synth-val=true (the default) the synthetic "
+        "val list is rewritten to contain ONLY these real samples, so "
+        "val_accuracy genuinely measures real-manuscript performance. "
+        "real-train-frac + real-val-frac must be <= 1.0.",
     )
     parser.add_argument(
         "--real-replaces-synth-val",
@@ -200,8 +200,8 @@ def main():
         keep_all_checkpoints=args.keep_all_checkpoints,
         logs_dir=logs_dir,
         real_folder=Path(args.real_folder) if args.real_folder else None,
-        n_real_train=args.n_real_train,
-        n_real_val=args.n_real_val,
+        real_train_frac=args.real_train_frac,
+        real_val_frac=args.real_val_frac,
         real_replaces_synth_val=args.real_replaces_synth_val,
     )
 

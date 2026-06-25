@@ -210,8 +210,8 @@ def mix_in_real_samples(
     staging_dir: Path,
     train_list: Path,
     val_list: Path,
-    n_real_train: int,
-    n_real_val: int,
+    real_train_frac: float,
+    real_val_frac: float,
     real_replaces_synth_val: bool,
     seed: int,
     logger: logging.Logger,
@@ -229,18 +229,29 @@ def mix_in_real_samples(
       - It is optional: omit ``--real-folder`` and the call is skipped.
 
     Behaviour:
-      - Sample ``n_real_train + n_real_val`` real pairs deterministically
-        (sorted by stem, then shuffled with ``seed``).
-      - First ``n_real_train`` go to train, next ``n_real_val`` to val.
-      - When ``real_replaces_synth_val`` is true, val_list is rewritten to
-        contain ONLY the real samples (the synthetic val accuracy was
-        useless precisely because val was 100% synthetic).
+      - Counts are derived from fractions of the folder contents so the
+        split auto-scales as the corrected pool grows. ``n_train`` is
+        ``floor(n_total * real_train_frac)`` and ``n_val`` is
+        ``floor(n_total * real_val_frac)``; floor avoids the rounding
+        case where ``round`` could push the sum past ``n_total``.
+      - Pairs are sorted by stem then shuffled with ``seed``, so the
+        first ``n_train`` go to train and the next ``n_val`` go to val.
+      - When ``real_replaces_synth_val`` is true, val_list is rewritten
+        to contain ONLY the real samples (the synthetic val accuracy
+        was useless precisely because val was 100% synthetic).
       - When false, real val samples are appended to the synthetic val
         list.
       - Train always appends (real anchors mixed with synthetic).
 
-    Asserts: real samples must form ``.png + .gt.txt`` pairs.
+    Asserts: real samples must form ``.png + .gt.txt`` pairs, fractions
+    must be non-negative and sum to ``<= 1.0``.
     """
+    assert 0.0 <= real_train_frac <= 1.0, f"real_train_frac out of range: {real_train_frac}"
+    assert 0.0 <= real_val_frac <= 1.0, f"real_val_frac out of range: {real_val_frac}"
+    assert real_train_frac + real_val_frac <= 1.0 + 1e-9, (
+        f"real_train_frac + real_val_frac must be <= 1.0, got "
+        f"{real_train_frac} + {real_val_frac} = {real_train_frac + real_val_frac}"
+    )
     real_folder = Path(real_folder)
     assert real_folder.is_dir(), f"Real folder not found: {real_folder}"
     pngs = sorted(real_folder.glob("*.png"))
@@ -250,11 +261,13 @@ def mix_in_real_samples(
         if gt.is_file():
             pairs.append((p, gt))
     assert pairs, f"No <stem>.png + <stem>.gt.txt pairs in {real_folder}"
-    needed = n_real_train + n_real_val
-    assert len(pairs) >= needed, (
-        f"Real folder has {len(pairs)} pairs but {needed} requested "
-        f"({n_real_train} train + {n_real_val} val). Either add more real "
-        f"samples or lower the counts."
+
+    n_total = len(pairs)
+    n_real_train = int(n_total * real_train_frac)
+    n_real_val = int(n_total * real_val_frac)
+    assert n_real_train + n_real_val > 0, (
+        f"Real fractions yield 0 train + 0 val from {n_total} pairs — "
+        f"either raise the fractions or add more samples."
     )
 
     rng = random.Random(seed)
@@ -293,6 +306,8 @@ def mix_in_real_samples(
     stats = {
         "real_folder": str(real_folder),
         "n_real_available": len(pairs),
+        "real_train_frac": real_train_frac,
+        "real_val_frac": real_val_frac,
         "n_real_train": n_real_train,
         "n_real_val": n_real_val,
         "real_replaces_synth_val": real_replaces_synth_val,
@@ -493,8 +508,8 @@ def finetune(
     keep_all_checkpoints: bool = False,
     logs_dir: str | Path | None = None,
     real_folder: str | Path | None = None,
-    n_real_train: int = 0,
-    n_real_val: int = 0,
+    real_train_frac: float = 0.0,
+    real_val_frac: float = 0.0,
     real_replaces_synth_val: bool = True,
 ) -> Path:
     """End-to-end fine-tune: stage data, run ``ketos train``, return run dir.
@@ -600,14 +615,14 @@ def finetune(
         smoke_size=effective_smoke_size,
         logger=logger,
     )
-    if real_folder is not None and (n_real_train or n_real_val):
+    if real_folder is not None and (real_train_frac > 0 or real_val_frac > 0):
         real_stats = mix_in_real_samples(
             real_folder=Path(real_folder),
             staging_dir=staging_dir,
             train_list=train_list,
             val_list=val_list,
-            n_real_train=n_real_train,
-            n_real_val=n_real_val,
+            real_train_frac=real_train_frac,
+            real_val_frac=real_val_frac,
             real_replaces_synth_val=real_replaces_synth_val,
             seed=seed,
             logger=logger,

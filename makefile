@@ -108,8 +108,8 @@ FINETUNE_EPOCHS?=-1
 # split into n_train + n_val so the model anchors to real data AND its
 # val_accuracy reflects real-manuscript performance.
 FINETUNE_REAL_FOLDER?=./tests/ocr/real_corrected_20260625
-FINETUNE_N_REAL_TRAIN?=60
-FINETUNE_N_REAL_VAL?=40
+FINETUNE_REAL_TRAIN_FRAC?=0.6
+FINETUNE_REAL_VAL_FRAC?=0.4
 SMOKE?=
 SMOKE_SIZE?=50
 SMOKE_EPOCHS?=2
@@ -330,8 +330,8 @@ finetune_ocr:
 			--device $(FINETUNE_DEVICE) \
 			--epochs $(FINETUNE_EPOCHS) \
 			--real-folder $(FINETUNE_REAL_FOLDER) \
-			--n-real-train $(FINETUNE_N_REAL_TRAIN) \
-			--n-real-val $(FINETUNE_N_REAL_VAL) \
+			--real-train-frac $(FINETUNE_REAL_TRAIN_FRAC) \
+			--real-val-frac $(FINETUNE_REAL_VAL_FRAC) \
 			$(if $(SMOKE),--smoke --smoke-size $(SMOKE_SIZE) --smoke-epochs $(SMOKE_EPOCHS))
 
 
