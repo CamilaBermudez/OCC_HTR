@@ -29,6 +29,7 @@ import albumentations as A
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+from tqdm import tqdm
 
 
 def setup_augmentation_logging(logs_dir: str | Path, run_name: str):
@@ -1038,11 +1039,13 @@ def batch_augment_directory(
     saved: list[Path] = []
     n_skipped = 0
     log_entries: dict[str, dict] = {}
-    for i, img_path in enumerate(image_paths):
+    progress = tqdm(image_paths, total=len(image_paths), desc="Augmenting", unit="src")
+    for i, img_path in enumerate(progress):
         img = cv2.imread(str(img_path))
         if img is None:
             logger.warning(f"Skipping unreadable image: {img_path.name}")
             n_skipped += 1
+            progress.set_postfix(saved=len(saved), skipped=n_skipped)
             continue
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -1071,12 +1074,8 @@ def batch_augment_directory(
                 "transforms": transforms,
             }
 
-        # Progress every 20 source images (or on the final image).
-        if (i + 1) % 20 == 0 or (i + 1) == len(image_paths):
-            logger.info(
-                f"Progress: {i + 1}/{len(image_paths)} sources | "
-                f"saved: {len(saved)} | skipped: {n_skipped}"
-            )
+        progress.set_postfix(saved=len(saved), skipped=n_skipped)
+    progress.close()
 
     # Consolidated JSON log for the whole run — one entry per saved image.
     log = {
