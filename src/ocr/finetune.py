@@ -256,11 +256,26 @@ def mix_in_real_samples(
     assert real_folder.is_dir(), f"Real folder not found: {real_folder}"
     pngs = sorted(real_folder.glob("*.png"))
     pairs: list[tuple[Path, Path]] = []
+    skipped_empty: list[str] = []
     for p in pngs:
         gt = p.with_suffix(".gt.txt")
-        if gt.is_file():
-            pairs.append((p, gt))
-    assert pairs, f"No <stem>.png + <stem>.gt.txt pairs in {real_folder}"
+        if not gt.is_file():
+            continue
+        if not gt.read_text(encoding="utf-8").strip():
+            # A reviewer marked the image unreadable by emptying the .gt.txt;
+            # we silently drop it rather than letting kraken raise
+            # "No text for ground truth line ...". The pair stays on disk so
+            # the user can come back and correct it later.
+            skipped_empty.append(p.stem)
+            continue
+        pairs.append((p, gt))
+    if skipped_empty:
+        logger.warning(
+            f"Skipped {len(skipped_empty)} real sample(s) with empty .gt.txt: "
+            + ", ".join(skipped_empty[:5])
+            + ("…" if len(skipped_empty) > 5 else "")
+        )
+    assert pairs, f"No usable <stem>.png + non-empty <stem>.gt.txt pairs in {real_folder}"
 
     n_total = len(pairs)
     n_real_train = int(n_total * real_train_frac)
