@@ -24,6 +24,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+from tqdm import tqdm
 
 # Round letters that trigger rotunda r when followed by 'r'. Standard
 # medieval set: letters whose right-side bowl curves outward.
@@ -879,7 +880,9 @@ def generate_medieval_text_dataset(
     labels: dict[str, dict] = {}
     rendered = 0
     skipped = 0
-    for idx, (sample_id, info) in enumerate(samples.items()):
+    total = min(len(samples), max_samples) if max_samples is not None else len(samples)
+    progress = tqdm(samples.items(), total=total, desc="Rendering", unit="img")
+    for idx, (sample_id, info) in enumerate(progress):
         if max_samples is not None and rendered >= max_samples:
             break
 
@@ -924,6 +927,7 @@ def generate_medieval_text_dataset(
         except Exception as exc:
             logger.error(f"Render failed for {sample_id}: {exc}")
             skipped += 1
+            progress.set_postfix(rendered=rendered, skipped=skipped)
             continue
 
         stem = _sanitize_for_filename(sample_id)
@@ -938,10 +942,9 @@ def generate_medieval_text_dataset(
             "seed": base_seed + idx,
         }
         rendered += 1
+        progress.set_postfix(rendered=rendered, skipped=skipped)
 
-        if rendered % 500 == 0:
-            logger.info(f"Progress: {rendered} rendered | {skipped} skipped")
-
+    progress.close()
     labels_path = save_dir / "labels.json"
     labels_payload = {
         "summary": {
