@@ -47,8 +47,14 @@ CATEGORIZED_SAMPLES_DIR=./data/processed/synthetic_seeds
 CATEGORIZED_SAMPLES_JSON=./data/processed/synthetic_seeds/categorize_20260613_214958/cometa_categorized.json
 WORD_PATTERNS?=am,ma
 SUBSTRING_PATTERNS?=
-# medical_texts_categorization: paragraph corpus cut into OCR-shaped pseudo-lines
-MEDICAL_TEXTS_CORPUS_DIR=./data/raw/medical_texts
+# corpus_categorization knobs (override on the command line as needed):
+#   CORPUS_DIR        - source directory of *.txt files
+#   CUT_TO_LINES=1    - cut each file into OCR-shaped pseudo-lines
+#   KEEP_ALL=1        - skip pattern filtering, keep every line
+# Output filename is derived from CORPUS_DIR's basename, e.g.
+# COMETA_medieval_corpus -> COMETA_medieval_corpus_categorized.json,
+# medical_texts          -> medical_texts_categorized.json.
+CORPUS_DIR?=$(COMETA_CORPUS_DIR)
 OCR_LINE_LENGTHS_JSON=./tests/ocr/ocr_line_lengths_20260625_120230.json
 MEDIEVAL_TEXT_DIR=./data/processed/synthetic_text
 MEDIEVAL_TEXT_RUN_PATH=./data/processed/synthetic_text/medieval_text_20260613_215219
@@ -103,7 +109,7 @@ SMOKE_EPOCHS?=2
 
 PYTHON=uv run python
 
-.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images detect_ink_bleed unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medical_texts_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels finetune_ocr clean
+.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images detect_ink_bleed unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels finetune_ocr clean
 
 all: evaluate_yolo_performance
 
@@ -210,25 +216,22 @@ run_dictionary_eval:
 			--output-dir $(DICT_EVAL_OUTPUT_DIR)
 
 
+# Usage examples:
+#   make corpus_categorization
+#       COMETA, manuscript-style line breaks, pattern filtering on (default).
+#   make corpus_categorization CORPUS_DIR=./data/raw/medical_texts CUT_TO_LINES=1 KEEP_ALL=1
+#       Paragraph corpus, cut into OCR-shaped pseudo-lines, keep every line.
+#   make corpus_categorization CORPUS_DIR=./data/raw/medical_texts CUT_TO_LINES=1
+#       Paragraph corpus, cut into pseudo-lines, then keep only pattern matches.
 corpus_categorization:
 	$(PYTHON) scripts/data_augmentation/run_corpus_categorization.py \
-			--corpus-dir $(COMETA_CORPUS_DIR) \
+			--corpus-dir $(CORPUS_DIR) \
 			--output-dir $(CATEGORIZED_SAMPLES_DIR) \
 			--word-patterns $(WORD_PATTERNS) \
-			--substring-patterns "$(SUBSTRING_PATTERNS)"
-
-
-# Paragraph-style medical_texts corpus: cut into OCR-shaped pseudo-lines
-# (length sampled from the empirical OCR per-line distribution) and keep
-# every line — no pattern filtering.
-medical_texts_categorization:
-	$(PYTHON) scripts/data_augmentation/run_corpus_categorization.py \
-			--corpus-dir $(MEDICAL_TEXTS_CORPUS_DIR) \
-			--output-dir $(CATEGORIZED_SAMPLES_DIR) \
-			--cut-to-lines \
-			--line-lengths-json $(OCR_LINE_LENGTHS_JSON) \
-			--keep-all \
-			--output-filename medical_texts_categorized.json
+			--substring-patterns "$(SUBSTRING_PATTERNS)" \
+			--output-filename "$(notdir $(patsubst %/,%,$(CORPUS_DIR)))_categorized.json" \
+			$(if $(CUT_TO_LINES),--cut-to-lines --line-lengths-json $(OCR_LINE_LENGTHS_JSON)) \
+			$(if $(KEEP_ALL),--keep-all)
 
 
 medieval_text_generation:
