@@ -560,7 +560,13 @@ def finetune(
     logger.info(f"=== Fine-tune started | Run: {run_name} ===")
 
     effective_epochs = smoke_epochs if smoke else epochs
-    effective_quit = "fixed" if smoke else "early"
+    # Smoke runs now use the early-stopping quit strategy too, so a long
+    # smoke (e.g. SMOKE_EPOCHS=15) can terminate as soon as val_accuracy
+    # plateaus for `lag` epochs instead of always burning the full budget.
+    # smoke_epochs becomes the MAX-epoch cap rather than a fixed count.
+    # On very short smokes (SMOKE_EPOCHS <= lag) early stopping never
+    # fires, so behaviour is identical to the old "fixed" mode.
+    effective_quit = "early"
     effective_smoke_size = smoke_size if smoke else None
 
     config = {

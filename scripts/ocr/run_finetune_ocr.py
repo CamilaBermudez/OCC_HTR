@@ -57,9 +57,12 @@ def main():
     parser.add_argument(
         "--smoke",
         action="store_true",
-        help="Smoke-test mode: restrict to --smoke-size source lines and "
-        "run for --smoke-epochs epochs with fixed quit strategy. Use to "
-        "verify the pipeline before committing to a full run.",
+        help="Smoke-test mode: restrict to --smoke-size source lines. "
+        "Uses the same early-stopping quit strategy as the full run, so "
+        "--smoke-epochs is a MAX-epoch cap rather than a fixed count; "
+        "training terminates as soon as val_accuracy plateaus for --lag "
+        "epochs. Use to verify the pipeline or to sweep ideas quickly "
+        "before committing to a full-corpus run.",
     )
     parser.add_argument(
         "--smoke-size",
@@ -71,7 +74,9 @@ def main():
         "--smoke-epochs",
         type=int,
         default=2,
-        help="When --smoke is set, number of epochs (default: 2).",
+        help="When --smoke is set, max epochs before training is force-"
+        "stopped (default: 2). With early stopping active this is just "
+        "the upper bound; runs typically finish sooner on plateau.",
     )
     parser.add_argument(
         "--epochs",
