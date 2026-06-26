@@ -33,6 +33,20 @@ ROUND_LETTERS: set[str] = set("bdhopvwy")
 LONG_S = "ſ"  # U+017F
 ROTUNDA_R = "ꝛ"  # U+A75B
 TIRONIAN_ET = "⁊"  # U+204A
+
+# When a font picked for the line lacks a particular medieval glyph in
+# its cmap, rewrite both the rendered text AND the saved label to the
+# fallback form so the image and the training label match exactly.
+# Real scribes varied on these letterforms too (one hand always uses
+# long-s after a vowel, another never bothers), so the variation
+# introduced here matches real-manuscript distribution rather than
+# distorting it. ⁊ is NOT in this map because it is always rendered
+# via the stamp pipeline regardless of font support — the font's cmap
+# doesn't enter the picture for it.
+GLYPH_FALLBACKS: dict[str, str] = {
+    LONG_S: "s",
+    ROTUNDA_R: "r",
+}
 # Scribal abbreviation marks. Each entry maps a lowercase trigger letter
 # to one or more (stamp_folder, label, has_descender) variants. When a
 # trigger letter fires (probability p_abbreviation), one variant is
@@ -115,6 +129,96 @@ PATTERN_STAMPS_CFG: list[tuple[str, str, float, bool]] = [
 # this folder is composited at the very end of the rendered line. The
 # label is NOT modified — this is a visual mark only.
 END_DECOR_FOLDER = "end_decor"
+
+
+def _font_cmap(font_path: Path) -> set[int]:
+    """Return the set of Unicode codepoints supported by a font.
+
+    Uses fontTools (already in the dependency tree via kraken) to read
+    the font's cmap tables directly, so we know upfront which glyphs
+    will render correctly vs. fall back to the .notdef box. Returns an
+    empty set if the font can't be opened so the caller can degrade
+    gracefully instead of crashing on a single bad font.
+    """
+    try:
+        from fontTools.ttLib import TTFont
+    except ImportError:
+        # fontTools missing — assume the font supports everything, which
+        # at worst yields a few missing-glyph boxes (same as the old
+        # single-font behaviour).
+        return set(range(0x110000))
+    try:
+        tt = TTFont(str(font_path), lazy=True)
+        codepoints: set[int] = set()
+        for table in tt["cmap"].tables:
+            codepoints.update(table.cmap.keys())
+        tt.close()
+        return codepoints
+    except Exception:
+        return set()
+
+
+def _apply_font_fallbacks(text: str, cmap: set[int]) -> str:
+    """Substitute characters not in ``cmap`` with their fallback form.
+
+    Only characters listed in ``GLYPH_FALLBACKS`` are rewritten; any
+    other un-supported character is left as-is (so it renders as a
+    missing-glyph box and the issue surfaces visibly rather than being
+    silently swept under a default rule). Used after
+    ``apply_medieval_substitutions`` and before ``render_text_to_image``
+    so the label written to ``labels.json`` matches what was actually
+    drawn.
+    """
+    if not cmap:
+        return text
+    out: list[str] = []
+    for ch in text:
+        if ord(ch) in cmap or ch not in GLYPH_FALLBACKS:
+            out.append(ch)
+        else:
+            out.append(GLYPH_FALLBACKS[ch])
+    return "".join(out)
+
+
+def _build_font_pool(
+    fonts_dir: Path | None,
+    fallback_font_path: Path,
+    font_size: int,
+    logger: logging.Logger,
+) -> list[tuple[Path, "ImageFont.FreeTypeFont", set[int]]]:
+    """Build the per-line random pool of (path, font, cmap).
+
+    If ``fonts_dir`` is given, scan it for *.ttf / *.otf and load every
+    one (so a line can pick any of them at random). Otherwise the pool
+    holds exactly one entry — ``fallback_font_path`` — and the
+    per-line random pick is a no-op. This keeps the single-font code
+    path identical to the pre-multi-font behaviour.
+    """
+    if fonts_dir is not None and Path(fonts_dir).is_dir():
+        font_paths = sorted(
+            p
+            for p in Path(fonts_dir).iterdir()
+            if p.is_file() and p.suffix.lower() in (".ttf", ".otf")
+        )
+        assert font_paths, f"No .ttf/.otf fonts found in {fonts_dir}"
+    else:
+        font_paths = [Path(fallback_font_path)]
+
+    pool: list[tuple[Path, ImageFont.FreeTypeFont, set[int]]] = []
+    for fp in font_paths:
+        try:
+            font = ImageFont.truetype(str(fp), font_size)
+        except Exception as exc:
+            logger.warning(f"Skipping font {fp.name}: {exc}")
+            continue
+        cmap = _font_cmap(fp)
+        pool.append((fp, font, cmap))
+    assert pool, "Font pool is empty — every font failed to load."
+    logger.info(
+        f"Loaded font pool ({len(pool)}): "
+        + ", ".join(f"{p.name}({len(cm)} glyphs)" for p, _, cm in pool)
+    )
+    return pool
 
 
 def setup_medieval_text_logging(logs_dir: str | Path, run_name: str):
@@ -667,6 +771,7 @@ def generate_medieval_text_dataset(
     run_name: str,
     font_path: str | Path,
     *,
+    fonts_dir: str | Path | None = None,
     font_size: int = 60,
     margin: int = 20,
     p_long_s_begin: float = 0.95,
@@ -693,7 +798,9 @@ def generate_medieval_text_dataset(
     save_dir = output_dir / run_name
     save_dir.mkdir(parents=True, exist_ok=True)
     font_path = Path(font_path)
-    assert font_path.is_file(), f"Font not found: {font_path}"
+    if fonts_dir is None:
+        assert font_path.is_file(), f"Font not found: {font_path}"
+    fonts_dir_path = Path(fonts_dir) if fonts_dir else None
 
     if logs_dir:
         logger, log_file = setup_medieval_text_logging(logs_dir, run_name)
@@ -742,7 +849,7 @@ def generate_medieval_text_dataset(
     }
     logger.info(f"Config: {json.dumps(config_summary)}")
 
-    font = ImageFont.truetype(str(font_path), font_size)
+    font_pool = _build_font_pool(fonts_dir_path, font_path, font_size, logger)
 
     # Load ⁊ stamps once if both a directory and a non-zero probability
     # are provided. Stamp height is matched to font ascender so the glyph
@@ -908,10 +1015,16 @@ def generate_medieval_text_dataset(
             rng=rng,
         )
 
+        # Per-line font selection — pick one font from the pool and
+        # rewrite the text to match what that font can actually render
+        # so the label stays consistent with the image.
+        chosen_path, chosen_font, chosen_cmap = rng.choice(font_pool)
+        medieval_text = _apply_font_fallbacks(medieval_text, chosen_cmap)
+
         try:
             img = render_text_to_image(
                 medieval_text,
-                font=font,
+                font=chosen_font,
                 margin=margin,
                 et_stamps=et_stamps or None,
                 c_stamps=c_stamps or None,
@@ -940,6 +1053,7 @@ def generate_medieval_text_dataset(
             "original_text": text,
             "medieval_text": medieval_text,
             "seed": base_seed + idx,
+            "font": chosen_path.name,
         }
         rendered += 1
         progress.set_postfix(rendered=rendered, skipped=skipped)

@@ -59,6 +59,11 @@ OCR_LINE_LENGTHS_JSON=./tests/ocr/ocr_line_lengths_20260625_120230.json
 MEDIEVAL_TEXT_DIR=./data/processed/synthetic_text
 MEDIEVAL_TEXT_RUN_PATH=./data/processed/synthetic_text/medieval_text_20260613_215219
 RENDERING_FONT_PATH=./fonts/merged_font_code_cmpl2.ttf
+# When set, the generator scans this directory for *.ttf/*.otf files and
+# picks one at random per line, rewriting long-s / rotunda-r in the
+# label when the chosen font lacks that glyph. Leave empty to use the
+# single RENDERING_FONT_PATH font (the prior behaviour).
+RENDERING_FONTS_DIR?=
 FONT_RENDER_SIZE?=60
 P_LONG_S_BEGIN?=0.95
 P_LONG_S_MIDDLE?=0.80
@@ -246,6 +251,7 @@ medieval_text_generation:
 			--input-json $(CATEGORIZED_SAMPLES_JSON) \
 			--output-dir $(MEDIEVAL_TEXT_DIR) \
 			--font-path $(RENDERING_FONT_PATH) \
+			$(if $(RENDERING_FONTS_DIR),--fonts-dir $(RENDERING_FONTS_DIR)) \
 			--font-size $(FONT_RENDER_SIZE) \
 			--p-long-s-begin $(P_LONG_S_BEGIN) \
 			--p-long-s-middle $(P_LONG_S_MIDDLE) \

@@ -38,8 +38,19 @@ def main():
     parser.add_argument(
         "--font-path",
         required=False,
-        help="Path to the TTF/OTF font to render with. "
-        "Default: fonts/merged_font_code_cmpl2.ttf",
+        help="Path to a single TTF/OTF font to render with. "
+        "Default: fonts/merged_font_code_cmpl2.ttf. Ignored when "
+        "--fonts-dir is given.",
+    )
+    parser.add_argument(
+        "--fonts-dir",
+        required=False,
+        help="Directory of *.ttf / *.otf fonts. When set, the generator "
+        "loads every font in the directory and picks one at random per "
+        "line, so the synthetic corpus has multiple scribal-hand "
+        "variations. Per-line text is rewritten (long-s -> s, rotunda-r "
+        "-> r) when the chosen font lacks the glyph, and the saved "
+        "label matches the rewrite. Overrides --font-path.",
     )
     parser.add_argument(
         "--font-size",
@@ -218,6 +229,7 @@ def main():
         output_dir=output_dir,
         run_name=run_name,
         font_path=font_path,
+        fonts_dir=Path(args.fonts_dir) if args.fonts_dir else None,
         font_size=args.font_size,
         margin=args.margin,
         p_long_s_begin=args.p_long_s_begin,
