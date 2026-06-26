@@ -347,6 +347,7 @@ def run_ketos_train(
     device: str,
     log_dir: Path,
     logger: logging.Logger,
+    augment: bool = False,
 ) -> int:
     """Invoke ``ketos train`` as a subprocess, streaming output to the logger."""
     # We invoke ketos via a small launcher script that first monkey-patches
@@ -384,7 +385,7 @@ def run_ketos_train(
         str(batch_size),
         "--resize",
         resize,
-        "--no-augment",
+        "--augment" if augment else "--no-augment",
         "--log-dir",
         str(log_dir),
     ]
@@ -504,8 +505,8 @@ def _summarize_and_prune(
 
 
 def finetune(
-    augmented_folder: str | Path,
-    labels_json: str | Path,
+    augmented_folder: str | Path | None,
+    labels_json: str | Path | None,
     base_model: str | Path,
     output_base_dir: str | Path,
     *,
@@ -526,6 +527,8 @@ def finetune(
     real_train_frac: float = 0.0,
     real_val_frac: float = 0.0,
     real_replaces_synth_val: bool = True,
+    no_synth_train: bool = False,
+    ketos_augment: bool = False,
 ) -> Path:
     """End-to-end fine-tune: stage data, run ``ketos train``, return run dir.
 
@@ -558,13 +561,18 @@ def finetune(
     Returns:
         Path to the ``finetune_<timestamp>/`` run directory.
     """
-    augmented_folder = Path(augmented_folder)
-    labels_json = Path(labels_json)
+    augmented_folder = Path(augmented_folder) if augmented_folder else None
+    labels_json = Path(labels_json) if labels_json else None
     base_model = Path(base_model)
     output_base_dir = Path(output_base_dir)
 
-    assert augmented_folder.is_dir(), f"Augmented folder not found: {augmented_folder}"
-    assert labels_json.is_file(), f"Labels JSON not found: {labels_json}"
+    if not no_synth_train:
+        assert (
+            augmented_folder is not None and augmented_folder.is_dir()
+        ), f"Augmented folder not found: {augmented_folder}"
+        assert (
+            labels_json is not None and labels_json.is_file()
+        ), f"Labels JSON not found: {labels_json}"
     assert base_model.is_file(), f"Base model not found: {base_model}"
 
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -621,15 +629,35 @@ def finetune(
     (run_dir / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
     logger.info(f"Config: {json.dumps(config)}")
 
-    train_list, val_list, stats = stage_finetune_data(
-        augmented_folder=augmented_folder,
-        labels_json=labels_json,
-        staging_dir=staging_dir,
-        val_fraction=val_fraction,
-        seed=seed,
-        smoke_size=effective_smoke_size,
-        logger=logger,
-    )
+    if no_synth_train:
+        # Real-only training: skip the synthetic staging step entirely.
+        # Catmus already understands medieval text generically, so for
+        # this manuscript-specific fine-tune we let the verified real
+        # samples (loaded next by mix_in_real_samples) carry the whole
+        # train + val pool. The synthetic --augmented-folder /
+        # --labels-json arguments are optional in this mode.
+        train_dir = staging_dir / "train"
+        val_dir = staging_dir / "val"
+        for d in (train_dir, val_dir):
+            d.mkdir(parents=True, exist_ok=True)
+        train_list = staging_dir / "train_files.txt"
+        val_list = staging_dir / "val_files.txt"
+        train_list.write_text("", encoding="utf-8")
+        val_list.write_text("", encoding="utf-8")
+        stats = {"no_synth_train": True}
+        logger.info(
+            "no_synth_train=True: skipping stage_finetune_data; train + val come from --real-folder only."
+        )
+    else:
+        train_list, val_list, stats = stage_finetune_data(
+            augmented_folder=augmented_folder,
+            labels_json=labels_json,
+            staging_dir=staging_dir,
+            val_fraction=val_fraction,
+            seed=seed,
+            smoke_size=effective_smoke_size,
+            logger=logger,
+        )
     if real_folder is not None and (real_train_frac > 0 or real_val_frac > 0):
         real_stats = mix_in_real_samples(
             real_folder=Path(real_folder),
@@ -659,6 +687,7 @@ def finetune(
         device=device,
         log_dir=tb_log_dir,
         logger=logger,
+        augment=ketos_augment,
     )
 
     assert rc == 0, f"ketos train failed with exit code {rc} — see {log_file}"

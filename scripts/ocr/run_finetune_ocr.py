@@ -23,13 +23,15 @@ def main():
 
     parser.add_argument(
         "--augmented-folder",
-        required=True,
-        help="Augmented images directory (typically aug_<timestamp>/).",
+        required=False,
+        help="Augmented images directory (typically aug_<timestamp>/). "
+        "Required unless --no-synth-train is set.",
     )
     parser.add_argument(
         "--labels-json",
-        required=True,
-        help="Corrected labels JSON (labels_<timestamp>/labels.json).",
+        required=False,
+        help="Corrected labels JSON (labels_<timestamp>/labels.json). "
+        "Required unless --no-synth-train is set.",
     )
     parser.add_argument(
         "--base-model",
@@ -166,8 +168,30 @@ def main():
         "the synthetic val split. Use --no-real-replaces-synth-val to "
         "keep the synthetic samples in val.",
     )
+    parser.add_argument(
+        "--no-synth-train",
+        action="store_true",
+        help="Skip the synthetic stage entirely — train + val come "
+        "from --real-folder only. Use this for Phase 1 (catmus + small "
+        "verified real set) when there is no benefit from re-teaching "
+        "the model the generic medieval distribution it already knows.",
+    )
+    parser.add_argument(
+        "--augment",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Pass --augment to ketos (random per-batch transforms) "
+        "instead of the default --no-augment. Recommended when the "
+        "training pool is small (e.g. real-only) so the model sees "
+        "more visual variation without needing more annotated lines.",
+    )
 
     args = parser.parse_args()
+    if not args.no_synth_train:
+        assert args.augmented_folder and args.labels_json, (
+            "--augmented-folder and --labels-json are required unless "
+            "--no-synth-train is passed."
+        )
 
     base_model = (
         Path(args.base_model)
@@ -182,8 +206,8 @@ def main():
     logs_dir = Path(args.logs_dir) if args.logs_dir else project_root / "logs" / "finetune_ocr"
 
     finetune(
-        augmented_folder=Path(args.augmented_folder),
-        labels_json=Path(args.labels_json),
+        augmented_folder=Path(args.augmented_folder) if args.augmented_folder else None,
+        labels_json=Path(args.labels_json) if args.labels_json else None,
         base_model=base_model,
         output_base_dir=output_base_dir,
         val_fraction=args.val_fraction,
@@ -203,6 +227,8 @@ def main():
         real_train_frac=args.real_train_frac,
         real_val_frac=args.real_val_frac,
         real_replaces_synth_val=args.real_replaces_synth_val,
+        no_synth_train=args.no_synth_train,
+        ketos_augment=args.augment,
     )
 
 

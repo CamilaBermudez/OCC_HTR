@@ -115,6 +115,14 @@ FINETUNE_EPOCHS?=-1
 FINETUNE_REAL_FOLDER?=./tests/ocr/real_corrected_20260625
 FINETUNE_REAL_TRAIN_FRAC?=0.6
 FINETUNE_REAL_VAL_FRAC?=0.4
+# When set to 1, drop synthetic train entirely — the real folder is the
+# whole train + val pool. Use this for Phase 1 (catmus already understands
+# generic medieval, so we just anchor it to the specific manuscript hand).
+NO_SYNTH_TRAIN?=
+# When set to 1, ketos applies per-batch random transforms during training.
+# Recommended when the training pool is small (real-only) so the model
+# sees more visual variation without needing more annotated lines.
+FINETUNE_AUGMENT?=
 SMOKE?=
 SMOKE_SIZE?=50
 SMOKE_EPOCHS?=2
@@ -324,8 +332,10 @@ correct_labels:
 
 finetune_ocr:
 	$(PYTHON) scripts/ocr/run_finetune_ocr.py \
-			--augmented-folder $(AUGMENTED_RUN_PATH) \
-			--labels-json $(FINETUNE_LABELS_JSON) \
+			$(if $(NO_SYNTH_TRAIN),,--augmented-folder $(AUGMENTED_RUN_PATH)) \
+			$(if $(NO_SYNTH_TRAIN),,--labels-json $(FINETUNE_LABELS_JSON)) \
+			$(if $(NO_SYNTH_TRAIN),--no-synth-train) \
+			$(if $(FINETUNE_AUGMENT),--augment) \
 			--base-model $(FINETUNE_BASE_MODEL) \
 			--output-base-dir $(FINETUNE_OUTPUT_DIR) \
 			--val-fraction $(FINETUNE_VAL_FRACTION) \
