@@ -419,8 +419,21 @@ def _summarize_and_prune(
     """
     from kraken.lib import models as kmodels  # local import: heavy, lazy
 
+    # Sort by the trailing integer in the filename, NOT lexicographically.
+    # Default `sorted` orders "model_10" before "model_2" and puts
+    # "model_9" at the end of a 52-epoch run, so model_files[-1] would
+    # point at the wrong checkpoint and the per-epoch summary would only
+    # cover the first 10 epochs of history (bug observed in
+    # finetune_20260628_175056: 52 epochs ran but only 10 were reported).
+    def _epoch_idx(p: Path) -> int:
+        try:
+            return int(p.stem.rsplit("_", 1)[-1])
+        except ValueError:
+            return -1
+
     model_files = sorted(
-        p for p in run_dir.glob("model_*.mlmodel") if p.name != "model_best.mlmodel"
+        (p for p in run_dir.glob("model_*.mlmodel") if p.name != "model_best.mlmodel"),
+        key=_epoch_idx,
     )
     if not model_files:
         logger.warning("No model_*.mlmodel checkpoints found in %s", run_dir)
