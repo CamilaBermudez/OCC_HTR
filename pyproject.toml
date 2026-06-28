@@ -32,6 +32,8 @@ dependencies = [
     "rich==15.0.0",
     "kraken>=6.0.2",
     "albumentations>=1.4.0",
+    "ipykernel>=6.0",
+    "matplotlib-inline>=0.1.6",
 ]
 
 [dependency-groups]
