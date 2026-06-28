@@ -254,11 +254,17 @@ def main():
     logger.info(f"Loading model {args.model_id} (this can take a minute on first run)...")
     t0 = time.time()
     dtype = torch.bfloat16 if device != "cpu" else torch.float32
-    processor = AutoProcessor.from_pretrained(args.model_id)
+    # trust_remote_code=True lets the model's own processor/architecture
+    # classes load when the installed transformers version doesn't ship
+    # them natively. Medusa's processor uses a model-family-specific class
+    # (Qwen2.5-VL / Glm-V style) that isn't in transformers 4.46.x but
+    # is bundled in the model repo itself.
+    processor = AutoProcessor.from_pretrained(args.model_id, trust_remote_code=True)
     model = (
         AutoModelForImageTextToText.from_pretrained(
             args.model_id,
             torch_dtype=dtype,
+            trust_remote_code=True,
         )
         .to(device)
         .eval()
