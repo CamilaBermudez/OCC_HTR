@@ -123,6 +123,11 @@ NO_SYNTH_TRAIN?=
 # Recommended when the training pool is small (real-only) so the model
 # sees more visual variation without needing more annotated lines.
 FINETUNE_AUGMENT?=
+# When set to 1, keep every per-epoch model_*.mlmodel checkpoint in the
+# run dir instead of pruning all but model_best.mlmodel. Useful when you
+# want to inspect each epoch's actual val_accuracy (e.g. to verify the
+# best-model selection or rebuild a per-epoch curve).
+FINETUNE_KEEP_ALL_CHECKPOINTS?=
 SMOKE?=
 SMOKE_SIZE?=50
 SMOKE_EPOCHS?=2
@@ -336,6 +341,7 @@ finetune_ocr:
 			$(if $(NO_SYNTH_TRAIN),,--labels-json $(FINETUNE_LABELS_JSON)) \
 			$(if $(NO_SYNTH_TRAIN),--no-synth-train) \
 			$(if $(FINETUNE_AUGMENT),--augment) \
+			$(if $(FINETUNE_KEEP_ALL_CHECKPOINTS),--keep-all-checkpoints) \
 			--base-model $(FINETUNE_BASE_MODEL) \
 			--output-base-dir $(FINETUNE_OUTPUT_DIR) \
 			--val-fraction $(FINETUNE_VAL_FRACTION) \
