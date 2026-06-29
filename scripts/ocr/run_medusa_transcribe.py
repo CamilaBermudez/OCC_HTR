@@ -208,6 +208,17 @@ def main():
         required=False,
         help="Plain-text log directory. Default: logs/medusa_transcribe",
     )
+    parser.add_argument(
+        "--quantization",
+        choices=["none", "8bit", "4bit"],
+        default="none",
+        help="Quantize weights to fit in less RAM. 'none' loads in BF16 "
+        "(~18 GB for Medusa 9B); '8bit' (~9 GB); '4bit' (~4.5 GB). "
+        "Required on 16 GB Macs to avoid out-of-memory crashes. "
+        "Uses bitsandbytes — best support on CUDA, partial on MPS, "
+        "falls back to CPU compute on Apple Silicon if MPS quant kernels "
+        "are unavailable (slower but won't crash).",
+    )
 
     args = parser.parse_args()
 
@@ -257,19 +268,46 @@ def main():
     # trust_remote_code=True lets the model's own processor/architecture
     # classes load when the installed transformers version doesn't ship
     # them natively. Medusa's processor uses a model-family-specific class
-    # (Qwen2.5-VL / Glm-V style) that isn't in transformers 4.46.x but
-    # is bundled in the model repo itself.
+    # (Qwen3.5-VL style) that isn't in older transformers but is bundled
+    # in the model repo itself.
     processor = AutoProcessor.from_pretrained(args.model_id, trust_remote_code=True)
-    model = (
-        AutoModelForImageTextToText.from_pretrained(
-            args.model_id,
-            torch_dtype=dtype,
-            trust_remote_code=True,
-        )
-        .to(device)
-        .eval()
+
+    # Optional bitsandbytes quantization to fit Medusa 9B in <16 GB RAM.
+    # When quantization is requested we pass device_map="auto" instead of
+    # an explicit .to(device) — bitsandbytes places layers itself and
+    # rejects .to() calls after load.
+    quant_config = None
+    if args.quantization != "none":
+        from transformers import BitsAndBytesConfig
+
+        if args.quantization == "4bit":
+            quant_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.bfloat16,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_use_double_quant=True,
+            )
+        else:  # 8bit
+            quant_config = BitsAndBytesConfig(load_in_8bit=True)
+        logger.info(f"Quantization: {args.quantization} (bitsandbytes)")
+
+    load_kwargs = dict(
+        pretrained_model_name_or_path=args.model_id,
+        trust_remote_code=True,
     )
-    logger.info(f"Model loaded in {time.time() - t0:.1f}s (dtype={dtype})")
+    if quant_config is not None:
+        load_kwargs["quantization_config"] = quant_config
+        load_kwargs["device_map"] = "auto"
+    else:
+        load_kwargs["torch_dtype"] = dtype
+
+    model = AutoModelForImageTextToText.from_pretrained(**load_kwargs)
+    if quant_config is None:
+        model = model.to(device)
+    model.eval()
+    logger.info(
+        f"Model loaded in {time.time() - t0:.1f}s (dtype={dtype}, quantization={args.quantization})"
+    )
 
     n_written = 0
     n_skipped = 0

@@ -34,6 +34,7 @@ dependencies = [
     "albumentations>=1.4.0",
     "ipykernel>=6.0",
     "matplotlib-inline>=0.1.6",
+    "bitsandbytes>=0.43.0",
 ]
 
 [dependency-groups]
