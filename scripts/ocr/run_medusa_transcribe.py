@@ -288,7 +288,12 @@ def main():
 
     logger.info(f"Loading model {args.model_id} (this can take a minute on first run)...")
     t0 = time.time()
-    dtype = torch.bfloat16 if device != "cpu" else torch.float32
+    # Always BF16 — float32 would double the weight footprint (a 9B model
+    # in fp32 needs ~36 GB just for weights, which OOMs even on 32 GB
+    # instances). PyTorch >=2.0 supports BF16 inference on CPU for the
+    # ops Medusa uses, so the "no BF16 on CPU" caveat from older torch
+    # no longer applies.
+    dtype = torch.bfloat16
     # trust_remote_code=True lets the model's own processor/architecture
     # classes load when the installed transformers version doesn't ship
     # them natively. Medusa's processor uses a model-family-specific class
