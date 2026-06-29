@@ -31,7 +31,31 @@ import torch
 from dotenv import load_dotenv
 from PIL import Image
 from tqdm import tqdm
-from transformers import AutoModelForImageTextToText, AutoProcessor
+
+# Compatibility shim — transformers 5.x's bitsandbytes integration calls
+# model.set_submodule(...) which only exists in PyTorch >= 2.6. Our torch
+# is pinned to 2.4.1 by kraken's dependency tree, so without this shim
+# any --quantization run dies with
+#   AttributeError: 'Qwen3_5ForConditionalGeneration' object has no
+#   attribute 'set_submodule'
+# The implementation matches the upstream method exactly: walk dotted
+# path of module attributes, replace the leaf with the new module.
+if not hasattr(torch.nn.Module, "set_submodule"):
+
+    def _set_submodule(self: torch.nn.Module, target: str, module: torch.nn.Module) -> None:
+        if target == "":
+            raise ValueError("Cannot set the top-level module")
+        atoms = target.split(".")
+        parent = self
+        for atom in atoms[:-1]:
+            if not hasattr(parent, atom):
+                raise AttributeError(f"{type(parent).__name__} has no attribute {atom!r}")
+            parent = getattr(parent, atom)
+        setattr(parent, atoms[-1], module)
+
+    torch.nn.Module.set_submodule = _set_submodule
+
+from transformers import AutoModelForImageTextToText, AutoProcessor  # noqa: E402
 
 DEFAULT_MODEL_ID = "ENC-PSL/Medusa0.2Line-9B"
 DEFAULT_PROMPT = (
