@@ -5,20 +5,20 @@ across four annotation batches. Used as ground truth for the OCR
 benchmark (`scripts/ocr/run_evaluate_ocr.py`) and as a seed pool for
 fine-tuning the catmus base model.
 
-## Composition (as of 2026-06-29) — 400 lines
+## Composition (as of 2026-07-01) — 500 lines
 
 | Batch | Lines | Merged on  | Source folder & index                                          |
 |-------|-------|------------|----------------------------------------------------------------|
 | 1+2   | ~200  | (initial)  | (earlier batches, no separate index kept)                      |
 | 3     | 100   | 2026-06-25 | `tests/ocr/real_val_sample_20260625_*` (merge commit 106efec)  |
 | 4     | 100   | 2026-06-29 | `tests/ocr/real_val_sample_20260629_175815/_INDEX.csv`         |
+| 5     | 100   | 2026-07-01 | `tests/ocr/real_val_sample_20260701_213000/_INDEX.csv`         |
 
-The batch-4 index lives at
-`tests/ocr/real_val_sample_20260629_175815/_INDEX.csv` and remains the
-canonical stem list for that batch — use it to filter this pool back
-down to the 100-line held-out subset when reporting per-batch metrics
-or comparing Medusa (which was first run only on the batch-4 lines)
-against catmus and the fine-tuned model.
+Per-batch indexes (batch 4 and 5) remain in their original held-out
+folders as the canonical stem lists — use them to filter this pool back
+down to a specific batch when reporting per-batch metrics or comparing
+Medusa (first run only on the batch-4 lines) against catmus and the
+fine-tuned model.
 
 ## Conventions
 - `.gt.txt` files are NORMALISED: plain `s` not `ſ`, plain `r` not `ꝛ`,
