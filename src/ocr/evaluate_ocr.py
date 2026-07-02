@@ -321,6 +321,11 @@ def run_evaluate_ocr(
         encoding="utf-8",
     )
 
+    # Also mirror the full aggregate table + per-model dicts into the log
+    # file. That way the log alone is enough to recover the numbers if
+    # the CSV / MD artefacts are lost or moved.
+    logger.info("=== Aggregate results ===\n%s", md)
+    logger.info("Per-model aggregates (JSON): %s", json.dumps(aggs, indent=2))
     logger.info("Per-line CSV: %s", csv_path)
     logger.info("Summary MD  : %s", md_path)
     print()
