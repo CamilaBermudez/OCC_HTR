@@ -12,10 +12,19 @@
 /data/processed/binarized_images_filtered/
 /data/processed/plotted_bounds/
 /tests/data_preprocessing/cropped_img/
-/data/processed/annotated_samples/
+# Ignore contents of annotated_samples/ except the OCR/ subfolder — that
+# holds the hand-verified fine-tune ground truth + eval reference and
+# needs to stay in git for reproducibility.
+/data/processed/annotated_samples/*
+!/data/processed/annotated_samples/OCR/
+!/data/processed/annotated_samples/OCR/**
 /models/
 /data/processed/segmented_images/
-/data/processed/
+# Broad ignore of data/processed/ — use /* form (not /) so specific
+# subdirs above can be un-ignored via !… rules. The parent /data/ still
+# needs to be walked so git can find those un-ignored paths.
+/data/processed/*
+!/data/processed/annotated_samples/
 /fonts/
 /runs/
 /logs/

@@ -12,7 +12,7 @@ and the verified pool. All .gt.txt files are guaranteed non-empty.
 ## Status — verified and merged on 2026-06-29
 
 All 100 `<stem>.png` + `<stem>.gt.txt` pairs were hand-verified and moved
-into `tests/ocr/real_corrected_20260625/`, bringing the corrected pool
+into `data/processed/annotated_samples/OCR/500_samples/`, bringing the corrected pool
 from 300 -> 400 lines.
 
 This folder is kept (without the image/text pairs) so `_INDEX.csv`

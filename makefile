@@ -112,7 +112,7 @@ FINETUNE_EPOCHS?=-1
 # was built from the hand-corrected subset of the validation sample;
 # split into n_train + n_val so the model anchors to real data AND its
 # val_accuracy reflects real-manuscript performance.
-FINETUNE_REAL_FOLDER?=./tests/ocr/real_corrected_20260625
+FINETUNE_REAL_FOLDER?=./data/processed/annotated_samples/OCR/500_samples
 FINETUNE_REAL_TRAIN_FRAC?=0.6
 FINETUNE_REAL_VAL_FRAC?=0.4
 # When set to 1, drop synthetic train entirely — the real folder is the

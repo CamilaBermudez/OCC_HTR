@@ -4,12 +4,12 @@
 pages, NOT overlapping with the 201 already-annotated stems in:
   - tests/ocr/real_val_sample_20260622_220845
   - tests/ocr/real_val_sample_20260626_114534
-  - tests/ocr/real_corrected_20260625
+  - data/processed/annotated_samples/OCR/500_samples
 
 ## Workflow
 - `<stem>.png` — line image (real manuscript crop)
 - `<stem>.gt.txt` — pre-filled with OCR prediction; correct in place
 - `_INDEX.csv` — page + stem listing
 
-After review, copy verified pairs into `tests/ocr/real_corrected_20260625/`.
+After review, copy verified pairs into `data/processed/annotated_samples/OCR/500_samples/`.
 The finetune script's fractions auto-scale as the pool grows.
