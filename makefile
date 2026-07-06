@@ -112,7 +112,7 @@ FINETUNE_EPOCHS?=-1
 # was built from the hand-corrected subset of the validation sample;
 # split into n_train + n_val so the model anchors to real data AND its
 # val_accuracy reflects real-manuscript performance.
-FINETUNE_REAL_FOLDER?=./data/processed/annotated_samples/OCR/500_samples
+FINETUNE_REAL_FOLDER?=./data/processed/annotated_samples/OCR/full_annotated
 FINETUNE_REAL_TRAIN_FRAC?=0.6
 FINETUNE_REAL_VAL_FRAC?=0.4
 # When set to 1, drop synthetic train entirely — the real folder is the
@@ -131,10 +131,35 @@ FINETUNE_KEEP_ALL_CHECKPOINTS?=
 SMOKE?=
 SMOKE_SIZE?=50
 SMOKE_EPOCHS?=2
+#========= annotation batch sampling ========
+# Source of line PNGs — the manually-filtered/corrected crops the OCR
+# pipeline actually ran on (NOT the raw extraction folder, which still
+# has un-fixed double-column crops etc.).
+SAMPLE_SOURCE_LINES?=./data/processed/filtered_images/20260618_160948/original/kept
+SAMPLE_OCR_SEED?=./data/processed/transcription/ocr_kept_20260622_120413
+# Space-separated list of folders to exclude — every <stem>.gt.txt across
+# all listed folders is dropped from the eligible pool. Non-existent
+# folders are skipped with a warning (so this works during bootstrap
+# when e.g. the validation set hasn't been created yet).
+SAMPLE_EXCLUDES?=./data/processed/annotated_samples/OCR/full_annotated ./data/processed/annotated_samples/OCR/validation
+SAMPLE_OUTPUT_ROOT?=./tests/ocr
+# 'real_val_sample' matches historic training batches; override to
+# 'validation' when sampling the permanent held-out benchmark set.
+SAMPLE_OUTPUT_PREFIX?=real_val_sample
+SAMPLE_N_TARGET?=100
+# Increment for each new batch — prior batches used 42-48. Seed=100 is
+# reserved for the initial validation set draw so it can never collide
+# with a training-batch seed.
+SAMPLE_SEED?=49
+# Optional regex to target specific characters. Empty = every non-empty
+# OCR seed is eligible. Example for capital C or E (word-initial):
+#   SAMPLE_PATTERN='(?<![A-Za-z])[CE]' SAMPLE_PATTERN_LABEL='capital C or E targeted'
+SAMPLE_PATTERN?=
+SAMPLE_PATTERN_LABEL?=
 
 PYTHON=uv run python
 
-.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images detect_ink_bleed unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels finetune_ocr clean
+.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images detect_ink_bleed unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels finetune_ocr sample_annotation_batch clean
 
 all: evaluate_yolo_performance
 
@@ -355,6 +380,29 @@ finetune_ocr:
 			--real-train-frac $(FINETUNE_REAL_TRAIN_FRAC) \
 			--real-val-frac $(FINETUNE_REAL_VAL_FRAC) \
 			$(if $(SMOKE),--smoke --smoke-size $(SMOKE_SIZE) --smoke-epochs $(SMOKE_EPOCHS))
+
+
+# Sample a fresh annotation batch. Examples:
+#   make sample_annotation_batch                                # 100 lines, seed 49, no content filter
+#   make sample_annotation_batch SAMPLE_SEED=50 SAMPLE_N_TARGET=50
+#   make sample_annotation_batch \
+#        SAMPLE_PATTERN='(?<![A-Za-z])[CE]' \
+#        SAMPLE_PATTERN_LABEL='capital C or E targeted' \
+#        SAMPLE_SEED=50                                         # 100 lines with a word-initial C or E
+#   make sample_annotation_batch \
+#        SAMPLE_N_TARGET=300 SAMPLE_SEED=100 \
+#        SAMPLE_OUTPUT_PREFIX=validation                        # permanent held-out validation set
+sample_annotation_batch:
+	$(PYTHON) scripts/data_preprocessing/run_sample_annotation_batch.py \
+			--source-lines-dir $(SAMPLE_SOURCE_LINES) \
+			--ocr-seed-dir $(SAMPLE_OCR_SEED) \
+			$(foreach f,$(SAMPLE_EXCLUDES),--exclude-folder $(f)) \
+			--output-root $(SAMPLE_OUTPUT_ROOT) \
+			--output-subfolder-prefix $(SAMPLE_OUTPUT_PREFIX) \
+			--n-target $(SAMPLE_N_TARGET) \
+			--seed $(SAMPLE_SEED) \
+			$(if $(SAMPLE_PATTERN),--pattern "$(SAMPLE_PATTERN)") \
+			$(if $(SAMPLE_PATTERN_LABEL),--pattern-label "$(SAMPLE_PATTERN_LABEL)")
 
 
 clean:

@@ -1,23 +1,39 @@
 """Strip chat-template leakage from Medusa 0.2 transcription outputs.
 
 Roughly half of Medusa's raw ``.txt`` outputs on this corpus contain
-Qwen3.5-VL chat-template artefacts that weren't consumed during
-decoding — patterns like:
+Qwen3.5-VL chat-template artefacts and/or multiple transcription
+attempts that weren't consumed during decoding. Two shapes show up:
 
-    yssi comensan las paraulas de
-    user
-    assistant
-    <think>
+1. Chat markers between two copies of the same transcription:
 
-    </think>
+       yssi comensan las paraulas de
+       user
+       assistant
+       <think>
 
-    yssi comensan las paraulas de
+       </think>
 
-The genuine transcription typically appears twice (once before the
-leaked markers and once as the model's final answer after ``</think>``),
-so after removing marker lines and empty lines, deduplicating
-consecutive identical lines collapses the echo back to a single clean
-line.
+       yssi comensan las paraulas de
+
+2. Multiple attempts, prompt echoes, or stray tokens after the first
+   answer — often followed by a truncated re-attempt:
+
+       que no erre la tua ma ⁊ le malaute si      <- first attempt
+       string                                     <- stray marker
+       que no erre la tua                         <- truncated re-attempt
+
+For both shapes, empirically the FIRST non-artefact line is Medusa's
+best transcription — the fullest, most accurate answer before the
+model drifts. Everything after is noise, prompt echoes, or partial
+regenerations. Taking only that first line collapses both patterns
+back to one clean transcription.
+
+Noise detection covers:
+- Exact-match markers (``user``, ``assistant``, ``<think>``, ``</think>``,
+  ``>``, ``I``, ``string``, ``response``, the prompt strings, etc.)
+- Prefix rule: any line starting with ``>`` (quoted-reply / continuation
+  artefact — matches ``>Et as veguadas ...`` even though the exact-match
+  ``>`` rule doesn't).
 
 Cleaning is idempotent: files with no artefacts pass through untouched.
 
@@ -35,9 +51,10 @@ import subprocess
 from pathlib import Path
 
 # Exact-match strings that indicate chat-template leakage. Anything else
-# is treated as genuine transcription content. The prompt strings are
-# hard-coded rather than read from run_medusa_transcribe.py because the
-# model sometimes echoes the prompt regardless of what we passed in.
+# is treated as genuine transcription content (subject to the prefix
+# rule in ``is_noise`` below). The prompt strings are hard-coded rather
+# than read from run_medusa_transcribe.py because the model sometimes
+# echoes the prompt regardless of what we passed in.
 NOISE_LINES: frozenset[str] = frozenset(
     {
         "user",
@@ -46,10 +63,33 @@ NOISE_LINES: frozenset[str] = frozenset(
         "<think>",
         "</think>",
         ">",
+        "I",
+        "string",
+        "text",
+        "output",
+        "answer",
         "Transcribe the handwritten text in this line image.",
         "Output ONLY the transcription.",
+        "Output ONLY the transcription",
     }
 )
+
+
+def is_noise(line: str) -> bool:
+    """Return True if ``line`` is chat-template noise rather than transcription.
+
+    Combines exact-match membership in ``NOISE_LINES`` with a prefix
+    rule for lines starting with ``>`` (Qwen's quoted-reply artefact —
+    catches ``>Et as veguadas ...`` which the exact-match ``>`` alone
+    misses). Blank lines are also treated as noise.
+    """
+    if not line:
+        return True
+    if line in NOISE_LINES:
+        return True
+    if line.startswith(">"):
+        return True
+    return False
 
 
 def setup_simple_logging(
@@ -79,26 +119,24 @@ def setup_simple_logging(
 
 
 def clean_text(raw: str) -> tuple[str, bool]:
-    """Return ``(cleaned_text, was_modified)``.
+    """Return ``(cleaned_text, was_modified)`` — Medusa's first meaningful line.
 
-    The cleaner is intentionally minimal so nothing unexpected survives:
-    strip whitespace on every line, drop empty and marker-only lines,
-    then collapse consecutive duplicates. That matches the observed
-    "clean line -> markers -> clean line" pattern without needing to
-    reason about ``</think>`` positions or generation order.
+    Walks the raw output line by line and returns the first line that
+    isn't chat-template noise. Everything after is discarded: this drops
+    prompt echoes, truncated re-attempts, near-duplicate variants, and
+    ``>``-prefixed continuations that would otherwise inflate CER by
+    making the compared string 2-3x longer than the reference.
+
+    If every line is noise, the cleaned text is empty — a valid signal
+    that Medusa produced nothing usable for that image (the evaluator
+    then treats it as full-length substitution error).
     """
-    lines = [line.strip() for line in raw.splitlines()]
-    kept: list[str] = []
-    for line in lines:
-        if not line:
-            continue
-        if line in NOISE_LINES:
-            continue
-        if kept and kept[-1] == line:
-            continue
-        kept.append(line)
-    cleaned = "\n".join(kept) + ("\n" if kept else "")
-    return cleaned, cleaned != raw
+    for raw_line in raw.splitlines():
+        line = raw_line.strip()
+        if not is_noise(line):
+            cleaned = line + "\n"
+            return cleaned, cleaned != raw
+    return "", raw != ""
 
 
 def run_clean_medusa_output(

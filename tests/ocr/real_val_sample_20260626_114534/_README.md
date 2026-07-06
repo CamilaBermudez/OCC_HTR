@@ -3,7 +3,7 @@
 99 additional line crops sampled with seed=43 across 71
 pages, NOT overlapping with the 101 already-annotated stems in:
   - tests/ocr/real_val_sample_20260622_220845/
-  - data/processed/annotated_samples/OCR/500_samples/
+  - data/processed/annotated_samples/OCR/full_annotated/
 
 ## Files
 - `<stem>.png` — line image (real manuscript crop)
@@ -12,6 +12,6 @@ pages, NOT overlapping with the 101 already-annotated stems in:
 
 ## How to integrate after correcting
 Once you've verified the .gt.txt against the .png, copy the verified pairs into
-`data/processed/annotated_samples/OCR/500_samples/` (or a new dated `real_corrected_<ts>/`).
+`data/processed/annotated_samples/OCR/full_annotated/` (or a new dated `real_corrected_<ts>/`).
 The finetune script uses fractions of whatever's in `FINETUNE_REAL_FOLDER` so
 the new samples are picked up automatically as soon as they land there.

@@ -14,7 +14,7 @@ so the downstream make targets can use it without changes.
 
 Usage:
     PROJECT_ROOT=. uv run python scripts/data_augmentation/seeds_from_real.py \\
-        --real-folder ./data/processed/annotated_samples/OCR/500_samples \\
+        --real-folder ./data/processed/annotated_samples/OCR/full_annotated \\
         --output-dir  ./data/processed/synthetic_seeds
 """
 
@@ -42,7 +42,7 @@ def main():
         "--real-folder",
         required=True,
         help="Folder of <stem>.gt.txt files "
-        "(e.g. data/processed/annotated_samples/OCR/500_samples).",
+        "(e.g. data/processed/annotated_samples/OCR/full_annotated).",
     )
     parser.add_argument(
         "--output-dir",
