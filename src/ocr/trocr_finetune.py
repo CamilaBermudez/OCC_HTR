@@ -23,8 +23,11 @@ argparse, and this module hosts the logic + logging + config dump.
 
 Data flow:
     real_folder (``<stem>.png`` + ``<stem>.gt.txt``)
+      + optional augmented_folder (``<stem>_aug<NN>.png``) + labels.json
       -> gather + drop empty labels
-      -> stem-level train/val split (deterministic, seed-controlled)
+      -> split by SOURCE stem: every augmented variant of a given source
+         line stays in the same split as the real image, so the model
+         never sees a near-duplicate at val that it also trained on
       -> ``TrOCRLineDataset`` streams pixel_values + labels on demand
       -> ``Seq2SeqTrainer`` runs training with generation-time CER/WER
       -> best checkpoint (by lowest val CER) copied to ``best_model/``
@@ -35,6 +38,7 @@ import json
 import logging
 import os
 import random
+import re
 import subprocess
 from pathlib import Path
 
@@ -45,6 +49,13 @@ from torch.utils.data import Dataset
 
 DEFAULT_ENCODER_ID = "microsoft/swin-base-patch4-window7-224"
 DEFAULT_DECODER_ID = "bert-base-multilingual-cased"
+
+# The augmentation pipeline names its outputs ``<src_stem>_aug<NN>.png``
+# (see ``src.data_augmentation.augmentation_techniques``). We use this
+# regex to recover the source stem so all N variants of one line stay
+# together during the train/val split — same invariant as the kraken
+# fine-tune's ``stage_finetune_data``.
+_AUG_FILENAME_RE = re.compile(r"^(.+)_aug\d+\.png$")
 
 
 def setup_simple_logging(
@@ -100,15 +111,18 @@ def _detect_device(requested: str) -> str:
     return "cpu"
 
 
-def _gather_real_pairs(folder: Path, logger: logging.Logger) -> list[tuple[Path, str]]:
+def _gather_real_pairs(folder: Path, logger: logging.Logger) -> list[tuple[Path, str, str]]:
     """Walk ``folder`` for ``<stem>.png`` + ``<stem>.gt.txt`` pairs.
 
     Skips pairs where the ``.gt.txt`` is missing or empty (the annotator
     intentionally cleared a blank crop). Returns a list of
-    ``(image_path, gt_text)`` tuples for downstream splitting.
+    ``(image_path, gt_text, source_stem)`` triples. For real images the
+    source stem is just the image stem — the aug pool uses the same
+    field to carry the pre-augmentation stem, so downstream code can
+    treat both pools uniformly.
     """
     pngs = sorted(folder.glob("*.png"))
-    pairs: list[tuple[Path, str]] = []
+    triples: list[tuple[Path, str, str]] = []
     skipped_missing_gt = 0
     skipped_empty = 0
     for p in pngs:
@@ -120,53 +134,107 @@ def _gather_real_pairs(folder: Path, logger: logging.Logger) -> list[tuple[Path,
         if not text:
             skipped_empty += 1
             continue
-        pairs.append((p, text))
+        triples.append((p, text, p.stem))
     logger.info(
-        "Gathered %d (image, gt) pairs from %s (skipped %d missing gt, %d empty gt)",
-        len(pairs),
+        "Gathered %d real triples from %s (skipped %d missing gt, %d empty gt)",
+        len(triples),
         folder,
         skipped_missing_gt,
         skipped_empty,
     )
-    return pairs
+    return triples
 
 
-def _split_pairs(
-    pairs: list[tuple[Path, str]],
+def _gather_augmented_pairs(
+    augmented_folder: Path,
+    labels_json: Path,
+    logger: logging.Logger,
+) -> list[tuple[Path, str, str]]:
+    """Load augmented ``<stem>_aug<NN>.png`` + labels.json into triples.
+
+    The augmentation pipeline emits filenames like
+    ``72_f_067v_068_line_148_aug03.png`` and stores their labels in a
+    JSON map. We strip the ``_aug<NN>`` suffix to recover the source
+    stem — that's the key we split on so all N variants of a line stay
+    on the same side of the train/val cut.
+    """
+    labels: dict[str, str] = json.loads(labels_json.read_text(encoding="utf-8"))
+    triples: list[tuple[Path, str, str]] = []
+    skipped_no_suffix = 0
+    skipped_missing_img = 0
+    skipped_empty_text = 0
+    for aug_name, raw_text in labels.items():
+        m = _AUG_FILENAME_RE.match(aug_name)
+        if m is None:
+            skipped_no_suffix += 1
+            continue
+        source_stem = m.group(1)
+        img_path = augmented_folder / aug_name
+        if not img_path.is_file():
+            skipped_missing_img += 1
+            continue
+        text = (raw_text or "").strip()
+        if not text:
+            skipped_empty_text += 1
+            continue
+        triples.append((img_path, text, source_stem))
+    logger.info(
+        "Gathered %d aug triples from %s (skipped %d no _aug<NN> suffix, "
+        "%d missing image, %d empty text)",
+        len(triples),
+        augmented_folder,
+        skipped_no_suffix,
+        skipped_missing_img,
+        skipped_empty_text,
+    )
+    return triples
+
+
+def _split_by_source_stem(
+    triples: list[tuple[Path, str, str]],
     val_fraction: float,
     seed: int,
     logger: logging.Logger,
 ) -> tuple[list[tuple[Path, str]], list[tuple[Path, str]]]:
-    """Deterministic train/val split at the (stem) level.
+    """Split source stems into train/val, then distribute all their triples.
 
-    Because the real folder has one image per stem, splitting by index is
-    equivalent to splitting by stem — no augmented variants to keep
-    together (unlike the ketos pipeline). We keep the "by stem" framing
-    so future extensions (multiple crops per stem, augmentations) drop in
-    without breaking the invariant that a variant of a train line never
-    appears in val.
+    Grouping by source stem is the invariant that makes the val CER
+    trustworthy: if source line X has 1 real image + 5 augmentations,
+    all 6 pairs land on the same side of the split. Otherwise a val
+    row would be a near-duplicate of a train row and the metric would
+    silently overstate real generalisation.
     """
-    n = len(pairs)
-    assert n >= 2, f"Need at least 2 pairs for a train/val split, got {n}"
+    by_stem: dict[str, list[tuple[Path, str]]] = {}
+    for path, text, source_stem in triples:
+        by_stem.setdefault(source_stem, []).append((path, text))
+    stems = sorted(by_stem.keys())
+    assert len(stems) >= 2, f"Need at least 2 source stems for a train/val split, got {len(stems)}"
     rng = random.Random(seed)
-    order = list(range(n))
-    rng.shuffle(order)
-    n_val = max(1, int(round(n * val_fraction)))
-    val_idx = set(order[:n_val])
-    train = [pair for i, pair in enumerate(pairs) if i not in val_idx]
-    val = [pair for i, pair in enumerate(pairs) if i in val_idx]
-    assert train and val, (
-        f"Split produced empty side (train={len(train)}, val={len(val)}). "
+    rng.shuffle(stems)
+    n_val_stems = max(1, int(round(len(stems) * val_fraction)))
+    val_stems = set(stems[:n_val_stems])
+
+    train_pairs: list[tuple[Path, str]] = []
+    val_pairs: list[tuple[Path, str]] = []
+    for stem in stems:
+        target = val_pairs if stem in val_stems else train_pairs
+        target.extend(by_stem[stem])
+
+    assert train_pairs and val_pairs, (
+        f"Split produced empty side (train={len(train_pairs)}, val={len(val_pairs)}). "
         f"Raise --val-fraction or lower the sample count."
     )
     logger.info(
-        "Split: %d train / %d val (val_fraction=%.3f, seed=%d)",
-        len(train),
-        len(val),
+        "Split by source stem: %d train pairs (%d stems) / %d val pairs (%d stems), "
+        "val_fraction=%.3f, seed=%d",
+        len(train_pairs),
+        len(stems) - n_val_stems,
+        len(val_pairs),
+        n_val_stems,
         val_fraction,
         seed,
     )
-    return train, val
+    return train_pairs, val_pairs
 
 
 class TrOCRLineDataset(Dataset):
@@ -239,19 +307,27 @@ def _build_model(
     )
     # BERT uses [CLS] as the sequence-start marker and [SEP] as end-of-
     # sequence, so the decoder needs those wired up. Without this the
-    # decoder cannot start generation and the loss will be NaN.
+    # decoder cannot start generation and the loss will be NaN. These
+    # are STRUCTURAL config fields (not generation-control), so they
+    # legitimately live on ``model.config``.
     model.config.decoder_start_token_id = tokenizer.cls_token_id
     model.config.pad_token_id = tokenizer.pad_token_id
     model.config.eos_token_id = tokenizer.sep_token_id
     model.config.vocab_size = model.config.decoder.vocab_size
-    # Generation-time defaults. These are stored on the config so a caller
-    # doing model.generate(pixel_values) picks them up automatically at
-    # inference time (matches TrOCR's original settings).
-    model.config.max_length = max_length
-    model.config.no_repeat_ngram_size = no_repeat_ngram_size
-    model.config.num_beams = num_beams
-    model.config.length_penalty = length_penalty
-    model.config.early_stopping = True
+    # Generation-time defaults. transformers 5.x refuses to read these
+    # from ``model.config`` any more (raises ValueError on generate()) —
+    # they must live on ``model.generation_config``. Mirroring the
+    # special-token ids here as well so ``model.generate(pixel_values)``
+    # at inference time picks up a consistent config even if a caller
+    # replaces model.config later.
+    model.generation_config.decoder_start_token_id = tokenizer.cls_token_id
+    model.generation_config.pad_token_id = tokenizer.pad_token_id
+    model.generation_config.eos_token_id = tokenizer.sep_token_id
+    model.generation_config.max_length = max_length
+    model.generation_config.no_repeat_ngram_size = no_repeat_ngram_size
+    model.generation_config.num_beams = num_beams
+    model.generation_config.length_penalty = length_penalty
+    model.generation_config.early_stopping = True
     return model
 
 
@@ -309,6 +385,9 @@ def finetune_trocr(
     real_folder: str | Path,
     output_base_dir: str | Path,
     *,
+    augmented_folder: str | Path | None = None,
+    labels_json: str | Path | None = None,
+    max_aug_samples: int | None = None,
     encoder_id: str = DEFAULT_ENCODER_ID,
     decoder_id: str = DEFAULT_DECODER_ID,
     val_fraction: float = 0.2,
@@ -334,9 +413,22 @@ def finetune_trocr(
         real_folder: Directory of ``<stem>.png`` + ``<stem>.gt.txt`` pairs.
         output_base_dir: Parent directory under which a
             ``trocr_<timestamp>/`` run directory is created.
+        augmented_folder: Optional directory of augmented PNGs named
+            ``<src_stem>_aug<NN>.png``. When set with ``labels_json``,
+            these get mixed into the training pool and split alongside
+            the real images at the source-stem level so aug variants
+            of a val line never appear in train.
+        labels_json: Optional ``labels.json`` mapping augmented filenames
+            to their (corrected) text. Required if ``augmented_folder``
+            is set.
+        max_aug_samples: Optional cap on the number of augmented pairs
+            after gathering. If the pool has more, a deterministic
+            seed-controlled random subsample of this size is kept.
+            ``None`` = use every augmented pair (fine on GPU; on MPS the
+            full 266k kraken pool would take days per epoch).
         encoder_id: HuggingFace image encoder id.
         decoder_id: HuggingFace text decoder id.
-        val_fraction: Fraction of pairs held out for validation.
+        val_fraction: Fraction of source stems held out for validation.
         seed: RNG seed for the split.
         epochs: Max training epochs (early stopping may cut it short).
         learning_rate: Peak LR. 5e-5 is a common HF fine-tune default.
@@ -344,7 +436,7 @@ def finetune_trocr(
         max_target_length: Tokenizer truncation length. 128 tokens
             comfortably covers CATMuS line lengths.
         no_repeat_ngram_size, num_beams, length_penalty: Generation-time
-            defaults baked into ``model.config``.
+            defaults baked into ``model.generation_config``.
         early_stopping_patience: Epochs without CER improvement before
             training halts.
         dataloader_num_workers: 0 avoids MPS's fork-safety issues.
@@ -371,6 +463,13 @@ def finetune_trocr(
     project_root = Path(os.environ.get("PROJECT_ROOT", "."))
     real_folder = Path(real_folder)
     output_base_dir = Path(output_base_dir)
+    augmented_folder = Path(augmented_folder) if augmented_folder else None
+    labels_json = Path(labels_json) if labels_json else None
+    use_augmented = augmented_folder is not None and labels_json is not None
+    assert not (augmented_folder is None) ^ (labels_json is None), (
+        "augmented_folder and labels_json must be provided together, "
+        f"got augmented_folder={augmented_folder} labels_json={labels_json}"
+    )
     logs_dir = Path(logs_dir) if logs_dir else project_root / "logs" / task_name
 
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -389,6 +488,10 @@ def finetune_trocr(
             "git_commit": _get_git_commit(),
             "timestamp": datetime.datetime.now().isoformat(),
             "real_folder": str(real_folder),
+            "augmented_folder": str(augmented_folder) if augmented_folder else None,
+            "labels_json": str(labels_json) if labels_json else None,
+            "use_augmented": use_augmented,
+            "max_aug_samples": max_aug_samples,
             "output_dir": str(run_dir),
             "encoder_id": encoder_id,
             "decoder_id": decoder_id,
@@ -410,10 +513,36 @@ def finetune_trocr(
         (run_dir / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
         logger.info("Configuration: %s", json.dumps(config, indent=2))
 
-    pairs = _gather_real_pairs(real_folder, logger)
-    assert pairs, f"No usable (png, gt) pairs in {real_folder}"
+    real_triples = _gather_real_pairs(real_folder, logger)
+    assert real_triples, f"No usable (png, gt) pairs in {real_folder}"
 
-    train_pairs, val_pairs = _split_pairs(pairs, val_fraction, seed, logger)
+    if use_augmented:
+        aug_triples = _gather_augmented_pairs(augmented_folder, labels_json, logger)
+        assert aug_triples, (
+            f"augmented_folder + labels_json set but yielded 0 usable pairs "
+            f"({augmented_folder}, {labels_json})"
+        )
+        if max_aug_samples is not None and len(aug_triples) > max_aug_samples:
+            # Deterministic subsample so re-running with the same seed
+            # trains on the same aug subset. We use a separate Random
+            # instance rather than the module-level ``random`` so
+            # transformer's ``set_seed(seed)`` doesn't perturb this pick.
+            aug_rng = random.Random(seed)
+            aug_triples = aug_rng.sample(aug_triples, max_aug_samples)
+            logger.info("Subsampled augmented pool to %d pairs (seed=%d)", max_aug_samples, seed)
+        all_triples = real_triples + aug_triples
+        n_source_stems = len({t[2] for t in all_triples})
+        logger.info(
+            "Combined pool: %d pairs across %d source stems (%d real + %d aug)",
+            len(all_triples),
+            n_source_stems,
+            len(real_triples),
+            len(aug_triples),
+        )
+    else:
+        all_triples = real_triples
+
+    train_pairs, val_pairs = _split_by_source_stem(all_triples, val_fraction, seed, logger)
 
     logger.info("Loading image processor: %s", encoder_id)
     image_processor = AutoImageProcessor.from_pretrained(encoder_id)
@@ -450,13 +579,17 @@ def finetune_trocr(
         num_train_epochs=epochs,
         learning_rate=learning_rate,
         fp16=use_fp16,
-        logging_dir=str(run_dir / "tb_logs"),
         logging_steps=25,
         save_total_limit=2,
         load_best_model_at_end=True,
         metric_for_best_model="cer",
         greater_is_better=False,
-        report_to=["tensorboard"],
+        # ``report_to=[]`` disables all integrations (tensorboard, wandb,
+        # comet, etc). Enabling any of them adds a hard dep to
+        # pyproject.toml; the plain-text run log + ``config.json`` +
+        # ``final_metrics.json`` already cover our needs. Flip to
+        # ``["tensorboard"]`` if you add tensorboard to deps later.
+        report_to=[],
         remove_unused_columns=False,
         dataloader_num_workers=dataloader_num_workers,
         seed=seed,

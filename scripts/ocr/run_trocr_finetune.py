@@ -28,6 +28,32 @@ def main():
         "data/processed/annotated_samples/OCR/full_annotated",
     )
     parser.add_argument(
+        "--augmented-folder",
+        required=False,
+        help="Optional directory of augmented PNGs named "
+        "<src_stem>_aug<NN>.png. Mixed into the training pool alongside "
+        "the real images and split at the source-stem level so "
+        "augmentations of a val line never appear in train. Must be "
+        "paired with --labels-json.",
+    )
+    parser.add_argument(
+        "--labels-json",
+        required=False,
+        help="Optional labels.json (from the correct_labels step) mapping "
+        "augmented filenames to their normalised text. Required if "
+        "--augmented-folder is set.",
+    )
+    parser.add_argument(
+        "--max-aug-samples",
+        type=int,
+        default=None,
+        help="Cap the augmented pool at this many pairs (deterministic "
+        "seed-controlled subsample). The full kraken aug pool has "
+        "~266k pairs, which is intractable on MPS for a 200M-param "
+        "VisionEncoderDecoderModel. Recommended: 5000-10000 on MPS, "
+        "unset on a real GPU. Default: no cap.",
+    )
+    parser.add_argument(
         "--output-base-dir",
         required=False,
         help="Parent directory under which trocr_<timestamp>/ is created. "
@@ -141,9 +167,15 @@ def main():
     )
     logs_dir = Path(args.logs_dir) if args.logs_dir else project_root / "logs" / "trocr_finetune"
 
+    augmented_folder = Path(args.augmented_folder) if args.augmented_folder else None
+    labels_json = Path(args.labels_json) if args.labels_json else None
+
     finetune_trocr(
         real_folder=real_folder,
         output_base_dir=output_base_dir,
+        augmented_folder=augmented_folder,
+        labels_json=labels_json,
+        max_aug_samples=args.max_aug_samples,
         encoder_id=args.encoder_id,
         decoder_id=args.decoder_id,
         val_fraction=args.val_fraction,

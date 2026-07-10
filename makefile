@@ -137,6 +137,18 @@ SMOKE_EPOCHS?=2
 # real-manuscript pool as the kraken fine-tune so the two runs are
 # directly comparable when evaluated against the permanent val set.
 TROCR_REAL_FOLDER?=./data/processed/annotated_samples/OCR/full_annotated
+# Optional augmented pool — same one the kraken fine-tune uses so the
+# TrOCR and kraken numbers stay apples-to-apples. Set both to empty to
+# train on the real folder only:
+#   make trocr_finetune TROCR_AUGMENTED_FOLDER= TROCR_LABELS_JSON=
+TROCR_AUGMENTED_FOLDER?=$(AUGMENTED_RUN_PATH)
+TROCR_LABELS_JSON?=$(FINETUNE_LABELS_JSON)
+# Cap on the augmented pool. The kraken aug pool has ~266k pairs — using
+# all of them on MPS with swin-base + mBERT would take days per epoch.
+# 5000 keeps the training set at ~5600 pairs total (real 600 + 5k aug),
+# which matches an effective "×5-ish" augmentation ratio like the kraken
+# runs and stays feasible on Apple Silicon. Set to empty to lift the cap.
+TROCR_MAX_AUG_SAMPLES?=5000
 TROCR_OUTPUT_DIR?=./models/ocr/finetuned
 TROCR_ENCODER_ID?=microsoft/swin-base-patch4-window7-224
 TROCR_DECODER_ID?=bert-base-multilingual-cased
@@ -420,6 +432,9 @@ finetune_ocr:
 trocr_finetune:
 	$(PYTHON) scripts/ocr/run_trocr_finetune.py \
 			--real-folder $(TROCR_REAL_FOLDER) \
+			$(if $(TROCR_AUGMENTED_FOLDER),--augmented-folder $(TROCR_AUGMENTED_FOLDER)) \
+			$(if $(TROCR_LABELS_JSON),--labels-json $(TROCR_LABELS_JSON)) \
+			$(if $(TROCR_MAX_AUG_SAMPLES),--max-aug-samples $(TROCR_MAX_AUG_SAMPLES)) \
 			--output-base-dir $(TROCR_OUTPUT_DIR) \
 			--encoder-id $(TROCR_ENCODER_ID) \
 			--decoder-id $(TROCR_DECODER_ID) \
