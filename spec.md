@@ -272,6 +272,49 @@ cite both — the corpus number is what a naive "how good is this model"
 question asks, and the median tells you how consistent it is
 line-to-line.
 
+**Per-line distribution — CER** (mean / std / percentiles across the
+299 scored lines; source of truth is the eval's per-line CSV in
+`tests/ocr/evaluations/six_way_vs_validation_300/`):
+
+| Model | corpus | line mean | line std | min | p10 | p25 | median | p75 | p90 | max |
+|---|---|---|---|---|---|---|---|---|---|---|
+| catmus_baseline | 0.0387 | 0.0395 | 0.0459 | 0.0000 | 0.0000 | 0.0000 | 0.0278 | 0.0571 | 0.1000 | 0.2750 |
+| medusa_cleaned | 0.0490 | 0.0492 | 0.0438 | 0.0000 | 0.0000 | 0.0250 | 0.0435 | 0.0750 | 0.1031 | 0.2308 |
+| kraken_400_real | 0.0420 | 0.0420 | 0.0416 | 0.0000 | 0.0000 | 0.0000 | 0.0286 | 0.0597 | 0.0915 | 0.2703 |
+| kraken_500_real | 0.0390 | 0.0391 | 0.0395 | 0.0000 | 0.0000 | 0.0000 | 0.0278 | 0.0571 | 0.0882 | 0.2286 |
+| **kraken_600_real** | **0.0380** | **0.0381** | **0.0388** | 0.0000 | 0.0000 | 0.0000 | 0.0278 | 0.0571 | **0.0860** | 0.2286 |
+| kraken_600_real_medical | 0.0407 | 0.0408 | 0.0415 | 0.0000 | 0.0000 | 0.0000 | 0.0278 | 0.0588 | 0.0872 | 0.2571 |
+
+**Per-line distribution — WER:**
+
+| Model | corpus | line mean | line std | min | p10 | p25 | median | p75 | p90 | max |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **catmus_baseline** | **0.1434** | **0.1459** | **0.1567** | 0.0000 | 0.0000 | 0.0000 | **0.1250** | **0.2000** | **0.3750** | **1.0000** |
+| medusa_cleaned | 0.3106 | 0.3253 | 0.2783 | 0.0000 | 0.0000 | 0.1250 | 0.2857 | 0.5000 | 0.7143 | 1.4000 |
+| kraken_400_real | 0.2358 | 0.2444 | 0.2365 | 0.0000 | 0.0000 | 0.0000 | 0.2000 | 0.3750 | 0.5714 | 1.4000 |
+| kraken_500_real | 0.2188 | 0.2290 | 0.2392 | 0.0000 | 0.0000 | 0.0000 | 0.1667 | 0.3750 | 0.5143 | 1.4000 |
+| kraken_600_real | 0.2144 | 0.2245 | 0.2382 | 0.0000 | 0.0000 | 0.0000 | 0.1667 | 0.3333 | 0.5000 | 1.4000 |
+| kraken_600_real_medical | 0.2275 | 0.2369 | 0.2396 | 0.0000 | 0.0000 | 0.0000 | 0.1667 | 0.3542 | 0.5714 | 1.4000 |
+
+**Reading the distributions:**
+
+- **p25 = 0 for CER** across catmus + every kraken run means at least
+  25% of lines are transcribed with zero character errors. Medusa's
+  p25 = 0.025 — Medusa never quite hits perfect char accuracy on ~75%
+  of lines, hinting at a systematic ~1-char offset (normalisation /
+  spacing).
+- **kraken 400 has p25 = 0 for WER but a mean of 0.244** — the WER
+  distribution is bimodal-ish: a good chunk of perfect lines dragged
+  down by a long tail of very bad ones (WER up to 1.4).
+- **WER max = 1.4 for every non-catmus model** while catmus caps at
+  1.0. Every fine-tune has at least one line where the model
+  *over-generated* words, driving edit distance above the reference
+  length. Matches the `--resize union` codec-widening hypothesis: the
+  fine-tune's expanded codec sometimes produces spurious tokens.
+- **Distributions are heavily right-skewed** (mean > median for CER).
+  Standard "mean ± std" would mislead — cite median + IQR
+  (p25 → p75) alongside the corpus number.
+
 **Headline signals:**
 
 - **Medical corpus made the model slightly WORSE**: 0.9593 vs 0.9620.
