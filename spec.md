@@ -65,6 +65,11 @@ OCC_HTR/
 ├── scripts/                              # thin argparse wrappers over src/
 │   ├── ocr/run_<same_name>.py
 │   └── data_preprocessing/, data_augmentation/, ...
+├── frontend/                             # FastAPI + static HTML/JS viewer (§7.4)
+│   ├── app.py                            # FastAPI app: /api/pages, /api/pages/{k}, ...
+│   ├── manuscript_data.py                # ManuscriptRepo: reads seg JSONs, transcriptions, aligned txt
+│   ├── config.py                         # VIEWER_* env-driven paths
+│   └── static/                           # index.html + app.js + style.css
 ├── notebooks/                            # exploratory notebooks (not part of package)
 ├── models/ocr/                           # checkpoints
 │   ├── catmus-medieval.mlmodel           # kraken base model
@@ -232,7 +237,8 @@ via `rapidfuzz`, aggregated over all val lines).
 | Medusa 0.2 Line 9B (raw) | pretrained VLM | 500-pool | 0.8422 | — | chat-template artefacts inflate error |
 | Medusa 0.2 Line 9B (cleaned v2) | pretrained VLM | 500-pool | 0.9543 | — | cleaner strips first-non-noise line; 0.11pp gap to catmus |
 | kraken fine-tune `finetune_20260629_235819` | catmus + 400 real | batch-5 (100 unseen) | 0.9624 | — | fair generalization test; no memorization gap |
-| **TrOCR Swin+BERT** (this project's build) | 480 real (val-fold split) | 120 real val | **0.2411** | 0.0000 | 480 lines can't teach 57M randomly-initialised cross-attn params; expected baseline |
+| **TrOCR Swin+BERT** real-only, run `trocr_20260710_125139` | 480 real (val-fold split) | 120 real val | **0.2411** | 0.0000 | 480 lines can't teach 57M randomly-initialised cross-attn params; expected baseline |
+| **TrOCR Swin+BERT + aug** run `trocr_20260710_142341` | 600 real + 5000 aug subsampled (source-stem split, 5509 unique stems) | val-fold | *in progress* | — | started 2026-07-10 14:23; same aug pool as kraken; final numbers will land in the run's `final_metrics.json` |
 | catmus / medusa / kraken vs **permanent 300 val** | | | — | — | **not yet run** — will be the canonical numbers reported in the thesis |
 
 Pending baseline runs (queued, not started):
@@ -240,9 +246,11 @@ Pending baseline runs (queued, not started):
 - Medusa (cleaned) → 300 val
 - `finetune_20260629_235819` → 300 val
 
-Pending experimental runs (in progress):
-- **TrOCR Swin+BERT with augmentation** (real 600 + 5000 aug) — code
-  wired, not yet started.
+Pending experimental runs:
+- **TrOCR Swin+BERT with augmentation** — run `trocr_20260710_142341`
+  training as of 2026-07-10 afternoon; update this row + move to results
+  table when `final_metrics.json` lands under
+  `models/ocr/finetuned/trocr_20260710_142341/`.
 - **TrOCR ViT+RoBERTa** starting from `microsoft/trocr-base-handwritten`
   — planned next, gives cross-attention a pretrained starting point.
 - **kraken fine-tune with medical corpus augmentation** — pipeline
@@ -294,6 +302,67 @@ Pending experimental runs (in progress):
   canonical kraken fine-tune (400 real). **Use this whenever you need
   "the fine-tuned kraken" — do not confuse with newer 20260701+ runs
   which were experiments.**
+
+### 7.4 Manuscript viewer (local web app)
+
+FastAPI + vanilla HTML/JS/SVG frontend for exploring the corpus against
+model output. Two tabs, both driven off the same page-payload fetch:
+
+- **Tab 1 — transcription viewer.** Original manuscript page on the
+  left with clickable segmented-line polygons overlaid as SVG; model
+  transcription on the right, one row per line. Clicking either side
+  highlights the counterpart. Copy / Download `.txt` buttons pull the
+  model transcription for the current page.
+- **Tab 2 — 3-way alignment.** Same manuscript image + polygons on the
+  left; middle column is the scholarly transcription; right column is
+  the model transcription. Clicking a polygon highlights **both** text
+  columns so discrepancies pop side-by-side.
+
+Both panes have a zoom toolbar (`−` `+` `⌂` reset) plus `Cmd`/`Ctrl` +
+scroll. Panning is via the pane's overflow scrollbars when zoomed.
+
+**Data sources** (all resolvable via `VIEWER_*` env vars — see
+[frontend/config.py](frontend/config.py)):
+
+- `VIEWER_RAW_PAGES` — raw JPG folder. Default:
+  `data/raw/original_manuscript/reproduction14453_100`.
+- `VIEWER_SEGMENTATION` — segmentation JSON folder. Default:
+  `data/processed/segmented_images/segmentation_20260618_111517`.
+- `VIEWER_MODEL_TRANSCRIPTION` — per-line `.txt` root. Default:
+  `data/processed/transcription/finetune_400_full_corpus` (canonical
+  kraken fine-tune output). **Swap this to whichever model's
+  full-corpus transcription you want to inspect** — no code change:
+  ```bash
+  VIEWER_MODEL_TRANSCRIPTION=./data/processed/transcription/<new_run> make frontend
+  ```
+- `VIEWER_SCHOLARLY_TXT` — aligned scholarly txt with
+  `========== IMAGE: <page_key>_full ==========` headers and `1: ...`
+  1-based line entries. Default:
+  `tests/ocr/AlbucE_aligned_20260628_142959.txt`.
+
+**Key conventions the viewer relies on:**
+
+- Raw JPG filenames like `5 - garde - 001.jpg` are normalised to the
+  same `page_key` used elsewhere (`05_garde_001`) — leading number
+  zero-padded to 2 digits, dots/spaces inside a token → `_`, joined
+  with `_`.
+- Line indices are 0-based in segmentation JSONs and per-line txts;
+  the scholarly txt is 1-based and gets converted on parse.
+- A page must have BOTH a raw JPG and a segmentation JSON to appear in
+  the dropdown. Missing per-line transcription or scholarly text
+  renders as muted `— no transcription —` so pipeline gaps stay
+  visible.
+
+**Launch:**
+
+```bash
+make frontend                          # → http://127.0.0.1:8000
+# Override port / host if needed:
+make frontend FRONTEND_PORT=9000
+```
+
+The FastAPI reloader watches Python files; edits to `static/*.html`,
+`.css`, `.js` are picked up by a browser refresh (no server restart).
 - `models/ocr/finetuned/trocr_<TS>/best_model/` — TrOCR run outputs
   (each dir is a self-contained VisionEncoderDecoderModel + processor +
   tokenizer, loadable by `trocr_transcribe.py`).
@@ -314,7 +383,8 @@ make run_transcription   # uses catmus base model
 # 3) Kraken fine-tune (real + optional synthetic mix).
 make finetune_ocr FINETUNE_EPOCHS=150 FINETUNE_DEVICE=mps
 
-# 4) TrOCR fine-tune (Swin+BERT, MPS, subsampled aug pool).
+# 4) TrOCR fine-tune (Swin+BERT, MPS, defaults to 600 real + 5000 aug).
+#    Set TROCR_AUGMENTED_FOLDER= TROCR_LABELS_JSON= for real-only.
 PYTORCH_ENABLE_MPS_FALLBACK=1 make trocr_finetune
 
 # 5) TrOCR inference against the permanent val set.
@@ -333,6 +403,11 @@ PROJECT_ROOT=. uv run python scripts/ocr/run_evaluate_ocr.py \
     --pred <name>=<pred_dir> \
     [--pred <name2>=<pred_dir2> ...] \
     --run-name <descriptive>
+
+# 8) Manuscript viewer (FastAPI + static HTML/JS/SVG). See §7.4.
+make frontend                          # → http://127.0.0.1:8000
+# To point Tab 1 at a different model's full-corpus predictions:
+VIEWER_MODEL_TRANSCRIPTION=./data/processed/transcription/<run> make frontend
 ```
 
 ## 9. Convention: how to add a new model to the comparison
@@ -385,3 +460,8 @@ PROJECT_ROOT=. uv run python scripts/ocr/run_evaluate_ocr.py \
 - Don't skip pre-commit hooks with `--no-verify`. If a hook fails,
   fix the underlying issue (usually ruff auto-format re-stage +
   retry).
+- Don't `git checkout <file>` to unstage a partially-staged tracked
+  file — that reverts BOTH staged and unstaged changes and silently
+  wipes uncommitted work. To split a mixed diff across two commits,
+  use `git add -p` and answer `y/n` per hunk, or `git stash` the parts
+  you want to defer.
