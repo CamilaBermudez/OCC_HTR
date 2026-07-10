@@ -131,6 +131,36 @@ FINETUNE_KEEP_ALL_CHECKPOINTS?=
 SMOKE?=
 SMOKE_SIZE?=50
 SMOKE_EPOCHS?=2
+#========= TrOCR (Swin + BERT) fine-tuning ========
+# TrOCR-style VisionEncoderDecoderModel: Swin image encoder + mBERT text
+# decoder. Trained end-to-end via HuggingFace Seq2SeqTrainer on the same
+# real-manuscript pool as the kraken fine-tune so the two runs are
+# directly comparable when evaluated against the permanent val set.
+TROCR_REAL_FOLDER?=./data/processed/annotated_samples/OCR/full_annotated
+TROCR_OUTPUT_DIR?=./models/ocr/finetuned
+TROCR_ENCODER_ID?=microsoft/swin-base-patch4-window7-224
+TROCR_DECODER_ID?=bert-base-multilingual-cased
+TROCR_VAL_FRACTION?=0.2
+TROCR_SEED?=42
+TROCR_EPOCHS?=20
+TROCR_LRATE?=5e-5
+TROCR_BATCH_SIZE?=8
+TROCR_EVAL_BATCH_SIZE?=8
+TROCR_MAX_TARGET_LENGTH?=128
+TROCR_NUM_BEAMS?=4
+TROCR_NO_REPEAT_NGRAM_SIZE?=3
+TROCR_LENGTH_PENALTY?=1.0
+TROCR_EARLY_STOPPING_PATIENCE?=5
+TROCR_DATALOADER_NUM_WORKERS?=0
+TROCR_DEVICE?=auto
+# TrOCR inference — point at a best_model/ folder from a finished
+# fine-tune and a folder of line PNGs to transcribe.
+TROCR_MODEL_DIR?=
+TROCR_INPUT_DIR?=./data/processed/annotated_samples/OCR/validation
+TROCR_TRANSCRIBE_OUTPUT_DIR?=./data/processed/transcription
+TROCR_RUN_NAME?=
+TROCR_TRANSCRIBE_BATCH_SIZE?=8
+TROCR_MAX_NEW_TOKENS?=128
 #========= annotation batch sampling ========
 # Source of line PNGs — the manually-filtered/corrected crops the OCR
 # pipeline actually ran on (NOT the raw extraction folder, which still
@@ -159,7 +189,7 @@ SAMPLE_PATTERN_LABEL?=
 
 PYTHON=uv run python
 
-.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images detect_ink_bleed unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels finetune_ocr sample_annotation_batch clean
+.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images detect_ink_bleed unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels finetune_ocr trocr_finetune trocr_transcribe sample_annotation_batch clean
 
 all: evaluate_yolo_performance
 
@@ -380,6 +410,51 @@ finetune_ocr:
 			--real-train-frac $(FINETUNE_REAL_TRAIN_FRAC) \
 			--real-val-frac $(FINETUNE_REAL_VAL_FRAC) \
 			$(if $(SMOKE),--smoke --smoke-size $(SMOKE_SIZE) --smoke-epochs $(SMOKE_EPOCHS))
+
+
+# Fine-tune a Swin+BERT VisionEncoderDecoderModel on the real
+# annotated-manuscript pool. Examples:
+#   make trocr_finetune                                # defaults: swin-base + mBERT, 20 epochs, MPS auto
+#   make trocr_finetune TROCR_EPOCHS=40 TROCR_BATCH_SIZE=4
+#   PYTORCH_ENABLE_MPS_FALLBACK=1 make trocr_finetune  # required if any op falls back to CPU on MPS
+trocr_finetune:
+	$(PYTHON) scripts/ocr/run_trocr_finetune.py \
+			--real-folder $(TROCR_REAL_FOLDER) \
+			--output-base-dir $(TROCR_OUTPUT_DIR) \
+			--encoder-id $(TROCR_ENCODER_ID) \
+			--decoder-id $(TROCR_DECODER_ID) \
+			--val-fraction $(TROCR_VAL_FRACTION) \
+			--seed $(TROCR_SEED) \
+			--epochs $(TROCR_EPOCHS) \
+			--learning-rate $(TROCR_LRATE) \
+			--batch-size $(TROCR_BATCH_SIZE) \
+			--eval-batch-size $(TROCR_EVAL_BATCH_SIZE) \
+			--max-target-length $(TROCR_MAX_TARGET_LENGTH) \
+			--num-beams $(TROCR_NUM_BEAMS) \
+			--no-repeat-ngram-size $(TROCR_NO_REPEAT_NGRAM_SIZE) \
+			--length-penalty $(TROCR_LENGTH_PENALTY) \
+			--early-stopping-patience $(TROCR_EARLY_STOPPING_PATIENCE) \
+			--dataloader-num-workers $(TROCR_DATALOADER_NUM_WORKERS) \
+			--device $(TROCR_DEVICE)
+
+
+# Transcribe a folder of line PNGs with a fine-tuned TrOCR checkpoint.
+# Point TROCR_MODEL_DIR at the best_model/ subfolder from a completed
+# trocr_finetune run. Example:
+#   make trocr_transcribe \
+#        TROCR_MODEL_DIR=./models/ocr/finetuned/trocr_20260710_183045/best_model \
+#        TROCR_INPUT_DIR=./data/processed/annotated_samples/OCR/validation \
+#        TROCR_RUN_NAME=trocr_vs_validation_300
+trocr_transcribe:
+	$(PYTHON) scripts/ocr/run_trocr_transcribe.py \
+			--model-dir $(TROCR_MODEL_DIR) \
+			--input-dir $(TROCR_INPUT_DIR) \
+			--output-dir $(TROCR_TRANSCRIBE_OUTPUT_DIR) \
+			$(if $(TROCR_RUN_NAME),--run-name $(TROCR_RUN_NAME)) \
+			--device $(TROCR_DEVICE) \
+			--batch-size $(TROCR_TRANSCRIBE_BATCH_SIZE) \
+			--max-new-tokens $(TROCR_MAX_NEW_TOKENS) \
+			--num-beams $(TROCR_NUM_BEAMS)
 
 
 # Sample a fresh annotation batch. Examples:
