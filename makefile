@@ -201,7 +201,7 @@ SAMPLE_PATTERN_LABEL?=
 
 PYTHON=uv run python
 
-.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images detect_ink_bleed unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels finetune_ocr trocr_finetune trocr_transcribe sample_annotation_batch clean
+.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images detect_ink_bleed unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels finetune_ocr trocr_finetune trocr_transcribe sample_annotation_batch frontend clean
 
 all: evaluate_yolo_performance
 
@@ -493,6 +493,16 @@ sample_annotation_batch:
 			--seed $(SAMPLE_SEED) \
 			$(if $(SAMPLE_PATTERN),--pattern "$(SAMPLE_PATTERN)") \
 			$(if $(SAMPLE_PATTERN_LABEL),--pattern-label "$(SAMPLE_PATTERN_LABEL)")
+
+
+# Launch the AlbucE manuscript viewer (FastAPI + static HTML/JS).
+# Serves at http://localhost:$(FRONTEND_PORT). Override paths via env:
+#   VIEWER_MODEL_TRANSCRIPTION=./data/processed/transcription/<new> make frontend
+FRONTEND_HOST?=127.0.0.1
+FRONTEND_PORT?=8000
+frontend:
+	PROJECT_ROOT=. $(PYTHON) -m uvicorn frontend.app:app \
+			--host $(FRONTEND_HOST) --port $(FRONTEND_PORT) --reload
 
 
 clean:
