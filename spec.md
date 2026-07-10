@@ -238,14 +238,39 @@ The eval every model is compared against for thesis reporting. Run:
 `tests/ocr/evaluations/six_way_vs_validation_300/`. 299 lines scored
 (1 gt intentionally empty).
 
-| Model | CER | char_acc | WER | word_acc | median CER | median WER |
-|---|---|---|---|---|---|---|
-| catmus baseline | 0.0387 | 0.9613 | **0.1434** | **0.8566** | 0.0278 | 0.1250 |
-| Medusa 0.2 Line 9B (cleaned v2) | 0.0490 | 0.9510 | 0.3106 | 0.6894 | 0.0435 | 0.2857 |
-| kraken 400 real (`finetune_20260629_235819`) | 0.0420 | 0.9580 | 0.2358 | 0.7642 | 0.0286 | 0.2000 |
-| kraken 500 real (`finetune_20260701_233056`) | 0.0390 | 0.9610 | 0.2188 | 0.7812 | 0.0278 | 0.1667 |
-| **kraken 600 real** (`finetune_20260705_070741`) | **0.0380** | **0.9620** | 0.2144 | 0.7856 | 0.0278 | 0.1667 |
-| kraken 600 real + medical (`finetune_20260706_151856`) | 0.0407 | 0.9593 | 0.2275 | 0.7725 | 0.0278 | 0.1667 |
+**Corpus-level metrics** (sum of edits / sum of reference chars — one
+number over the whole val set; sensitive to a few very bad lines):
+
+| Model | CER | char_acc | WER | word_acc |
+|---|---|---|---|---|
+| catmus baseline | 0.0387 | 0.9613 | **0.1434** | **0.8566** |
+| Medusa 0.2 Line 9B (cleaned v2) | 0.0490 | 0.9510 | 0.3106 | 0.6894 |
+| kraken 400 real (`finetune_20260629_235819`) | 0.0420 | 0.9580 | 0.2358 | 0.7642 |
+| kraken 500 real (`finetune_20260701_233056`) | 0.0390 | 0.9610 | 0.2188 | 0.7812 |
+| **kraken 600 real** (`finetune_20260705_070741`) | **0.0380** | **0.9620** | 0.2144 | 0.7856 |
+| kraken 600 real + medical (`finetune_20260706_151856`) | 0.0407 | 0.9593 | 0.2275 | 0.7725 |
+
+**Per-line median metrics** (median over the 299 lines — describes the
+"typical" line rather than the aggregate, robust to a few catastrophic
+lines):
+
+| Model | median CER | median char_acc | median WER | median word_acc |
+|---|---|---|---|---|
+| catmus baseline | 0.0278 | 0.9722 | **0.1250** | **0.8750** |
+| Medusa 0.2 Line 9B (cleaned v2) | 0.0435 | 0.9565 | 0.2857 | 0.7143 |
+| kraken 400 real (`finetune_20260629_235819`) | 0.0286 | 0.9714 | 0.2000 | 0.8000 |
+| kraken 500 real (`finetune_20260701_233056`) | 0.0278 | 0.9722 | 0.1667 | 0.8333 |
+| **kraken 600 real** (`finetune_20260705_070741`) | 0.0278 | 0.9722 | 0.1667 | 0.8333 |
+| kraken 600 real + medical (`finetune_20260706_151856`) | 0.0278 | 0.9722 | 0.1667 | 0.8333 |
+
+**How to read the medians vs corpus numbers:** every kraken run from
+500 lines upward matches catmus's *typical* line (0.0278 CER, 0.9722
+char_acc) — the median has hit a floor. The corpus-level char_acc
+differences (0.9613 vs 0.9620 etc.) live entirely in the tail: a small
+number of hard lines drive the aggregate spread. For thesis reporting,
+cite both — the corpus number is what a naive "how good is this model"
+question asks, and the median tells you how consistent it is
+line-to-line.
 
 **Headline signals:**
 
