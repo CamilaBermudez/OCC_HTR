@@ -223,28 +223,94 @@ data/processed/annotated_samples/OCR/validation/
   text used as synthesis seed for kraken.
 - `data/raw/medical_texts/` — medical corpus, 12,012 categorized
   entries (`categorize_20260625_143327/medical_texts_categorized.json`).
-  Not yet used in any completed training run; on the queue for a
-  future kraken augmentation variant.
+  **Was used** in the merged synthetic pool
+  `aug_merged_anno_medical_20260706` that trained
+  `finetune_20260706_151856` (see §6 kraken catalog).
 
 ## 6. Models & results (as of 2026-07-10)
 
 All char/word accuracies are **corpus-level** (Levenshtein distance
 via `rapidfuzz`, aggregated over all val lines).
 
+### 6.1 Permanent 300-val benchmark (canonical numbers)
+
+The eval every model is compared against for thesis reporting. Run:
+`tests/ocr/evaluations/six_way_vs_validation_300/`. 299 lines scored
+(1 gt intentionally empty).
+
+| Model | CER | char_acc | WER | word_acc | median CER | median WER |
+|---|---|---|---|---|---|---|
+| catmus baseline | 0.0387 | 0.9613 | **0.1434** | **0.8566** | 0.0278 | 0.1250 |
+| Medusa 0.2 Line 9B (cleaned v2) | 0.0490 | 0.9510 | 0.3106 | 0.6894 | 0.0435 | 0.2857 |
+| kraken 400 real (`finetune_20260629_235819`) | 0.0420 | 0.9580 | 0.2358 | 0.7642 | 0.0286 | 0.2000 |
+| kraken 500 real (`finetune_20260701_233056`) | 0.0390 | 0.9610 | 0.2188 | 0.7812 | 0.0278 | 0.1667 |
+| **kraken 600 real** (`finetune_20260705_070741`) | **0.0380** | **0.9620** | 0.2144 | 0.7856 | 0.0278 | 0.1667 |
+| kraken 600 real + medical (`finetune_20260706_151856`) | 0.0407 | 0.9593 | 0.2275 | 0.7725 | 0.0278 | 0.1667 |
+
+**Headline signals:**
+
+- **Medical corpus made the model slightly WORSE**: 0.9593 vs 0.9620.
+  This is real data that argues against including the medical corpus
+  in the augmentation mix. Possible interpretations: (a) the medical
+  vocabulary and rendering are too different from the AlbucE hand and
+  the model's capacity gets spent on non-transferable patterns; (b)
+  the merged pool traded coverage of AlbucE-typical n-grams for
+  broader but less useful diversity.
+- **Kraken fine-tunes beat catmus on char_acc but LOSE on WER**.
+  Catmus WER is 0.1434 vs kraken best 0.2144. The fine-tunes get
+  glyph shapes closer but produce more off-by-one word forms — likely
+  a codec/vocabulary side-effect from ``--resize union``.
+- **Real-data scale ladder**: 400 → 500 → 600 gives 0.9580 → 0.9610
+  → 0.9620. Marginal improvements per +100 real lines.
+
+### 6.2 Historical / biased numbers (kept for provenance)
+
+The 500-pool numbers below were computed BEFORE the permanent val was
+carved out — retained for continuity but should not be cited as
+generalization scores (self-seeding + train-set overlap bias).
+
+| Model | Train data | Val set | char_acc | Notes |
+|---|---|---|---|---|
+| catmus-medieval baseline | pretrained only | 500-pool (biased) | 0.9594 | catmus pre-filled the gt.txt seeds |
+| Medusa 0.2 Line 9B (raw) | pretrained VLM | 500-pool | 0.8422 | chat-template artefacts |
+| Medusa 0.2 Line 9B (cleaned v2) | pretrained VLM | 500-pool | 0.9543 | cleaner strips first-non-noise line |
+| kraken `finetune_20260629_235819` | catmus + 400 real | batch-5 (100 unseen) | 0.9624 | prior "fair" generalization test |
+
+### 6.3 TrOCR track (separate architecture family)
+
 | Model | Train data | Val set | char_acc | word_acc | Notes |
 |---|---|---|---|---|---|
-| catmus-medieval baseline | pretrained only | 500-pool (biased) | 0.9594 | — | catmus was used to pre-fill the gt.txt seeds, so this number has self-seeding bias |
-| Medusa 0.2 Line 9B (raw) | pretrained VLM | 500-pool | 0.8422 | — | chat-template artefacts inflate error |
-| Medusa 0.2 Line 9B (cleaned v2) | pretrained VLM | 500-pool | 0.9543 | — | cleaner strips first-non-noise line; 0.11pp gap to catmus |
-| kraken fine-tune `finetune_20260629_235819` | catmus + 400 real | batch-5 (100 unseen) | 0.9624 | — | fair generalization test; no memorization gap |
-| **TrOCR Swin+BERT** real-only, run `trocr_20260710_125139` | 480 real (val-fold split) | 120 real val | **0.2411** | 0.0000 | 480 lines can't teach 57M randomly-initialised cross-attn params; expected baseline |
-| **TrOCR Swin+BERT + aug** run `trocr_20260710_142341` | 600 real + 5000 aug subsampled (source-stem split, 5509 unique stems) | val-fold | *in progress* | — | started 2026-07-10 14:23; same aug pool as kraken; final numbers will land in the run's `final_metrics.json` |
-| catmus / medusa / kraken vs **permanent 300 val** | | | — | — | **not yet run** — will be the canonical numbers reported in the thesis |
+| TrOCR Swin+BERT real-only, run `trocr_20260710_125139` | 480 real (val-fold split) | 120 real val | 0.2411 | 0.0000 | 480 lines can't teach 57M randomly-initialised cross-attn params; expected baseline |
+| TrOCR Swin+BERT + aug (`trocr_20260710_142341`) | 600 real + 5000 aug subsampled (source-stem split, 5509 unique stems) | val-fold | *in progress* | — | started 2026-07-10 14:23; same aug pool as kraken; final numbers will land in the run's `final_metrics.json` |
 
-Pending baseline runs (queued, not started):
-- catmus baseline → 300 val
-- Medusa (cleaned) → 300 val
-- `finetune_20260629_235819` → 300 val
+### Kraken fine-tune catalog
+
+Every kraken fine-tune this project has produced, with its training
+composition and the source of its augmented synthetic pool. The
+"canonical" reporting run is the LAST row unless a later run beats it
+on the permanent 300-val benchmark (§6 results row).
+
+| Run | Real | Aug pool | Base model | Notes |
+|---|---|---|---|---|
+| `finetune_20260629_235819` | 400 | `aug_20260629_235051` (COMETA-only) | catmus-medieval | prior canonical; 320 train + 80 val + synth |
+| `finetune_20260701_233056` | 500 | `aug_20260701_232640` (COMETA-only) | catmus-medieval | 400 train + 100 val + synth |
+| `finetune_20260705_070741` | 600 | `aug_20260701_232640` (COMETA-only) | catmus-medieval | 480 train + 120 val + synth |
+| `finetune_20260706_151856` | 600 | `aug_merged_anno_medical_20260706` (annotated + medical corpus) | catmus-medieval | 480 train + 120 val + merged synth; the medical-corpus run |
+
+Full-corpus transcription output on disk:
+- `data/processed/transcription/finetune_400_full_corpus/` — from
+  `finetune_20260629_235819`.
+- Newer runs have per-line predictions against the val set at
+  `data/processed/transcription/<run>_on_validation_300/` once the
+  `run_transcribe_line_crops` job (§9 workflow) completes.
+
+Pending baseline runs on the permanent 300-val:
+- catmus baseline → 300 val (via `ocr_kept_20260622_120413` rglob).
+- Medusa (cleaned) → 300 val (via
+  `medusa_validation_300_20260710_clean/`).
+- All 4 kraken runs above → 300 val (via
+  `<run>_on_validation_300/` folders produced by
+  `run_transcribe_line_crops`).
 
 Pending experimental runs:
 - **TrOCR Swin+BERT with augmentation** — run `trocr_20260710_142341`
@@ -253,8 +319,6 @@ Pending experimental runs:
   `models/ocr/finetuned/trocr_20260710_142341/`.
 - **TrOCR ViT+RoBERTa** starting from `microsoft/trocr-base-handwritten`
   — planned next, gives cross-attention a pretrained starting point.
-- **kraken fine-tune with medical corpus augmentation** — pipeline
-  code ready in prior session, never executed.
 
 ## 7. Infrastructure
 
@@ -432,21 +496,34 @@ VIEWER_MODEL_TRANSCRIPTION=./data/processed/transcription/<run> make frontend
 
 ## 10. Open questions / decisions to revisit
 
-- Does mixing the medical corpus into the kraken training pool
-  measurably help vs. the existing COMETA-only synthetic pool? Code
-  ready, run not started.
+- **RESOLVED — medical corpus DID NOT help.**
+  `finetune_20260706_151856` (600 real + `aug_merged_anno_medical_20260706`)
+  scored 0.9593 char_acc vs 0.9620 for the COMETA-only 600-real run
+  (`finetune_20260705_070741`). Small but consistent regression. See
+  §6.1. Follow-up: do we understand *why*? Options include vocabulary
+  drift or wasted capacity — worth a quick error-mode inspection but
+  not another training run.
+- **Why do kraken fine-tunes lose ~7pp of WER vs. catmus** despite
+  matching or beating on char_acc (§6.1 headline signals)? Likely
+  ``--resize union`` widening the codec and letting the model produce
+  near-neighbour word forms; worth confirming by comparing per-line
+  edits.
 - What CER does a `microsoft/trocr-base-handwritten` fine-tune reach
   vs. the from-scratch Swin+BERT? The pretrained cross-attention
   should close most of the gap; this validates or rules out the
   architecture direction.
-- If the medical + trocr-base experiments both close the gap to
-  catmus, is there value in ensembling the three top models for the
-  thesis's final headline number? Defer until we have the numbers.
+- If the trocr-base experiment closes the gap to catmus, is there
+  value in ensembling the top models for the thesis's final headline
+  number? Defer until we have the numbers.
 
 ## 11. What NOT to do (past failure modes)
 
 - Don't create `run_transcribe_lines.py` or similar duplicates when
-  `run_transcribe_img.py` already handles the case.
+  `run_transcribe_img.py` already handles the case. **Note:**
+  `run_transcribe_line_crops.py` is *not* a duplicate — it's the
+  flat-folder mode that the page-based `run_transcribe_img.py` doesn't
+  cover (val PNGs don't have per-page segmentation JSONs at inference
+  time).
 - Don't put processing logic in `scripts/<...>/run_*.py` files. Only
   argparse + path resolution. All logic goes in `src/`.
 - Don't reference the wrong fine-tune model — the canonical kraken
