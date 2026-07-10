@@ -167,6 +167,17 @@ main {
        is absolutely-positioned inside and follows via width/height 100%. */
     display: inline-block;
     line-height: 0;
+    /* Grab cursor as a "you can drag this" affordance. Polygons override
+       this back to `pointer` via their own rule, so the cursor is
+       context-appropriate (grab over empty parts, pointer over lines). */
+    cursor: grab;
+}
+
+.image-wrap.panning,
+.image-wrap.panning * {
+    /* While the user is actively dragging, force ``grabbing`` even over
+       polygons so the visual doesn't flip to `pointer` mid-drag. */
+    cursor: grabbing !important;
 }
 
 .image-wrap img {
@@ -175,6 +186,11 @@ main {
     width: 100%;
     height: auto;
     user-select: none;
+    /* Prevent the browser's native drag-image behaviour, which would
+       otherwise start a ghost drag whenever the user click-drags. */
+    -webkit-user-drag: none;
+    user-drag: none;
+    pointer-events: none;
 }
 
 .zoom-toolbar {

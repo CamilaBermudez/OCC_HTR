@@ -241,6 +241,74 @@ function bindZoomHandlers() {
     });
 }
 
+// ---------- Pan (click-and-drag on the image) ----------
+// Google-Maps-style pan: mousedown anywhere in the image area (empty
+// space OR on a polygon), drag, release. A short click without meaningful
+// motion still fires the polygon's normal click handler so line selection
+// keeps working — we only intercept once movement crosses PAN_THRESHOLD.
+const PAN_THRESHOLD_PX = 4;
+
+function bindPanHandlers() {
+    $$(".pane-image").forEach((pane) => {
+        const scroll = pane.querySelector(".image-scroll");
+        const wrap = pane.querySelector(".image-wrap");
+        if (!scroll || !wrap) return;
+
+        let start = null;        // { x, y } — clientX/Y at mousedown
+        let startScroll = null;  // pane's scrollLeft/Top at mousedown
+        let panning = false;
+
+        scroll.addEventListener("mousedown", (e) => {
+            // Left button only. Ignore drags that begin on the zoom
+            // toolbar buttons.
+            if (e.button !== 0) return;
+            if (e.target.closest(".zoom-toolbar")) return;
+            start = { x: e.clientX, y: e.clientY };
+            startScroll = { x: scroll.scrollLeft, y: scroll.scrollTop };
+            panning = false;
+        });
+
+        // Use window-level listeners so a drag that leaves the pane's
+        // bounds still updates smoothly and always terminates on mouseup.
+        window.addEventListener("mousemove", (e) => {
+            if (!start) return;
+            const dx = e.clientX - start.x;
+            const dy = e.clientY - start.y;
+            if (!panning && Math.hypot(dx, dy) > PAN_THRESHOLD_PX) {
+                panning = true;
+                wrap.classList.add("panning");
+            }
+            if (panning) {
+                scroll.scrollLeft = startScroll.x - dx;
+                scroll.scrollTop = startScroll.y - dy;
+                e.preventDefault();
+            }
+        });
+
+        window.addEventListener("mouseup", () => {
+            if (!start) return;
+            const wasPanning = panning;
+            start = null;
+            startScroll = null;
+            panning = false;
+            wrap.classList.remove("panning");
+            if (wasPanning) {
+                // A drag has just ended. The polygon under the cursor
+                // would otherwise fire its normal click handler and
+                // toggle line selection — swallow that pending click.
+                const suppress = (ev) => {
+                    ev.stopPropagation();
+                    ev.preventDefault();
+                };
+                window.addEventListener("click", suppress, {
+                    capture: true,
+                    once: true,
+                });
+            }
+        });
+    });
+}
+
 // ---------- Tabs ----------
 function activateTab(tabId) {
     $$(".tab-btn").forEach((btn) => {
@@ -301,6 +369,7 @@ function bindEvents() {
 async function init() {
     bindEvents();
     bindZoomHandlers();
+    bindPanHandlers();
     try {
         await loadPageList();
     } catch (e) {

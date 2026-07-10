@@ -318,8 +318,12 @@ model output. Two tabs, both driven off the same page-payload fetch:
   the model transcription. Clicking a polygon highlights **both** text
   columns so discrepancies pop side-by-side.
 
-Both panes have a zoom toolbar (`−` `+` `⌂` reset) plus `Cmd`/`Ctrl` +
-scroll. Panning is via the pane's overflow scrollbars when zoomed.
+Both panes have a zoom toolbar (`−` `+` `⌂` reset), `Cmd`/`Ctrl` +
+scroll to zoom under the cursor, and **click-and-drag to pan** (Google
+Maps-style — the cursor is `grab` over empty regions of the page and
+turns to `grabbing` mid-drag). A short click without meaningful motion
+still fires the polygon's normal click handler, so line selection keeps
+working alongside drag.
 
 **Data sources** (all resolvable via `VIEWER_*` env vars — see
 [frontend/config.py](frontend/config.py)):
