@@ -49,12 +49,21 @@ from torch.utils.data import Dataset
 DEFAULT_ENCODER_ID = "microsoft/swin-base-patch4-window7-224"
 DEFAULT_DECODER_ID = "bert-base-multilingual-cased"
 
-# The augmentation pipeline names its outputs ``<src_stem>_aug<NN>.png``
-# (see ``src.data_augmentation.augmentation_techniques``). We use this
-# regex to recover the source stem so all N variants of one line stay
-# together during the train/val split — same invariant as the kraken
-# fine-tune's ``stage_finetune_data``.
-_AUG_FILENAME_RE = re.compile(r"^(.+)_aug\d+\.png$")
+# The augmentation pipeline names its outputs
+# ``<src_stem>_aug<NN>.png`` for external-corpus renders and
+# ``<annotated_stem>.gt_l<NN>_aug<NN>.png`` when the source text came
+# from a real annotated line's ``.gt.txt`` (each ``.gt_l<NN>`` = one
+# rendering pass over that text with a different font/glyph mix).
+#
+# The optional ``\.gt_l\d+`` group in the regex strips that inner render
+# index so both variants collapse to the SAME source stem as the real
+# image on disk — otherwise the source-stem split treats a real image
+# and its synthetic re-render as independent, and the same underlying
+# text can end up on opposite sides of the train/val cut. Same
+# invariant the kraken fine-tune's ``stage_finetune_data`` is supposed
+# to enforce (kraken uses the older greedy regex and has the same leak
+# — should port the same fix over when that pipeline is next touched).
+_AUG_FILENAME_RE = re.compile(r"^(.+?)(?:\.gt_l\d+)?_aug\d+\.png$")
 
 
 def setup_simple_logging(
