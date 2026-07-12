@@ -201,23 +201,35 @@ data/processed/annotated_samples/OCR/validation/
 - The evaluation script auto-skips empty gt rows, so effective val
   size for OCR metrics = **299**.
 
-### 5.3 Synthetic augmented pools (three, disambiguated)
+### 5.3 Synthetic augmented pools (disambiguated)
 
-Three distinct augmented pools exist on disk. **They are not
-interchangeable** — the source text corpus differs, so each is a
-different augmentation regime. Every training run should record which
-one it used (all `finetune_*` config logs already do).
+Multiple augmented pools exist on disk. **They are not interchangeable**
+— the source text corpus and composition differ. Every training run
+records which one it used (all `finetune_*` and `trocr_*` config logs
+already do).
 
-| Pool folder | Labels JSON | Contents | Runs using it |
-|---|---|---|---|
-| `aug_20260613_220436/` | `labels_20260613_220436/labels.json` | 266,478 PNGs / 88,827 source stems. **COMETA-only** (renders from the general medieval Occitan/Catalan corpus). Oldest pool. | kraken `finetune_20260614_133655`; **TrOCR** `trocr_20260710_142341` (Swin+BERT + aug); **TrOCR** `trocr_20260712_080656` (pretrained TrOCR-base, in progress). Set as makefile default via `AUGMENTED_RUN_PATH`. |
-| `aug_20260629_235051/` | `labels_20260629_235051/labels.json` | COMETA-only, regenerated 2026-06-29. | kraken `finetune_20260629_235819` (the 400-real run). |
-| `aug_20260701_232640/` | `labels_20260701_232640/labels.json` | COMETA-only, regenerated 2026-07-01. | kraken `finetune_20260701_233056` (500 real) and `finetune_20260705_070741` (600 real). |
-| `aug_merged_anno_medical_20260706/` | `labels_merged_anno_medical_20260706/labels.json` | **Merged: annotated seeds + medical corpus.** The only pool that includes medical-corpus text. | kraken `finetune_20260706_151856` (600 real + medical). |
+**Composition breakdown for each pool** (annotated re-renders =
+synthetic renders whose source text came from a real annotated line's
+`.gt.txt`; external corpus = renders of text from an unrelated corpus):
+
+| Pool folder | Total | Annotated re-renders | External corpus | Runs using it |
+|---|---|---|---|---|
+| `aug_20260613_220436/` | 266,478 | 0 (0%) | 266,478 COMETA | kraken `finetune_20260614_133655`; **TrOCR** `trocr_20260710_142341` (Swin+BERT + aug, DONE); **TrOCR** `trocr_20260712_080656` (pretrained TrOCR-base, cancelled). Set as makefile default via `AUGMENTED_RUN_PATH`. |
+| `aug_20260629_235051/` | ? | 0 | COMETA | kraken `finetune_20260629_235819` (400 real). |
+| `aug_20260701_232640/` | ? | 0 | COMETA | kraken `finetune_20260701_233056` (500 real); `finetune_20260705_070741` (600 real). |
+| `aug_merged_anno_medical_20260706/` | 3,000 | 2,000 (400 stems × 5) | 1,000 medical | kraken `finetune_20260706_151856` (600 real + medical). **Note: only 400 of 600 annotated lines re-rendered; imbalance flagged for TrOCR by later work.** |
+| **`aug_20260712_124729/`** (2026-07-12) | 3,000 | 3,000 (**all 600 stems × 5**) | 0 | Base for both v2 pools below. Regenerated from all 600 annotated lines via the standard `seeds_from_real → medieval_text_generation → augmentation_techniques` pipeline. |
+| **`aug_20260712_v2_matched_cometa/`** (Dataset A'') | 4,000 | 3,000 (600 stems × 5, all annotated) | 1,000 COMETA (seed=42 sample from `aug_20260613_220436`) | **TrOCR** `trocr_20260712_123001` (ViT+RoBERTa + Dataset A'', in progress on VM). Canonical baseline for the 2×3 grid. |
+| **`aug_20260712_v2_medical/`** (Dataset B'') | 4,000 | 3,000 (600 stems × 5, all annotated) | 1,000 medical (extracted from `aug_merged_anno_medical_20260706`) | Reserved for TrOCR Runs 2 (ViT+RoBERTa) and 5 (Swin+BERT). Directly comparable to Dataset A''. |
 
 Common properties (apply to every pool):
-- Filenames follow `<src_stem>_aug<NN>.png`; matching key in labels
-  JSON.
+- Filenames follow `<src_stem>_aug<NN>.png` — annotated re-renders
+  additionally carry a `.gt_l<NN>` render-index suffix so the on-disk
+  name is `<annotated_stem>.gt_l<NN>_aug<NN>.png`.
+- The TrOCR loader's regex (§11 stem-collision fix) strips BOTH
+  suffixes so an annotated re-render collapses onto the same source
+  stem as its real image — no train/val leak. Kraken's regex is still
+  greedy; port the fix when that pipeline is next touched.
 - Source is rendered text image-augmented ×N via
   `augmentation_techniques.py`. Labels normalised via `correct_labels.py`
   (plain `s`/`r`/`et`).
@@ -225,18 +237,22 @@ Common properties (apply to every pool):
   of synthetic renders. Real photos live in
   `data/processed/annotated_samples/OCR/full_annotated/`.
 - Kraken can chew through the full 266k on CPU in a reasonable time.
-  TrOCR subsamples to `TROCR_MAX_AUG_SAMPLES=5000` by default because
-  MPS + a ~200M-param VLM can't at this hardware.
+  TrOCR subsamples to `TROCR_MAX_AUG_SAMPLES=5000` by default; the v2
+  pools are already sized at 4000 so no subsampling occurs.
 
 **Rule of thumb for choosing a pool for a new training run:**
 
-- Comparing against an existing TrOCR row (§6.3) — pin to the SAME
-  pool that row used, so the comparison isolates whatever else you're
-  changing.
-- Testing medical-corpus effect — use
-  `aug_merged_anno_medical_20260706`.
-- Otherwise (fresh baseline) — pick the newest COMETA-only pool that
-  matches your annotated pool version.
+- Comparing across the 2×3 TrOCR grid — use `aug_20260712_v2_matched_cometa`
+  (Dataset A'') or `aug_20260712_v2_medical` (Dataset B''). These pools
+  are symmetric: same 3000 annotated re-renders (all 600 lines × 5),
+  differ only in the 1000 external-corpus renders. Isolates the
+  "COMETA vs medical corpus source" effect.
+- Legacy kraken comparisons — use whichever pool the target row of §6.1
+  used; noted in that row.
+- Fresh baseline for a new experiment — regenerate a new pool via the
+  full `seeds_from_real → medieval_text_generation → augmentation_techniques`
+  pipeline. The regenerated pool `aug_20260712_124729` is the reference
+  for how a clean "all 600 lines uniformly augmented" pool looks.
 
 ### 5.4 Corpora
 
@@ -369,40 +385,70 @@ generalization scores (self-seeding + train-set overlap bias).
 | Medusa 0.2 Line 9B (cleaned v2) | pretrained VLM | 500-pool | 0.9543 | cleaner strips first-non-noise line |
 | kraken `finetune_20260629_235819` | catmus + 400 real | batch-5 (100 unseen) | 0.9624 | prior "fair" generalization test |
 
-### 6.3 TrOCR track (separate architecture family)
+### 6.3 TrOCR track — 2×3 grid plan
 
-Every row records which aug pool was used (`aug_20260613_220436` =
-COMETA-only, `aug_merged_anno_medical_20260706` = annotated + medical,
-per §5.3).
+Two architectures (Swin+BERT from-scratch, ViT+RoBERTa pretrained
+`microsoft/trocr-base-handwritten`) × three data conditions:
+
+- **Dataset C** = 600 real only, no aug.
+- **Dataset A''** = 600 real + `aug_20260712_v2_matched_cometa` (§5.3)
+  = 600 real + 3000 annotated re-renders + 1000 COMETA renders.
+- **Dataset B''** = 600 real + `aug_20260712_v2_medical` (§5.3)
+  = 600 real + 3000 annotated re-renders + 1000 medical renders.
+
+A'' and B'' differ **only in the 1000 external-corpus slot**, so the
+"COMETA vs medical corpus" comparison is clean. The annotated
+re-renders (3000 PNGs, 600 stems × 5) are byte-identical between the
+two.
+
+| Architecture | Dataset C (real-only) | Dataset A'' (matched COMETA) | Dataset B'' (medical) |
+|---|---|---|---|
+| **Swin+BERT from-scratch** | ✓ `trocr_20260710_125139` (DONE) — see 6.3.1 legacy notes | Run 4 — VM queued | Run 5 — VM queued |
+| **ViT+RoBERTa pretrained** | Run 3 — VM queued | 🔄 **Run 1 — VM in progress** (`trocr_20260712_123001`) | Run 2 — VM queued |
+
+**Run execution log** (all on `instance-20260712-110217`, us-west4-c,
+L4 GPU):
+
+| # | Model | Data | Run name | Status | char_acc |
+|---|---|---|---|---|---|
+| 1 | ViT+RoBERTa pretrained | Dataset A'' | `trocr_20260712_123001` | 🔄 training as of 2026-07-12 12:30 | TBD |
+| 2 | ViT+RoBERTa pretrained | Dataset B'' | TBD | queued | — |
+| 3 | ViT+RoBERTa pretrained | Dataset C | TBD | queued | — |
+| 4 | Swin+BERT from-scratch | Dataset A'' | TBD | queued | — |
+| 5 | Swin+BERT from-scratch | Dataset B'' | TBD | queued | — |
+
+Runtime: ~1h per run on L4 at bs=32; total wall clock ~5-6h + eval
+overhead.
+
+#### 6.3.1 Legacy TrOCR runs (pre-2×3-grid, retained for provenance)
+
+These runs pre-date the pool-matching fix (§5.3) and/or the source-stem
+regex fix (§11). They are **not** part of the 2×3 grid comparisons but
+kept here for historical reference.
 
 | Model | Train data | Aug pool | Val set | char_acc | word_acc | Notes |
 |---|---|---|---|---|---|---|
-| TrOCR Swin+BERT real-only, run `trocr_20260710_125139` | 480 real (val-fold split) | none | 120 real val | 0.2411 | 0.0000 | 480 lines can't teach 57M randomly-initialised cross-attn params; expected baseline |
-| TrOCR Swin+BERT + aug, `trocr_20260710_142341` | 600 real + 5000 aug subsampled (source-stem split, 5509 unique stems) | `aug_20260613_220436` (COMETA-only) | val-fold (1128 lines: ~120 real + ~1000 synth) | 0.3495 | 0.0890 | 20 epochs on MPS, 35.4h; aug helped +11pp char_acc but early stopping never fired |
-| TrOCR Swin+BERT + aug, `trocr_20260710_142341` | (same) | (same) | **permanent 300-val** | **0.2899** | **0.0389** | canonical row also present in §6.1; drop of 6pp char_acc from val-fold confirms the ~1000 synthetic val lines were the "easy half" |
-| TrOCR pretrained (ViT+RoBERTa), `trocr_20260712_080656` | 600 real + 5000 aug subsampled | `aug_20260613_220436` (COMETA-only) | val-fold | *in progress* | — | started 2026-07-12 08:06; loads `microsoft/trocr-base-handwritten` via `from_pretrained` (cross-attention already trained on 34M synthetic + IAM); update this row when `final_metrics.json` lands, then transcribe against 300-val for the canonical row |
+| Swin+BERT real-only, `trocr_20260710_125139` | 480 real | none | 120 real val-fold | 0.2411 | 0.0000 | Also serves as the Dataset C cell in the grid above — no data / no code change from grid-era version. |
+| Swin+BERT + aug, `trocr_20260710_142341` | 600 real + 5000 aug subsampled | `aug_20260613_220436` (COMETA-only, 0 annotated re-renders) | val-fold (1128) | 0.3495 | 0.0890 | Pre-fix + un-matched pool; **not** the Dataset A'' baseline. |
+| Swin+BERT + aug, `trocr_20260710_142341` | (same) | (same) | **permanent 300-val** | **0.2899** | **0.0389** | Also listed in §6.1. |
+| ViT+RoBERTa pretrained, `trocr_20260712_080656` | 600 real + 5000 aug subsampled | `aug_20260613_220436` (COMETA-only, 0 annotated re-renders) | (cancelled) | — | — | Cancelled 2026-07-12 mid-training when the pool-matching problem was found. Superseded by Run 1 above. |
 
-**Planned but not yet started:**
+#### 6.3.2 Conclusion from the Swin+BERT-from-scratch line
 
-- TrOCR Swin+BERT + `aug_merged_anno_medical_20260706` — medical-pool
-  ablation for the from-scratch build. Direct comparison to
-  `trocr_20260710_142341` isolates the effect of adding medical text
-  to the aug pool (like kraken 600+medical vs kraken 600, §6.1).
-- TrOCR pretrained (ViT+RoBERTa) + `aug_merged_anno_medical_20260706`
-  — same ablation for the pretrained build. Direct comparison to
-  `trocr_20260712_080656` when it finishes.
+Rules out. Even with 10× more data than the real-only baseline (5600
+vs 480 pairs), char_acc caps at 0.29 on real photos. The cross-attention
+layers, being randomly initialised, would need 50-100× more augmented
+data to learn image-text alignment at kraken/catmus quality — not
+feasible on this hardware. The 2×3 grid completes the Swin+BERT rows
+for symmetry (Runs 4-5), not because we expect them to compete.
 
-**Conclusion for the Swin+BERT-from-scratch line:** rules out. Even
-with 10× more data than the real-only baseline (5600 vs 480 pairs),
-char_acc caps at 0.29 on real photos. The cross-attention layers,
-being randomly initialised, would need 50-100× more augmented data to
-learn image-text alignment at kraken/catmus quality — not feasible on
-this hardware. Time budget was 35h per training run.
+#### 6.3.3 Why we care about the pretrained TrOCR
 
-**Next attempt for the TrOCR family:** fine-tune
-`microsoft/trocr-base-handwritten` (ViT+RoBERTa with cross-attention
-pre-trained on 34M synthetic + IAM handwriting). Skips the
-learn-cross-attention-from-scratch problem entirely.
+`microsoft/trocr-base-handwritten` ships with cross-attention
+pre-trained on 34M synthetic + IAM handwriting lines. Skips the
+learn-cross-attention-from-scratch problem entirely. Run 1
+(in progress) tells us whether that transfer works for this manuscript
+family.
 
 ### Kraken fine-tune catalog
 
@@ -675,3 +721,29 @@ VIEWER_MODEL_TRANSCRIPTION=./data/processed/transcription/<run> make frontend
   wipes uncommitted work. To split a mixed diff across two commits,
   use `git add -p` and answer `y/n` per hunk, or `git stash` the parts
   you want to defer.
+- **Don't upload the full 266k COMETA pool to a compute VM when the
+  training will subsample to ~5000 anyway** — the same
+  `random.Random(seed).sample(...)` is deterministic, so pre-subsample
+  locally into a ~200MB tar and ship that. Saves 30+ min of upload
+  per VM run.
+- Don't assume "COMETA aug pool" and "medical aug pool" are
+  symmetric. The medical pool
+  (`aug_merged_anno_medical_20260706`) contains 2000 annotated
+  re-renders (400 lines × 5) + 1000 medical corpus renders; the old
+  COMETA pool contains 0 annotated re-renders. If you compare them
+  directly you're testing *two* variables at once (re-render
+  proportion + external corpus). Use the matched v2 pools
+  (§5.3) for clean corpus comparisons.
+- When TrOCR loading fails on the VM with
+  `Couldn't instantiate the backend tokenizer ... You need to have
+  sentencepiece or tiktoken installed`, the *fix* is not sentencepiece
+  — that's a red-herring error message from **transformers 5.13**.
+  Downgrade to `transformers==5.12.1` (our local pinned version).
+  Discovered while setting up the L4 VM 2026-07-12.
+- Don't assume `gcloud compute scp` lands where `gcloud compute ssh`
+  drops you. On Vertex AI Workbench instances, SSH resolves to the
+  `jupyter` user but scp uses OS-Login and lands under
+  `/home/<sanitised-email>/`. Prefix the scp target with
+  `jupyter@instance:...` to pin the same user, or `sudo find /home -name`
+  to locate the file when the mismatch strikes. Same two-home gotcha
+  as §7.2, different VM.
