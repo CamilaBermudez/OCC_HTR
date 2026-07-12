@@ -249,6 +249,7 @@ number over the whole val set; sensitive to a few very bad lines):
 | kraken 500 real (`finetune_20260701_233056`) | 0.0390 | 0.9610 | 0.2188 | 0.7812 |
 | **kraken 600 real** (`finetune_20260705_070741`) | **0.0380** | **0.9620** | 0.2144 | 0.7856 |
 | kraken 600 real + medical (`finetune_20260706_151856`) | 0.0407 | 0.9593 | 0.2275 | 0.7725 |
+| TrOCR Swin+BERT + aug (`trocr_20260710_142341`) | 0.7101 | 0.2899 | 0.9611 | 0.0389 |
 
 **Per-line median metrics** (median over the 299 lines — describes the
 "typical" line rather than the aggregate, robust to a few catastrophic
@@ -262,6 +263,7 @@ lines):
 | kraken 500 real (`finetune_20260701_233056`) | 0.0278 | 0.9722 | 0.1667 | 0.8333 |
 | **kraken 600 real** (`finetune_20260705_070741`) | 0.0278 | 0.9722 | 0.1667 | 0.8333 |
 | kraken 600 real + medical (`finetune_20260706_151856`) | 0.0278 | 0.9722 | 0.1667 | 0.8333 |
+| TrOCR Swin+BERT + aug (`trocr_20260710_142341`) | 0.7209 | 0.2791 | 1.0000 | 0.0000 |
 
 **How to read the medians vs corpus numbers:** every kraken run from
 500 lines upward matches catmus's *typical* line (0.0278 CER, 0.9722
@@ -284,6 +286,7 @@ line-to-line.
 | kraken_500_real | 0.0390 | 0.0391 | 0.0395 | 0.0000 | 0.0000 | 0.0000 | 0.0278 | 0.0571 | 0.0882 | 0.2286 |
 | **kraken_600_real** | **0.0380** | **0.0381** | **0.0388** | 0.0000 | 0.0000 | 0.0000 | 0.0278 | 0.0571 | **0.0860** | 0.2286 |
 | kraken_600_real_medical | 0.0407 | 0.0408 | 0.0415 | 0.0000 | 0.0000 | 0.0000 | 0.0278 | 0.0588 | 0.0872 | 0.2571 |
+| trocr_swin_bert_aug | 0.7101 | 0.7146 | 0.1158 | 0.1579 | 0.5936 | 0.6579 | 0.7209 | 0.7778 | 0.8211 | 1.5556 |
 
 **Per-line distribution — WER:**
 
@@ -295,6 +298,7 @@ line-to-line.
 | kraken_500_real | 0.2188 | 0.2290 | 0.2392 | 0.0000 | 0.0000 | 0.0000 | 0.1667 | 0.3750 | 0.5143 | 1.4000 |
 | kraken_600_real | 0.2144 | 0.2245 | 0.2382 | 0.0000 | 0.0000 | 0.0000 | 0.1667 | 0.3333 | 0.5000 | 1.4000 |
 | kraken_600_real_medical | 0.2275 | 0.2369 | 0.2396 | 0.0000 | 0.0000 | 0.0000 | 0.1667 | 0.3542 | 0.5714 | 1.4000 |
+| trocr_swin_bert_aug | 0.9611 | 0.9800 | 0.1938 | 0.3750 | 0.7722 | 0.8750 | 1.0000 | 1.0000 | 1.1667 | 2.0000 |
 
 **Reading the distributions:**
 
@@ -349,7 +353,20 @@ generalization scores (self-seeding + train-set overlap bias).
 | Model | Train data | Val set | char_acc | word_acc | Notes |
 |---|---|---|---|---|---|
 | TrOCR Swin+BERT real-only, run `trocr_20260710_125139` | 480 real (val-fold split) | 120 real val | 0.2411 | 0.0000 | 480 lines can't teach 57M randomly-initialised cross-attn params; expected baseline |
-| TrOCR Swin+BERT + aug (`trocr_20260710_142341`) | 600 real + 5000 aug subsampled (source-stem split, 5509 unique stems) | val-fold | *in progress* | — | started 2026-07-10 14:23; same aug pool as kraken; final numbers will land in the run's `final_metrics.json` |
+| TrOCR Swin+BERT + aug (`trocr_20260710_142341`) | 600 real + 5000 aug subsampled (source-stem split, 5509 unique stems) | val-fold (1128 lines: ~120 real + ~1000 synth) | 0.3495 | 0.0890 | 20 epochs on MPS, 35.4h; aug helped +11pp char_acc but early stopping never fired; loss trajectory still declining but marginally |
+| TrOCR Swin+BERT + aug (`trocr_20260710_142341`) | (same) | **permanent 300-val** | **0.2899** | **0.0389** | canonical row also present in §6.1; **synthesises baseline via `run_trocr_transcribe`**; drop of 6pp char_acc from val-fold confirms the ~1000 synthetic val lines were the "easy half" |
+
+**Conclusion for the Swin+BERT-from-scratch line:** rules out. Even
+with 10× more data than the real-only baseline (5600 vs 480 pairs),
+char_acc caps at 0.29 on real photos. The cross-attention layers,
+being randomly initialised, would need 50-100× more augmented data to
+learn image-text alignment at kraken/catmus quality — not feasible on
+this hardware. Time budget was 35h per training run.
+
+**Next attempt for the TrOCR family:** fine-tune
+`microsoft/trocr-base-handwritten` (ViT+RoBERTa with cross-attention
+pre-trained on 34M synthetic + IAM handwriting). Skips the
+learn-cross-attention-from-scratch problem entirely.
 
 ### Kraken fine-tune catalog
 
@@ -576,10 +593,13 @@ VIEWER_MODEL_TRANSCRIPTION=./data/processed/transcription/<run> make frontend
   ``--resize union`` widening the codec and letting the model produce
   near-neighbour word forms; worth confirming by comparing per-line
   edits.
-- What CER does a `microsoft/trocr-base-handwritten` fine-tune reach
-  vs. the from-scratch Swin+BERT? The pretrained cross-attention
-  should close most of the gap; this validates or rules out the
-  architecture direction.
+- **RESOLVED (partial) — TrOCR Swin+BERT from scratch is a bust.**
+  Real-only 0.24 char_acc, +aug 0.29 char_acc on the 300-val — a
+  67pp gap to catmus that data scale alone cannot close on this
+  hardware. See §6.3. The remaining question is whether
+  `microsoft/trocr-base-handwritten` (ViT+RoBERTa, cross-attention
+  pre-trained on 34M synthetic + IAM) can close the gap when the
+  from-scratch architecture couldn't.
 - If the trocr-base experiment closes the gap to catmus, is there
   value in ensembling the top models for the thesis's final headline
   number? Defer until we have the numbers.
