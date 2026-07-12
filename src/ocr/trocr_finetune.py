@@ -313,17 +313,32 @@ def _build_model(
 
     if pretrained_model_id is not None:
         model = VisionEncoderDecoderModel.from_pretrained(pretrained_model_id)
-        # For RoBERTa-family decoders (which is what TrOCR-base uses)
-        # decoder_start is ``</s>`` = ``eos_token_id``; the checkpoint
-        # already has these set correctly — we just make sure the
-        # generation_config picks them up rather than any stale values.
-        model.generation_config.decoder_start_token_id = (
-            tokenizer.bos_token_id if tokenizer.bos_token_id is not None else tokenizer.cls_token_id
+
+        # microsoft/trocr-base-handwritten stores generation defaults
+        # on model.generation_config, but ``Trainer.compute_loss()``
+        # reads ``pad_token_id`` and ``decoder_start_token_id`` from
+        # ``model.config`` during teacher-forced label shifting.
+        # Without them set on model.config the forward pass raises
+        # ``AttributeError: 'VisionEncoderDecoderConfig' object has no
+        # attribute 'pad_token_id'``. Mirror the values onto both
+        # objects, falling back to the tokenizer if generation_config
+        # doesn't carry them. TrOCR convention: decoder_start = eos.
+        def _resolve(gc_attr: str, fallback):
+            v = getattr(model.generation_config, gc_attr, None)
+            return v if v is not None else fallback
+
+        pad = _resolve("pad_token_id", tokenizer.pad_token_id)
+        eos = _resolve(
+            "eos_token_id",
+            tokenizer.eos_token_id
+            if tokenizer.eos_token_id is not None
+            else tokenizer.sep_token_id,
         )
-        model.generation_config.pad_token_id = tokenizer.pad_token_id
-        model.generation_config.eos_token_id = (
-            tokenizer.eos_token_id if tokenizer.eos_token_id is not None else tokenizer.sep_token_id
-        )
+        dec_start = _resolve("decoder_start_token_id", eos)
+        for cfg in (model.config, model.generation_config):
+            cfg.decoder_start_token_id = dec_start
+            cfg.pad_token_id = pad
+            cfg.eos_token_id = eos
     else:
         assert (
             encoder_id is not None and decoder_id is not None
