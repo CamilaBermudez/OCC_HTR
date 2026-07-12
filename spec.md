@@ -201,21 +201,42 @@ data/processed/annotated_samples/OCR/validation/
 - The evaluation script auto-skips empty gt rows, so effective val
   size for OCR metrics = **299**.
 
-### 5.3 Synthetic augmented pool — `data/processed/synthetic_samples/augmented_images/aug_20260613_220436/`
+### 5.3 Synthetic augmented pools (three, disambiguated)
 
-- **266,478 PNGs** across **88,827** synthetic source stems (~3 aug
-  variants per source line). Names like
-  `Additional_10323_l00001_aug00.png`. Labels JSON:
-  `data/processed/synthetic_samples/img_labels/labels_20260613_220436/labels.json`
-  (266k entries).
-- Source: rendered text from COMETA + other medieval corpora, image-
-  augmented ×N via `augmentation_techniques.py`. Labels normalised via
-  `correct_labels.py`.
-- Kraken uses the full pool. TrOCR subsamples to
-  `TROCR_MAX_AUG_SAMPLES=5000` by default because MPS + swin-base +
-  mBERT can't chew through 266k images in tractable time.
-- **Not to be confused with augmentations of the real photos** — these
-  are augmentations of *synthetic renders*.
+Three distinct augmented pools exist on disk. **They are not
+interchangeable** — the source text corpus differs, so each is a
+different augmentation regime. Every training run should record which
+one it used (all `finetune_*` config logs already do).
+
+| Pool folder | Labels JSON | Contents | Runs using it |
+|---|---|---|---|
+| `aug_20260613_220436/` | `labels_20260613_220436/labels.json` | 266,478 PNGs / 88,827 source stems. **COMETA-only** (renders from the general medieval Occitan/Catalan corpus). Oldest pool. | kraken `finetune_20260614_133655`; **TrOCR** `trocr_20260710_142341` (Swin+BERT + aug); **TrOCR** `trocr_20260712_080656` (pretrained TrOCR-base, in progress). Set as makefile default via `AUGMENTED_RUN_PATH`. |
+| `aug_20260629_235051/` | `labels_20260629_235051/labels.json` | COMETA-only, regenerated 2026-06-29. | kraken `finetune_20260629_235819` (the 400-real run). |
+| `aug_20260701_232640/` | `labels_20260701_232640/labels.json` | COMETA-only, regenerated 2026-07-01. | kraken `finetune_20260701_233056` (500 real) and `finetune_20260705_070741` (600 real). |
+| `aug_merged_anno_medical_20260706/` | `labels_merged_anno_medical_20260706/labels.json` | **Merged: annotated seeds + medical corpus.** The only pool that includes medical-corpus text. | kraken `finetune_20260706_151856` (600 real + medical). |
+
+Common properties (apply to every pool):
+- Filenames follow `<src_stem>_aug<NN>.png`; matching key in labels
+  JSON.
+- Source is rendered text image-augmented ×N via
+  `augmentation_techniques.py`. Labels normalised via `correct_labels.py`
+  (plain `s`/`r`/`et`).
+- **Not augmentations of the real photos** — these are augmentations
+  of synthetic renders. Real photos live in
+  `data/processed/annotated_samples/OCR/full_annotated/`.
+- Kraken can chew through the full 266k on CPU in a reasonable time.
+  TrOCR subsamples to `TROCR_MAX_AUG_SAMPLES=5000` by default because
+  MPS + a ~200M-param VLM can't at this hardware.
+
+**Rule of thumb for choosing a pool for a new training run:**
+
+- Comparing against an existing TrOCR row (§6.3) — pin to the SAME
+  pool that row used, so the comparison isolates whatever else you're
+  changing.
+- Testing medical-corpus effect — use
+  `aug_merged_anno_medical_20260706`.
+- Otherwise (fresh baseline) — pick the newest COMETA-only pool that
+  matches your annotated pool version.
 
 ### 5.4 Corpora
 
@@ -350,11 +371,26 @@ generalization scores (self-seeding + train-set overlap bias).
 
 ### 6.3 TrOCR track (separate architecture family)
 
-| Model | Train data | Val set | char_acc | word_acc | Notes |
-|---|---|---|---|---|---|
-| TrOCR Swin+BERT real-only, run `trocr_20260710_125139` | 480 real (val-fold split) | 120 real val | 0.2411 | 0.0000 | 480 lines can't teach 57M randomly-initialised cross-attn params; expected baseline |
-| TrOCR Swin+BERT + aug (`trocr_20260710_142341`) | 600 real + 5000 aug subsampled (source-stem split, 5509 unique stems) | val-fold (1128 lines: ~120 real + ~1000 synth) | 0.3495 | 0.0890 | 20 epochs on MPS, 35.4h; aug helped +11pp char_acc but early stopping never fired; loss trajectory still declining but marginally |
-| TrOCR Swin+BERT + aug (`trocr_20260710_142341`) | (same) | **permanent 300-val** | **0.2899** | **0.0389** | canonical row also present in §6.1; **synthesises baseline via `run_trocr_transcribe`**; drop of 6pp char_acc from val-fold confirms the ~1000 synthetic val lines were the "easy half" |
+Every row records which aug pool was used (`aug_20260613_220436` =
+COMETA-only, `aug_merged_anno_medical_20260706` = annotated + medical,
+per §5.3).
+
+| Model | Train data | Aug pool | Val set | char_acc | word_acc | Notes |
+|---|---|---|---|---|---|---|
+| TrOCR Swin+BERT real-only, run `trocr_20260710_125139` | 480 real (val-fold split) | none | 120 real val | 0.2411 | 0.0000 | 480 lines can't teach 57M randomly-initialised cross-attn params; expected baseline |
+| TrOCR Swin+BERT + aug, `trocr_20260710_142341` | 600 real + 5000 aug subsampled (source-stem split, 5509 unique stems) | `aug_20260613_220436` (COMETA-only) | val-fold (1128 lines: ~120 real + ~1000 synth) | 0.3495 | 0.0890 | 20 epochs on MPS, 35.4h; aug helped +11pp char_acc but early stopping never fired |
+| TrOCR Swin+BERT + aug, `trocr_20260710_142341` | (same) | (same) | **permanent 300-val** | **0.2899** | **0.0389** | canonical row also present in §6.1; drop of 6pp char_acc from val-fold confirms the ~1000 synthetic val lines were the "easy half" |
+| TrOCR pretrained (ViT+RoBERTa), `trocr_20260712_080656` | 600 real + 5000 aug subsampled | `aug_20260613_220436` (COMETA-only) | val-fold | *in progress* | — | started 2026-07-12 08:06; loads `microsoft/trocr-base-handwritten` via `from_pretrained` (cross-attention already trained on 34M synthetic + IAM); update this row when `final_metrics.json` lands, then transcribe against 300-val for the canonical row |
+
+**Planned but not yet started:**
+
+- TrOCR Swin+BERT + `aug_merged_anno_medical_20260706` — medical-pool
+  ablation for the from-scratch build. Direct comparison to
+  `trocr_20260710_142341` isolates the effect of adding medical text
+  to the aug pool (like kraken 600+medical vs kraken 600, §6.1).
+- TrOCR pretrained (ViT+RoBERTa) + `aug_merged_anno_medical_20260706`
+  — same ablation for the pretrained build. Direct comparison to
+  `trocr_20260712_080656` when it finishes.
 
 **Conclusion for the Swin+BERT-from-scratch line:** rules out. Even
 with 10× more data than the real-only baseline (5600 vs 480 pairs),
