@@ -1,21 +1,20 @@
-"""Fine-tune a Swin (image encoder) + BERT (text decoder) TrOCR-style
-``VisionEncoderDecoderModel`` on the hand-annotated manuscript lines.
+"""Fine-tune a TrOCR-style ``VisionEncoderDecoderModel`` on the
+hand-annotated manuscript lines.
 
-Architecture:
-    Encoder — ``microsoft/swin-base-patch4-window7-224`` (~88M params).
-    Decoder — ``bert-base-multilingual-cased`` (mBERT) with cross-attention
-      injected by ``VisionEncoderDecoderModel.from_encoder_decoder_pretrained``.
+Two modes, controlled by the CLI:
 
-Why this pairing:
-- The classic TrOCR paper uses a ViT / DeiT / Swin encoder and a
-  RoBERTa-style decoder. Swin gives shift-invariant attention that is
-  well suited to variable-position line crops.
-- BERT is encoder-only, but HuggingFace's ``VisionEncoderDecoderModel``
-  wraps it into a decoder by adding cross-attention on top of its
-  self-attention stack and enabling causal masking.
-- mBERT's WordPiece vocab covers Latin / Romance scripts, so Old Occitan
-  / Catalan tokens don't get shredded into single characters the way
-  they would under an English-only BERT.
+1. **Pretrained TrOCR** (``--pretrained-model-id``): load a fully-
+   assembled checkpoint like ``microsoft/trocr-base-handwritten``
+   (ViT+RoBERTa) whose cross-attention is already pre-trained on 34M
+   synthetic + IAM handwriting lines. This is the recommended path.
+
+2. **From-scratch encoder+decoder** (``--encoder-id`` +
+   ``--decoder-id``): build a fresh model via
+   ``VisionEncoderDecoderModel.from_encoder_decoder_pretrained``,
+   defaulting to Swin-base + mBERT. Kept for ablation. **Note**: the
+   randomly-initialised cross-attention layers here (~57M params)
+   were not trainable to competitive quality on 600 real + 5000 aug
+   pairs — see ``spec.md`` §6.3.
 
 Follows the same ``scripts/`` <-> ``src/`` split as the other OCR
 modules: the CLI wrapper in ``scripts/ocr/run_trocr_finetune.py`` parses
@@ -280,49 +279,80 @@ class TrOCRLineDataset(Dataset):
 
 
 def _build_model(
-    encoder_id: str,
-    decoder_id: str,
     tokenizer,
     max_length: int,
     no_repeat_ngram_size: int,
     num_beams: int,
     length_penalty: float,
+    *,
+    pretrained_model_id: str | None = None,
+    encoder_id: str | None = None,
+    decoder_id: str | None = None,
 ):
-    """Build a Swin + BERT ``VisionEncoderDecoderModel`` for generation.
+    """Build a ``VisionEncoderDecoderModel`` for generation.
 
-    ``from_encoder_decoder_pretrained`` loads both towers, initialises
-    cross-attention in the decoder, and returns a wrapped model. We then
-    poke the ``config`` fields that ``generate()`` and the loss both need
-    to be correct (decoder_start / pad / eos ids, vocab_size, etc).
+    Two modes:
+
+    - ``pretrained_model_id`` set — load a fully-assembled TrOCR
+      checkpoint (e.g. ``microsoft/trocr-base-handwritten``). The
+      cross-attention is already trained on 34M synthetic + IAM
+      handwriting lines; we only need to override generation-time
+      defaults so beam-search matches the caller's config.
+    - Otherwise — build the model from a vision encoder + text
+      decoder via ``from_encoder_decoder_pretrained``. Cross-attention
+      layers are freshly initialised — this is the mode that struggled
+      on 600 real lines (see ``spec.md`` §6.3), included for
+      completeness / ablation.
+
+    Special-token ids (``decoder_start``, ``pad``, ``eos``) need to
+    match whichever tokenizer the caller loaded. For pretrained TrOCR,
+    the checkpoint already carries the right ids; we still mirror them
+    onto ``generation_config`` for defence.
     """
     from transformers import VisionEncoderDecoderModel
 
-    model = VisionEncoderDecoderModel.from_encoder_decoder_pretrained(
-        encoder_id,
-        decoder_id,
-        # tie_encoder_decoder=False is the default; leaving it here to make
-        # the choice explicit — Swin and BERT have different hidden sizes,
-        # so weight-tying between encoder embeddings and decoder embeddings
-        # is not applicable.
-    )
-    # BERT uses [CLS] as the sequence-start marker and [SEP] as end-of-
-    # sequence, so the decoder needs those wired up. Without this the
-    # decoder cannot start generation and the loss will be NaN. These
-    # are STRUCTURAL config fields (not generation-control), so they
-    # legitimately live on ``model.config``.
-    model.config.decoder_start_token_id = tokenizer.cls_token_id
-    model.config.pad_token_id = tokenizer.pad_token_id
-    model.config.eos_token_id = tokenizer.sep_token_id
-    model.config.vocab_size = model.config.decoder.vocab_size
-    # Generation-time defaults. transformers 5.x refuses to read these
-    # from ``model.config`` any more (raises ValueError on generate()) —
-    # they must live on ``model.generation_config``. Mirroring the
-    # special-token ids here as well so ``model.generate(pixel_values)``
-    # at inference time picks up a consistent config even if a caller
-    # replaces model.config later.
-    model.generation_config.decoder_start_token_id = tokenizer.cls_token_id
-    model.generation_config.pad_token_id = tokenizer.pad_token_id
-    model.generation_config.eos_token_id = tokenizer.sep_token_id
+    if pretrained_model_id is not None:
+        model = VisionEncoderDecoderModel.from_pretrained(pretrained_model_id)
+        # For RoBERTa-family decoders (which is what TrOCR-base uses)
+        # decoder_start is ``</s>`` = ``eos_token_id``; the checkpoint
+        # already has these set correctly — we just make sure the
+        # generation_config picks them up rather than any stale values.
+        model.generation_config.decoder_start_token_id = (
+            tokenizer.bos_token_id if tokenizer.bos_token_id is not None else tokenizer.cls_token_id
+        )
+        model.generation_config.pad_token_id = tokenizer.pad_token_id
+        model.generation_config.eos_token_id = (
+            tokenizer.eos_token_id if tokenizer.eos_token_id is not None else tokenizer.sep_token_id
+        )
+    else:
+        assert (
+            encoder_id is not None and decoder_id is not None
+        ), "Must set either pretrained_model_id or (encoder_id, decoder_id)"
+        model = VisionEncoderDecoderModel.from_encoder_decoder_pretrained(
+            encoder_id,
+            decoder_id,
+            # tie_encoder_decoder=False is the default; leaving it here to make
+            # the choice explicit — Swin and BERT have different hidden sizes,
+            # so weight-tying between encoder embeddings and decoder embeddings
+            # is not applicable.
+        )
+        # BERT uses [CLS] as the sequence-start marker and [SEP] as end-of-
+        # sequence, so the decoder needs those wired up. Without this the
+        # decoder cannot start generation and the loss will be NaN. These
+        # are STRUCTURAL config fields (not generation-control), so they
+        # legitimately live on ``model.config``.
+        model.config.decoder_start_token_id = tokenizer.cls_token_id
+        model.config.pad_token_id = tokenizer.pad_token_id
+        model.config.eos_token_id = tokenizer.sep_token_id
+        model.config.vocab_size = model.config.decoder.vocab_size
+        # Generation-time defaults. transformers 5.x refuses to read these
+        # from ``model.config`` any more (raises ValueError on generate()) —
+        # they must live on ``model.generation_config``.
+        model.generation_config.decoder_start_token_id = tokenizer.cls_token_id
+        model.generation_config.pad_token_id = tokenizer.pad_token_id
+        model.generation_config.eos_token_id = tokenizer.sep_token_id
+
+    # Generation defaults common to both modes.
     model.generation_config.max_length = max_length
     model.generation_config.no_repeat_ngram_size = no_repeat_ngram_size
     model.generation_config.num_beams = num_beams
@@ -388,6 +418,7 @@ def finetune_trocr(
     augmented_folder: str | Path | None = None,
     labels_json: str | Path | None = None,
     max_aug_samples: int | None = None,
+    pretrained_model_id: str | None = None,
     encoder_id: str = DEFAULT_ENCODER_ID,
     decoder_id: str = DEFAULT_DECODER_ID,
     val_fraction: float = 0.2,
@@ -426,6 +457,14 @@ def finetune_trocr(
             seed-controlled random subsample of this size is kept.
             ``None`` = use every augmented pair (fine on GPU; on MPS the
             full 266k kraken pool would take days per epoch).
+        pretrained_model_id: If set, load a fully-assembled TrOCR
+            checkpoint via ``VisionEncoderDecoderModel.from_pretrained``
+            (e.g. ``microsoft/trocr-base-handwritten``). Cross-attention
+            is already trained; the image processor and tokenizer are
+            loaded from the same checkpoint so ``encoder_id`` and
+            ``decoder_id`` are ignored. Recommended path — the
+            from-scratch Swin+BERT builds under the other branch
+            struggle on this data scale (§6.3 in spec.md).
         encoder_id: HuggingFace image encoder id.
         decoder_id: HuggingFace text decoder id.
         val_fraction: Fraction of source stems held out for validation.
@@ -492,6 +531,10 @@ def finetune_trocr(
             "labels_json": str(labels_json) if labels_json else None,
             "use_augmented": use_augmented,
             "max_aug_samples": max_aug_samples,
+            "pretrained_model_id": pretrained_model_id,
+            "model_source": (
+                "pretrained_trocr" if pretrained_model_id else "encoder_decoder_pretrained"
+            ),
             "output_dir": str(run_dir),
             "encoder_id": encoder_id,
             "decoder_id": decoder_id,
@@ -544,23 +587,35 @@ def finetune_trocr(
 
     train_pairs, val_pairs = _split_by_source_stem(all_triples, val_fraction, seed, logger)
 
-    logger.info("Loading image processor: %s", encoder_id)
-    image_processor = AutoImageProcessor.from_pretrained(encoder_id)
-    logger.info("Loading tokenizer: %s", decoder_id)
-    tokenizer = AutoTokenizer.from_pretrained(decoder_id)
+    # Loader source depends on the mode. Pretrained TrOCR bundles image
+    # processor + tokenizer + model into the same checkpoint; the
+    # encoder-decoder-pretrained path loads them separately.
+    if pretrained_model_id is not None:
+        logger.info("Loading image processor + tokenizer: %s", pretrained_model_id)
+        image_processor = AutoImageProcessor.from_pretrained(pretrained_model_id)
+        tokenizer = AutoTokenizer.from_pretrained(pretrained_model_id)
+    else:
+        logger.info("Loading image processor: %s", encoder_id)
+        image_processor = AutoImageProcessor.from_pretrained(encoder_id)
+        logger.info("Loading tokenizer: %s", decoder_id)
+        tokenizer = AutoTokenizer.from_pretrained(decoder_id)
 
     train_ds = TrOCRLineDataset(train_pairs, image_processor, tokenizer, max_target_length)
     val_ds = TrOCRLineDataset(val_pairs, image_processor, tokenizer, max_target_length)
 
-    logger.info("Building VisionEncoderDecoderModel (%s + %s)", encoder_id, decoder_id)
+    if pretrained_model_id is not None:
+        logger.info("Building VisionEncoderDecoderModel (pretrained: %s)", pretrained_model_id)
+    else:
+        logger.info("Building VisionEncoderDecoderModel (%s + %s)", encoder_id, decoder_id)
     model = _build_model(
-        encoder_id=encoder_id,
-        decoder_id=decoder_id,
         tokenizer=tokenizer,
         max_length=max_target_length,
         no_repeat_ngram_size=no_repeat_ngram_size,
         num_beams=num_beams,
         length_penalty=length_penalty,
+        pretrained_model_id=pretrained_model_id,
+        encoder_id=None if pretrained_model_id else encoder_id,
+        decoder_id=None if pretrained_model_id else decoder_id,
     )
 
     # fp16 is a CUDA-only feature in Trainer. On MPS or CPU we stick to

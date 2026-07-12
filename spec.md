@@ -536,8 +536,13 @@ make run_transcription   # uses catmus base model
 # 3) Kraken fine-tune (real + optional synthetic mix).
 make finetune_ocr FINETUNE_EPOCHS=150 FINETUNE_DEVICE=mps
 
-# 4) TrOCR fine-tune (Swin+BERT, MPS, defaults to 600 real + 5000 aug).
-#    Set TROCR_AUGMENTED_FOLDER= TROCR_LABELS_JSON= for real-only.
+# 4a) TrOCR fine-tune, pretrained checkpoint (RECOMMENDED — see §6.3).
+#     Skips learning cross-attention from scratch.
+PYTORCH_ENABLE_MPS_FALLBACK=1 make trocr_finetune \
+    TROCR_PRETRAINED_MODEL_ID=microsoft/trocr-base-handwritten
+
+# 4b) TrOCR fine-tune, Swin+BERT from-scratch (ablation only; underperforms).
+#     Set TROCR_AUGMENTED_FOLDER= TROCR_LABELS_JSON= for real-only.
 PYTORCH_ENABLE_MPS_FALLBACK=1 make trocr_finetune
 
 # 5) TrOCR inference against the permanent val set.

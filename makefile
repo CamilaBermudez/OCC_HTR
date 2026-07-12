@@ -137,6 +137,18 @@ SMOKE_EPOCHS?=2
 # real-manuscript pool as the kraken fine-tune so the two runs are
 # directly comparable when evaluated against the permanent val set.
 TROCR_REAL_FOLDER?=./data/processed/annotated_samples/OCR/full_annotated
+# Optional pretrained TrOCR checkpoint. When set, the from-scratch
+# Swin+BERT build is skipped and this checkpoint (image processor +
+# tokenizer + model) is loaded via from_pretrained. Recommended:
+#   microsoft/trocr-base-handwritten  — ViT+RoBERTa; cross-attention
+#     pretrained on 34M synthetic + IAM handwriting; roughly matches
+#     the classic TrOCR paper.
+#   microsoft/trocr-base-stage1       — same architecture, no IAM
+#     fine-tune baked in.
+# Leave empty to use TROCR_ENCODER_ID + TROCR_DECODER_ID (Swin+BERT
+# from-scratch), which underperformed by a large margin — see
+# spec.md §6.3.
+TROCR_PRETRAINED_MODEL_ID?=
 # Optional augmented pool — same one the kraken fine-tune uses so the
 # TrOCR and kraken numbers stay apples-to-apples. Set both to empty to
 # train on the real folder only:
@@ -432,6 +444,7 @@ finetune_ocr:
 trocr_finetune:
 	$(PYTHON) scripts/ocr/run_trocr_finetune.py \
 			--real-folder $(TROCR_REAL_FOLDER) \
+			$(if $(TROCR_PRETRAINED_MODEL_ID),--pretrained-model-id $(TROCR_PRETRAINED_MODEL_ID)) \
 			$(if $(TROCR_AUGMENTED_FOLDER),--augmented-folder $(TROCR_AUGMENTED_FOLDER)) \
 			$(if $(TROCR_LABELS_JSON),--labels-json $(TROCR_LABELS_JSON)) \
 			$(if $(TROCR_MAX_AUG_SAMPLES),--max-aug-samples $(TROCR_MAX_AUG_SAMPLES)) \

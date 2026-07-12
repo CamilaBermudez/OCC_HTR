@@ -54,6 +54,17 @@ def main():
         "unset on a real GPU. Default: no cap.",
     )
     parser.add_argument(
+        "--pretrained-model-id",
+        required=False,
+        help="HuggingFace TrOCR checkpoint id (e.g. "
+        "microsoft/trocr-base-handwritten). If set, the model is loaded "
+        "via VisionEncoderDecoderModel.from_pretrained and its bundled "
+        "image processor + tokenizer are used; --encoder-id and "
+        "--decoder-id are ignored in that case. Recommended path: the "
+        "from-scratch Swin+BERT run this project has (see spec.md §6.3) "
+        "underperformed by a wide margin.",
+    )
+    parser.add_argument(
         "--output-base-dir",
         required=False,
         help="Parent directory under which trocr_<timestamp>/ is created. "
@@ -176,6 +187,7 @@ def main():
         augmented_folder=augmented_folder,
         labels_json=labels_json,
         max_aug_samples=args.max_aug_samples,
+        pretrained_model_id=args.pretrained_model_id,
         encoder_id=args.encoder_id,
         decoder_id=args.decoder_id,
         val_fraction=args.val_fraction,
