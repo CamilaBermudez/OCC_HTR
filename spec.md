@@ -271,22 +271,32 @@ via `rapidfuzz`, aggregated over all val lines).
 
 ### 6.1 Permanent 300-val benchmark (canonical numbers)
 
-The eval every model is compared against for thesis reporting. Run:
-`tests/ocr/evaluations/six_way_vs_validation_300/`. 299 lines scored
-(1 gt intentionally empty).
+The eval every model is compared against for thesis reporting. Two
+eval runs live on disk:
+- `tests/ocr/evaluations/seven_way_vs_validation_300/` — the 7-way for
+  the pre-2×3-grid catmus/medusa/kraken/legacy-TrOCR comparison.
+- `tests/ocr/evaluations/five_trocr_vs_validation_300/` — the 5 grid
+  TrOCR runs (built on the VM 2026-07-13, pulled to laptop).
+
+299 lines scored in each (1 gt intentionally empty).
 
 **Corpus-level metrics** (sum of edits / sum of reference chars — one
 number over the whole val set; sensitive to a few very bad lines):
 
 | Model | CER | char_acc | WER | word_acc |
 |---|---|---|---|---|
-| catmus baseline | 0.0387 | 0.9613 | **0.1434** | **0.8566** |
-| Medusa 0.2 Line 9B (cleaned v2) | 0.0490 | 0.9510 | 0.3106 | 0.6894 |
-| kraken 400 real (`finetune_20260629_235819`) | 0.0420 | 0.9580 | 0.2358 | 0.7642 |
-| kraken 500 real (`finetune_20260701_233056`) | 0.0390 | 0.9610 | 0.2188 | 0.7812 |
 | **kraken 600 real** (`finetune_20260705_070741`) | **0.0380** | **0.9620** | 0.2144 | 0.7856 |
+| catmus baseline | 0.0387 | 0.9613 | **0.1434** | **0.8566** |
+| kraken 500 real (`finetune_20260701_233056`) | 0.0390 | 0.9610 | 0.2188 | 0.7812 |
 | kraken 600 real + medical (`finetune_20260706_151856`) | 0.0407 | 0.9593 | 0.2275 | 0.7725 |
-| TrOCR Swin+BERT + aug (`trocr_20260710_142341`) | 0.7101 | 0.2899 | 0.9611 | 0.0389 |
+| kraken 400 real (`finetune_20260629_235819`) | 0.0420 | 0.9580 | 0.2358 | 0.7642 |
+| Medusa 0.2 Line 9B (cleaned v2) | 0.0490 | 0.9510 | 0.3106 | 0.6894 |
+| **TrOCR ViT+RoBERTa + medical** (Run 2, `trocr_20260712_150413`) | 0.0557 | 0.9443 | 0.2640 | 0.7360 |
+| TrOCR ViT+RoBERTa real-only (Run 3, `trocr_20260713_065604`) | 0.0629 | 0.9371 | 0.2829 | 0.7171 |
+| TrOCR ViT+RoBERTa + COMETA (Run 1, `trocr_20260712_123001`) | 0.0668 | 0.9332 | 0.2859 | 0.7141 |
+| TrOCR Swin+BERT + medical (Run 5, `trocr_20260713_073113`) | 0.7477 | 0.2523 | 1.0350 | −0.0350 |
+| TrOCR Swin+BERT + COMETA (Run 4, `trocr_20260713_071550`) | 0.7760 | 0.2240 | 1.2552 | −0.2552 |
+| TrOCR Swin+BERT + aug (legacy `trocr_20260710_142341`) | 0.7101 | 0.2899 | 0.9611 | 0.0389 |
 
 **Per-line median metrics** (median over the 299 lines — describes the
 "typical" line rather than the aggregate, robust to a few catastrophic
@@ -401,24 +411,60 @@ A'' and B'' differ **only in the 1000 external-corpus slot**, so the
 re-renders (3000 PNGs, 600 stems × 5) are byte-identical between the
 two.
 
+**Grid populated with 300-val results (as of 2026-07-13):**
+
 | Architecture | Dataset C (real-only) | Dataset A'' (matched COMETA) | Dataset B'' (medical) |
 |---|---|---|---|
-| **Swin+BERT from-scratch** | ✓ `trocr_20260710_125139` (DONE) — see 6.3.1 legacy notes | Run 4 — VM queued | Run 5 — VM queued |
-| **ViT+RoBERTa pretrained** | Run 3 — VM queued | 🔄 **Run 1 — VM in progress** (`trocr_20260712_123001`) | Run 2 — VM queued |
+| **Swin+BERT from-scratch** | 0.2411 (legacy `_125139`, val-fold) | **0.2240** (Run 4, `_071550`) | **0.2523** (Run 5, `_073113`) |
+| **ViT+RoBERTa pretrained** | **0.9371** (Run 3, `_065604`) | **0.9332** (Run 1, `_123001`) | **0.9443** (Run 2, `_150413`) |
+
+All ViT+RoBERTa cells scored against the permanent 300-val via
+`run_trocr_transcribe` → `run_evaluate_ocr`; the Swin+BERT cells
+likewise. Legacy `_125139` still shows val-fold (would need re-transcribe
+against 300-val to be strictly comparable — pending).
 
 **Run execution log** (all on `instance-20260712-110217`, us-west4-c,
-L4 GPU):
+L4 GPU, batch_size=32 training + batch_size=16 inference):
 
-| # | Model | Data | Run name | Status | char_acc |
-|---|---|---|---|---|---|
-| 1 | ViT+RoBERTa pretrained | Dataset A'' | `trocr_20260712_123001` | 🔄 training as of 2026-07-12 12:30 | TBD |
-| 2 | ViT+RoBERTa pretrained | Dataset B'' | TBD | queued | — |
-| 3 | ViT+RoBERTa pretrained | Dataset C | TBD | queued | — |
-| 4 | Swin+BERT from-scratch | Dataset A'' | TBD | queued | — |
-| 5 | Swin+BERT from-scratch | Dataset B'' | TBD | queued | — |
+| # | Model | Data | Run name | Trained val-fold char_acc | 300-val char_acc | 300-val word_acc |
+|---|---|---|---|---|---|---|
+| 1 | ViT+RoBERTa pretrained | Dataset A'' | `trocr_20260712_123001` | 0.9643 | 0.9332 | 0.7141 |
+| 2 | ViT+RoBERTa pretrained | Dataset B'' | `trocr_20260712_150413` | 0.9654 | **0.9443** | **0.7360** |
+| 3 | ViT+RoBERTa pretrained | Dataset C | `trocr_20260713_065604` | 0.9347 | 0.9371 | 0.7171 |
+| 4 | Swin+BERT from-scratch | Dataset A'' | `trocr_20260713_071550` | 0.2205 | 0.2240 | −0.2552 |
+| 5 | Swin+BERT from-scratch | Dataset B'' | `trocr_20260713_073113` | 0.2395 | 0.2523 | −0.0350 |
 
-Runtime: ~1h per run on L4 at bs=32; total wall clock ~5-6h + eval
-overhead.
+Canonical five-way eval CSV+MD:
+`tests/ocr/evaluations/five_trocr_vs_validation_300/` (built on the VM,
+pulled to laptop after run 5 finished).
+
+Total wall clock: ~5.5h (Run 1 ~1h24m + Run 2 ~1h25m + Run 3 ~12min
+early-stopped + Run 4 ~12min early-stopped + Run 5 ~9min early-stopped).
+GPU cost: ~$5.
+
+**Key readings from the populated grid:**
+
+- **Pretrained cross-attention closes ~74pp of the char_acc gap** vs.
+  the from-scratch build. Same data, only the pretrained TrOCR
+  checkpoint changes, jumps 0.22 → 0.94. Clean single-variable
+  ablation → strong publishable finding.
+- **Medical corpus beats COMETA on 300-val for the pretrained arch**
+  (+1.1pp char_acc, +2.2pp word_acc). Opposite of the val-fold reading
+  (where they were essentially tied) — because the val-fold contains
+  synthetic renders that COMETA reproduces more faithfully, while 300
+  real manuscript lines match neither corpus. The medical signal only
+  emerges on the real benchmark.
+- **Real-only pretrained (Run 3) is very close to COMETA-aug (Run 1)**
+  (0.9371 vs 0.9332) — augmentation barely helps the pretrained arch
+  at this data scale. Medical actually clears +0.7pp above real-only.
+- **All Swin+BERT cells cluster at 0.22-0.25 char_acc**; data barely
+  moves the needle. Confirms architecture-bound.
+- **Word_acc is negative for Swin+BERT** — WER > 1, i.e. predictions
+  contain more edit-distance operations than the reference has words.
+  Symptom of over-generation from an unaligned decoder.
+- **Best TrOCR (0.9443) still trails kraken 600 real (0.9620) and
+  catmus (0.9613)** — catmus and kraken remain the champions on this
+  corpus, though the TrOCR pretrained is competitive.
 
 #### 6.3.1 Legacy TrOCR runs (pre-2×3-grid, retained for provenance)
 
@@ -497,10 +543,13 @@ Pending experimental runs:
   training with `PYTORCH_ENABLE_MPS_FALLBACK=1` prefix so unsupported
   ops fall back to CPU compute instead of crashing.
 
-### 7.2 GCP VM (Medusa inference only)
+### 7.2 GCP VMs
 
-- Zone: `us-central1-a`.
-- Instance name: `instance-20260629-174751`.
+Two instances in play, in different zones:
+
+#### 7.2.1 Old CPU-only VM — `instance-20260629-174751`, us-central1-a
+
+- No GPU currently attached (as of 2026-07-10).
 - **Two homes, matter which one you use:**
   - `/home/jbermudezv_unal_edu_co/` — where SSH logs in by default.
     This is a fresh account; nothing lives here permanently.
@@ -525,6 +574,49 @@ Pending experimental runs:
   `/home/jbermudezv_unal_edu_co/OCC_HTR/data/...`) is where scp lands
   by default. Then `sudo cp -r` into `/home/jupyter/OCC_HTR/data/...`
   and `chown -R jupyter:jupyter` before running.
+
+#### 7.2.2 New L4 GPU VM — `instance-20260712-110217`, us-west4-c
+
+Vertex AI Workbench instance provisioned 2026-07-12 for the TrOCR grid
++ Medusa full-corpus transcription.
+
+- Machine: `n2-standard-8` (8 vCPU, 32 GB RAM) + **NVIDIA L4 × 1**
+  (24 GB VRAM, driver 580.65.06, CUDA 13.0).
+- Python 3.12.13 (newer than the project's 3.11 constraint —
+  workaround: use `PYTHONPATH=.` instead of `pip install -e .` so the
+  pyproject `requires-python` check doesn't block).
+- Torch 2.12.1+cu130 (CUDA-native, no reinstall needed on this
+  instance).
+- **transformers 5.12.1 pinned** (NOT 5.13.x — its
+  `TokenizersBackend.from_pretrained` breaks on TrOCR-base and can't
+  be worked around with `use_fast=False`; see §11).
+- Same two-home gotcha as 7.2.1: `gcloud compute ssh` lands you as
+  `jupyter`, `gcloud compute scp` writes as `jbermudezv_unal_edu_co`.
+  Workaround: scp everything to `/tmp/` (world-writable) first, then
+  `cp` into `/home/jupyter/OCC_HTR/` inside the shell.
+- Repo at `/home/jupyter/OCC_HTR/`. Data uploads landed at:
+  - `data/processed/annotated_samples/OCR/full_annotated/` (600) —
+    from git clone (allowlisted in .gitignore).
+  - `data/processed/annotated_samples/OCR/validation/` (300) —
+    same, from git clone.
+  - `data/processed/synthetic_samples/augmented_images/aug_20260712_v2_matched_cometa/` — via tar+scp.
+  - `data/processed/synthetic_samples/augmented_images/aug_20260712_v2_medical/` — via tar+scp.
+  - `data/processed/filtered_images/20260618_160948/original/kept/` — via tar+scp (500 MB) for the Medusa full-corpus run.
+- **Runs on this VM so far:**
+  - 5 TrOCR grid runs (§6.3), all trained + 300-val-transcribed
+    on-VM. Only the eval CSV/MD was pulled to laptop after (~50 KB).
+  - Medusa full-corpus transcription **in progress** as of
+    2026-07-13 09:50 — run
+    `medusa_full_corpus_l4_20260713_095002`. Expected ~5-7h wall
+    clock at bs=2 → cleaned output goes to
+    `data/processed/transcription/medusa_full_corpus_l4_<TS>_clean/`.
+- Cost: L4 ~$0.7/h. TrOCR grid ~$5 total. Medusa full-corpus
+  ~$4. **Stop the instance when idle**: `gcloud compute instances
+  stop instance-20260712-110217 --zone=us-west4-c`.
+- Deferred: 6 GB tarball at
+  `/tmp/occ_htr_vm_runs.tar` on the VM containing every run's
+  `best_model/` + metadata + logs. Pulled to laptop 2026-07-13 via
+  scp with SSH keepalive at ~6 MB/s.
 
 ### 7.3 Model checkpoints on disk
 
@@ -680,16 +772,27 @@ VIEWER_MODEL_TRANSCRIPTION=./data/processed/transcription/<run> make frontend
   ``--resize union`` widening the codec and letting the model produce
   near-neighbour word forms; worth confirming by comparing per-line
   edits.
-- **RESOLVED (partial) — TrOCR Swin+BERT from scratch is a bust.**
-  Real-only 0.24 char_acc, +aug 0.29 char_acc on the 300-val — a
-  67pp gap to catmus that data scale alone cannot close on this
-  hardware. See §6.3. The remaining question is whether
-  `microsoft/trocr-base-handwritten` (ViT+RoBERTa, cross-attention
-  pre-trained on 34M synthetic + IAM) can close the gap when the
-  from-scratch architecture couldn't.
-- If the trocr-base experiment closes the gap to catmus, is there
-  value in ensembling the top models for the thesis's final headline
-  number? Defer until we have the numbers.
+- **RESOLVED — TrOCR Swin+BERT from scratch is a bust.**
+  All three grid cells (real-only, COMETA aug, medical aug) cluster
+  at 0.22-0.25 char_acc on the 300-val. Data barely moves the needle
+  — architecture-bound.
+- **RESOLVED — pretrained TrOCR (ViT+RoBERTa) closes most of the gap
+  but doesn't quite beat kraken/catmus.** Best pretrained cell (Run 2,
+  medical aug) reaches 0.9443 char_acc on 300-val vs kraken 600
+  real's 0.9620 — still 1.7pp behind. See §6.3 grid + §6.1 canonical
+  table.
+- **RESOLVED — medical corpus HELPS the pretrained TrOCR** (+1.1pp
+  char_acc vs COMETA, +2.2pp word_acc). Opposite of kraken (where
+  medical hurt slightly). Interpretation: kraken's small CTC model
+  gets distracted by non-target-vocabulary; pretrained TrOCR's larger
+  capacity absorbs both corpora cleanly and benefits from the
+  additional handwriting-like vocabulary in the medical texts.
+  Interesting story for the paper: "medical-corpus augmentation is
+  architecture-dependent, only helping models with enough capacity to
+  ignore the noise".
+- If ensembling the top-3 (catmus + kraken 600 + TrOCR pretrained +
+  medical) helps the thesis headline number, worth trying. Defer
+  until we're sure the individual numbers are stable.
 
 ## 11. What NOT to do (past failure modes)
 
@@ -747,3 +850,24 @@ VIEWER_MODEL_TRANSCRIPTION=./data/processed/transcription/<run> make frontend
   `jupyter@instance:...` to pin the same user, or `sudo find /home -name`
   to locate the file when the mismatch strikes. Same two-home gotcha
   as §7.2, different VM.
+- **Don't `tar czf` folders on macOS without `COPYFILE_DISABLE=1`** —
+  bsdtar packs AppleDouble metadata sidecars (`._<filename>`) for
+  every file. On Linux extraction those sidecars become visible files
+  and any script iterating the folder (Medusa's `collect_line_images`,
+  for instance) will try to open them as real images and fail. Fix:
+  prefix the tar command with `COPYFILE_DISABLE=1` or add
+  `export COPYFILE_DISABLE=1` to `.zshrc`. Recovery on the VM after
+  the fact: `find <dir> -name '._*' -delete`. Cost of not doing this:
+  ~50% wasted GPU time before we noticed (2026-07-13 Medusa
+  restart).
+- **Don't try to scp 6 GB of models over a flaky home connection in
+  one shot** — SSH tunnels drop under NAT idle timeouts and scp
+  doesn't resume. Options: (a) `--scp-flag='-o
+  ServerAliveInterval=60'` for a good connection; (b) split the
+  tarball on the VM (`split -b 500M …`) and pull per-part with a
+  skip-if-already-present loop; (c) transfer via GCS bucket
+  (`gsutil cp`). Or (d) — best — do the work on the VM and pull only
+  the small evaluation output; that's what actually worked here.
+- Don't try to use transformers 5.13.x for TrOCR pretrained model
+  loading. Rebroadcast of the fix from earlier: pin
+  `transformers==5.12.1`.
