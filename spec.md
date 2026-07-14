@@ -496,6 +496,77 @@ learn-cross-attention-from-scratch problem entirely. Run 1
 (in progress) tells us whether that transfer works for this manuscript
 family.
 
+#### 6.3.4 Staged pretraining for Swin+BERT (in progress 2026-07-14)
+
+**Motivation.** Single-stage Swin+BERT capped at 0.22-0.25 char_acc
+across all three data conditions (§6.3 grid). Hypothesis: the
+bottleneck was randomly-initialised cross-attention with too few pairs
+to learn image-text alignment, not the architecture itself. Test it by
+pretraining Swin+BERT on a bigger COMETA-only pool first (mimicking
+what TrOCR-base did at 100× the scale, but scaled down to what our L4
+budget permits), then fine-tuning on Datasets A''/B''.
+
+**Two-stage design.** Uses `finetune_trocr` unmodified — Stage 2 just
+passes Stage 1's `best_model/` path as `--pretrained-model-id`.
+
+- **Stage 1** — pretraining on COMETA-only aug pool:
+  Swin+BERT from-scratch (encoder + decoder pretrained, cross-attn
+  random); 15 epochs, bs=32, lr=5e-5, val_fraction=0.05,
+  early_stopping_patience=4. Save best_model as the new base.
+- **Stage 2a** — fine-tune on Dataset A'' (matched COMETA):
+  load Stage 1's best_model, 20 epochs on the 600 real + 3000 anno
+  re-render + 1000 COMETA pool.
+- **Stage 2b** — fine-tune on Dataset B'' (medical):
+  same, on the medical pool. Symmetric to 2a, differs only in the
+  1000 external-corpus renders.
+
+Both Stage 2 variants directly comparable to Runs 4 and 5 respectively
+(same fine-tune data, only difference: whether cross-attention was
+pretrained).
+
+**Scale**: two variants, decided by what upload survives:
+
+| Variant | Stage 1 data | Stage 1 tarball | Stage 1 wall clock (L4) |
+|---|---|---|---|
+| **30k COMETA** (in progress) | 30,000 pairs subsampled from `aug_20260613_220436` with seed=42 → `aug_20260714_cometa_30k` | ~6 GB (split-uploaded 500 MB × 13 parts after direct scp stalled) | ~2 h |
+| **266k COMETA** (deferred; 53 GB upload stalled repeatedly, currently paused) | full `aug_20260613_220436` | ~53 GB | ~3 h (5 epochs) |
+
+**Current status.**
+
+- Stage 1a — `swinbert_cometa_30k_pretrain_<TS>` (started 2026-07-14
+  14:44 on the L4 VM). At ~2 batches/sec, ETA ~2h. Run name:
+  `swinbert_cometa_30k_pretrain_<timestamp>` — check
+  `logs/trocr_finetune/stage1_swinbert_cometa_30k_pretrain_*.out`
+  for the exact TS.
+- Stage 1b — deferred until 30k variant proves useful. If Stage 2a
+  on the 30k pretrain beats Run 4's 0.2240 char_acc meaningfully
+  (say, > 0.4), commit to the 53 GB upload; otherwise skip.
+- Stage 2a / 2b — pending Stage 1a completion. Same launch shape as
+  Runs 4-5 but with `--pretrained-model-id
+  ./models/ocr/finetuned/<stage1_run>/best_model`.
+
+**Expected outcome band** (thesis framing regardless of result):
+
+| Variant | Predicted 300-val char_acc | What each range would say |
+|---|---|---|
+| Original Swin+BERT + Dataset A'' (Run 4, measured) | 0.2240 | baseline for "no pretraining" |
+| Original Swin+BERT + Dataset B'' (Run 5, measured) | 0.2523 | baseline for "no pretraining" |
+| **Staged 30k → A''** (predicted) | 0.4-0.6 | proof-of-concept: even limited pretraining helps materially |
+| **Staged 266k → A''** (predicted, if we do the 53 GB upload) | 0.6-0.85 | data scale is the primary bottleneck; cross-attention IS trainable |
+| Pretrained ViT+RoBERTa + Dataset A'' (Run 1, measured) | 0.9332 | target we're trying to close on |
+
+**Thesis story regardless of outcome:**
+- If staged Swin+BERT reaches ~0.7+ char_acc: **data scale was the
+  bottleneck** — cross-attention is trainable given enough pairs.
+  Publishable positive result on scale/pretraining relationships.
+- If staged Swin+BERT plateaus below ~0.5: **TrOCR's massive
+  task-specific pretraining is essential** and can't be replicated at
+  research-lab scale. Publishable negative result about the ceiling
+  of encoder-decoder-pretrained-only builds.
+
+Both readings are useful for the thesis's "why does pretraining scale
+matter for VLM HTR" section.
+
 ### Kraken fine-tune catalog
 
 Every kraken fine-tune this project has produced, with its training
@@ -602,6 +673,7 @@ Vertex AI Workbench instance provisioned 2026-07-12 for the TrOCR grid
   - `data/processed/synthetic_samples/augmented_images/aug_20260712_v2_matched_cometa/` — via tar+scp.
   - `data/processed/synthetic_samples/augmented_images/aug_20260712_v2_medical/` — via tar+scp.
   - `data/processed/filtered_images/20260618_160948/original/kept/` — via tar+scp (500 MB) for the Medusa full-corpus run.
+  - `data/processed/synthetic_samples/augmented_images/aug_20260714_cometa_30k/` — 30k subset of the COMETA aug pool, split-uploaded 500 MB × 13 parts after direct scp stalled. Used for the Stage 1 pretraining experiment (§6.3.4).
 - **Runs on this VM so far:**
   - 5 TrOCR grid runs (§6.3), all trained + 300-val-transcribed
     on-VM. Only the eval CSV/MD was pulled to laptop after (~50 KB).
@@ -620,6 +692,11 @@ Vertex AI Workbench instance provisioned 2026-07-12 for the TrOCR grid
     killed at 5-7% when we discovered macOS AppleDouble sidecars
     were doubling the file count; both its output folder and log
     have been deleted.
+  - **Stage 1a Swin+BERT COMETA pretraining IN PROGRESS** —
+    `swinbert_cometa_30k_pretrain_<TS>` (started 2026-07-14 14:44).
+    Full run details in §6.3.4. Once done, two Stage 2 fine-tunes
+    (Dataset A'' and B'') will follow. Log:
+    `logs/trocr_finetune/stage1_swinbert_cometa_30k_pretrain_*.out`.
 - Cost: L4 ~$0.7/h. TrOCR grid ~$5 total. Medusa full-corpus
   ~$4. **Stop the instance when idle**: `gcloud compute instances
   stop instance-20260712-110217 --zone=us-west4-c`.
@@ -878,6 +955,22 @@ VIEWER_MODEL_TRANSCRIPTION=./data/processed/transcription/<run> make frontend
   skip-if-already-present loop; (c) transfer via GCS bucket
   (`gsutil cp`). Or (d) — best — do the work on the VM and pull only
   the small evaluation output; that's what actually worked here.
+- **Don't send 50+ GB tarballs UP to a VM either.** Same failure mode
+  in the other direction (upload stalls after ~25% on flaky WiFi,
+  scp gives up). If a big pool needs to move: (a) split into 500 MB
+  parts and use the resume-friendly loop from §11's model-download
+  entry; (b) `ssh-add ~/.ssh/google_compute_engine` beforehand so
+  each retry doesn't prompt for the SSH passphrase; (c) `mkdir -p`
+  the target directory on the VM once BEFORE the loop — scp doesn't
+  auto-create parents; (d) OR downscale the pool locally to what you
+  actually need. For pretraining experiments, 30 k pairs of the
+  266 k pool gives most of the signal at ~10× less upload.
+- **Don't paste multi-line bash blocks with `#` comments into zsh**
+  unless `setopt interactive_comments` is set (macOS's default zsh
+  does NOT enable it, and each `#` line is treated as
+  "command not found"). Two workarounds: (i)
+  `setopt interactive_comments` once per shell (or add to
+  `.zshrc`); (ii) strip the comment lines when pasting.
 - Don't try to use transformers 5.13.x for TrOCR pretrained model
   loading. Rebroadcast of the fix from earlier: pin
   `transformers==5.12.1`.
