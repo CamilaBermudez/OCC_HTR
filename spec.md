@@ -215,8 +215,8 @@ synthetic renders whose source text came from a real annotated line's
 | Pool folder | Total | Annotated re-renders | External corpus | Runs using it |
 |---|---|---|---|---|
 | `aug_20260613_220436/` | 266,478 | 0 (0%) | 266,478 COMETA | kraken `finetune_20260614_133655`; **TrOCR** `trocr_20260710_142341` (Swin+BERT + aug, DONE); **TrOCR** `trocr_20260712_080656` (pretrained TrOCR-base, cancelled). Set as makefile default via `AUGMENTED_RUN_PATH`. |
-| `aug_20260629_235051/` | ? | 0 | COMETA | kraken `finetune_20260629_235819` (400 real). |
-| `aug_20260701_232640/` | ? | 0 | COMETA | kraken `finetune_20260701_233056` (500 real); `finetune_20260705_070741` (600 real). |
+| `aug_20260629_235051/` | 2,000 | 2,000 (400 annotated stems × 5 aug — 100% re-renders of real texts) | 0 | kraken `finetune_20260629_235819` (400 real). Built via `seeds_from_real.py` on the 400-annotated pool at the time. |
+| `aug_20260701_232640/` | 2,500 | 2,500 (500 annotated stems × 5 aug — 100% re-renders of real texts) | 0 | kraken `finetune_20260701_233056` (500 real); kraken `finetune_20260705_070741` (600 real, reused same 500-stem pool — 100 of the 600 real lines have no synth re-renders in this run). |
 | `aug_merged_anno_medical_20260706/` | 3,000 | 2,000 (400 stems × 5) | 1,000 medical | kraken `finetune_20260706_151856` (600 real + medical). **Note: only 400 of 600 annotated lines re-rendered; imbalance flagged for TrOCR by later work.** |
 | **`aug_20260712_124729/`** (2026-07-12) | 3,000 | 3,000 (**all 600 stems × 5**) | 0 | Base for both v2 pools below. Regenerated from all 600 annotated lines via the standard `seeds_from_real → medieval_text_generation → augmentation_techniques` pipeline. |
 | **`aug_20260712_v2_matched_cometa/`** (Dataset A'') | 4,000 | 3,000 (600 stems × 5, all annotated) | 1,000 COMETA (seed=42 sample from `aug_20260613_220436`) | **TrOCR** `trocr_20260712_123001` (ViT+RoBERTa + Dataset A'', in progress on VM). Canonical baseline for the 2×3 grid. |
