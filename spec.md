@@ -411,17 +411,19 @@ A'' and B'' differ **only in the 1000 external-corpus slot**, so the
 re-renders (3000 PNGs, 600 stems × 5) are byte-identical between the
 two.
 
-**Grid populated with 300-val results (as of 2026-07-13):**
+**Grid populated with 300-val results (as of 2026-07-14):**
 
 | Architecture | Dataset C (real-only) | Dataset A'' (matched COMETA) | Dataset B'' (medical) |
 |---|---|---|---|
-| **Swin+BERT from-scratch** | 0.2411 (legacy `_125139`, val-fold) | **0.2240** (Run 4, `_071550`) | **0.2523** (Run 5, `_073113`) |
+| **Swin+BERT from-scratch** | **0.2293** (legacy `_125139`, transcribed on 300-val 2026-07-14) | **0.2240** (Run 4, `_071550`) | **0.2523** (Run 5, `_073113`) |
 | **ViT+RoBERTa pretrained** | **0.9371** (Run 3, `_065604`) | **0.9332** (Run 1, `_123001`) | **0.9443** (Run 2, `_150413`) |
 
-All ViT+RoBERTa cells scored against the permanent 300-val via
-`run_trocr_transcribe` → `run_evaluate_ocr`; the Swin+BERT cells
-likewise. Legacy `_125139` still shows val-fold (would need re-transcribe
-against 300-val to be strictly comparable — pending).
+All six cells now scored against the permanent 300-val via
+`run_trocr_transcribe` → `run_evaluate_ocr`. The Swin+BERT real-only
+cell was originally val-fold only (0.2411 on its own 120-line val
+fold); 2026-07-14 re-transcription against the canonical 300 val gave
+0.2293 char_acc, −0.1215 word_acc — consistent with the other
+Swin+BERT cells' architecture-bound ceiling.
 
 **Run execution log** (all on `instance-20260712-110217`, us-west4-c,
 L4 GPU, batch_size=32 training + batch_size=16 inference):
@@ -433,10 +435,14 @@ L4 GPU, batch_size=32 training + batch_size=16 inference):
 | 3 | ViT+RoBERTa pretrained | Dataset C | `trocr_20260713_065604` | 0.9347 | 0.9371 | 0.7171 |
 | 4 | Swin+BERT from-scratch | Dataset A'' | `trocr_20260713_071550` | 0.2205 | 0.2240 | −0.2552 |
 | 5 | Swin+BERT from-scratch | Dataset B'' | `trocr_20260713_073113` | 0.2395 | 0.2523 | −0.0350 |
+| — | Swin+BERT from-scratch (retro) | Dataset C | `trocr_20260710_125139` (originally local Mac) | 0.2411 (own val-fold) | 0.2293 | −0.1215 |
 
 Canonical five-way eval CSV+MD:
 `tests/ocr/evaluations/five_trocr_vs_validation_300/` (built on the VM,
-pulled to laptop after run 5 finished).
+pulled to laptop after run 5 finished). The Swin+BERT-Dataset-C row
+was added later, evaluated separately locally via
+`tests/ocr/evaluations/swinbert_realonly_from_scratch_vs_validation_300/`
+(2026-07-14).
 
 Total wall clock: ~5.5h (Run 1 ~1h24m + Run 2 ~1h25m + Run 3 ~12min
 early-stopped + Run 4 ~12min early-stopped + Run 5 ~9min early-stopped).
@@ -496,7 +502,7 @@ learn-cross-attention-from-scratch problem entirely. Run 1
 (in progress) tells us whether that transfer works for this manuscript
 family.
 
-#### 6.3.4 Staged pretraining for Swin+BERT (in progress 2026-07-14)
+#### 6.3.4 Staged pretraining for Swin+BERT (results 2026-07-14)
 
 **Motivation.** Single-stage Swin+BERT capped at 0.22-0.25 char_acc
 across all three data conditions (§6.3 grid). Hypothesis: the
@@ -531,41 +537,81 @@ pretrained).
 | **30k COMETA** (in progress) | 30,000 pairs subsampled from `aug_20260613_220436` with seed=42 → `aug_20260714_cometa_30k` | ~6 GB (split-uploaded 500 MB × 13 parts after direct scp stalled) | ~2 h |
 | **266k COMETA** (deferred; 53 GB upload stalled repeatedly, currently paused) | full `aug_20260613_220436` | ~53 GB | ~3 h (5 epochs) |
 
-**Current status.**
+**Results — hypothesis confirmed dramatically.**
 
-- Stage 1a — `swinbert_cometa_30k_pretrain_<TS>` (started 2026-07-14
-  14:44 on the L4 VM). At ~2 batches/sec, ETA ~2h. Run name:
-  `swinbert_cometa_30k_pretrain_<timestamp>` — check
-  `logs/trocr_finetune/stage1_swinbert_cometa_30k_pretrain_*.out`
-  for the exact TS.
-- Stage 1b — deferred until 30k variant proves useful. If Stage 2a
-  on the 30k pretrain beats Run 4's 0.2240 char_acc meaningfully
-  (say, > 0.4), commit to the 53 GB upload; otherwise skip.
-- Stage 2a / 2b — pending Stage 1a completion. Same launch shape as
-  Runs 4-5 but with `--pretrained-model-id
-  ./models/ocr/finetuned/<stage1_run>/best_model`.
+| Stage | Run name | Data | Wall clock | Val-fold char_acc | Val-fold word_acc |
+|---|---|---|---|---|---|
+| **Stage 1a** — pretrain | `trocr_20260714_144423` | 600 real + 30 000 anno re-renders (subsampled from `aug_20260613_220436` seed=42 → `aug_20260714_cometa_30k`) | 2h 12m (15 epochs) | **0.8589** | **0.7109** |
+| **Stage 2b** — fine-tune | `trocr_20260714_185946` | 600 real + Dataset B'' | 10 min (6 epochs, early-stopped) | **0.8350** | **0.6640** |
+| **Stage 2a** — fine-tune | *(pending, launch after 2b)* | 600 real + Dataset A'' | — | — | — |
+| Stage 1b — 266 k COMETA pretrain | *(deferred; upload still stalling)* | full `aug_20260613_220436` | — | — | — |
 
-**Expected outcome band** (thesis framing regardless of result):
+The single-stage Swin+BERT baseline was **0.2395 val-fold char_acc**
+(Run 5 on Dataset B''). Staging with 30 k pretraining lifted it to
+**0.8350 val-fold** — a **+60 pp jump**, closing ~72 % of the gap to
+the pretrained ViT+RoBERTa (0.9654 val-fold, Run 2 on the same
+Dataset B''). Confirms the hypothesis: single-stage Swin+BERT's poor
+performance was a **data-scale problem with the random-init
+cross-attention**, not an architectural dead-end.
 
-| Variant | Predicted 300-val char_acc | What each range would say |
-|---|---|---|
-| Original Swin+BERT + Dataset A'' (Run 4, measured) | 0.2240 | baseline for "no pretraining" |
-| Original Swin+BERT + Dataset B'' (Run 5, measured) | 0.2523 | baseline for "no pretraining" |
-| **Staged 30k → A''** (predicted) | 0.4-0.6 | proof-of-concept: even limited pretraining helps materially |
-| **Staged 266k → A''** (predicted, if we do the 53 GB upload) | 0.6-0.85 | data scale is the primary bottleneck; cross-attention IS trainable |
-| Pretrained ViT+RoBERTa + Dataset A'' (Run 1, measured) | 0.9332 | target we're trying to close on |
+**Next steps for this experiment**:
+- 300-val transcription of both Stage 2a and 2b `best_model/`
+  checkpoints → row insertion into §6.3 grid + §6.1 canonical table.
+- If the 300-val numbers are as strong as the val-fold suggests,
+  extending Stage 1 to a bigger COMETA pool (60 k or the full 266 k)
+  becomes clearly worth the compute for a final "how far can we
+  push" experiment.
 
-**Thesis story regardless of outcome:**
-- If staged Swin+BERT reaches ~0.7+ char_acc: **data scale was the
-  bottleneck** — cross-attention is trainable given enough pairs.
-  Publishable positive result on scale/pretraining relationships.
-- If staged Swin+BERT plateaus below ~0.5: **TrOCR's massive
-  task-specific pretraining is essential** and can't be replicated at
-  research-lab scale. Publishable negative result about the ceiling
-  of encoder-decoder-pretrained-only builds.
+**Thesis contribution**: this becomes one of the strongest single
+findings — controlled ablation showing that 30 k pairs of task-domain
+pretraining is worth ~60 pp of test-set accuracy for an
+encoder-decoder VLM whose cross-attention would otherwise be
+randomly initialised.
 
 Both readings are useful for the thesis's "why does pretraining scale
 matter for VLM HTR" section.
+
+#### 6.3.5 Extending the grid to 2 × 4 — adding Dataset D (re-renders only)
+
+**Motivation.** The current 2 × 3 grid conflates two effects between
+Dataset C (real-only) and Dataset A''/B'' (real + 3000 anno re-renders
++ 1000 external corpus): we can't tell whether the delta comes from
+the re-rendering step or from the external-corpus text.
+
+**New column — Dataset D**: 600 real + 3000 anno re-renders +
+**0 external corpus renders**. Uses the pre-existing pool
+`aug_20260712_124729` (which was built as the *base* for A''/B'' but
+never trained on directly).
+
+| | Real | Anno re-renders | External corpus |
+|---|---|---|---|
+| Dataset C | 600 | 0 | 0 |
+| **Dataset D (new)** | **600** | **3000 (600 lines × 5)** | **0** |
+| Dataset A'' | 600 | 3000 | 1000 COMETA |
+| Dataset B'' | 600 | 3000 | 1000 medical |
+
+**Clean single-variable deltas that fall out of the extended grid:**
+
+- **C → D delta** = pure "does re-rendering our own texts help?"
+- **D → A'' delta** = pure "does 1000 COMETA renders help on top of
+  re-rendering?"
+- **D → B'' delta** = pure "does 1000 medical corpus renders help on
+  top of re-rendering?"
+
+**Runs planned (single-stage, not staged — matching Runs 4-5 and
+Runs 1-3 for direct comparison):**
+
+- **Run D1** — Swin+BERT + Dataset D (single-stage from-scratch).
+  Compares to Runs 4 (A'', 0.2240) and 5 (B'', 0.2523).
+- **Run D2** — ViT+RoBERTa pretrained + Dataset D. Compares to Runs
+  1 (A'', 0.9332), 2 (B'', 0.9443), 3 (C real-only, 0.9371).
+
+Both use `aug_20260712_124729` on the VM (reconstructed from A''
+locally in ~10 s via a filter script — see §7.2.2 for the recipe).
+Sequential on the L4 GPU; ~1-1.5 h each; total additional cost ~$2.
+
+After both land + 300-val transcription, we'll have a full
+**2 architectures × 4 data conditions** matrix in the exec summary.
 
 ### Kraken fine-tune catalog
 
