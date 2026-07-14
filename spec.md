@@ -605,11 +605,21 @@ Vertex AI Workbench instance provisioned 2026-07-12 for the TrOCR grid
 - **Runs on this VM so far:**
   - 5 TrOCR grid runs (§6.3), all trained + 300-val-transcribed
     on-VM. Only the eval CSV/MD was pulled to laptop after (~50 KB).
-  - Medusa full-corpus transcription **in progress** as of
-    2026-07-13 09:50 — run
-    `medusa_full_corpus_l4_20260713_095002`. Expected ~5-7h wall
-    clock at bs=2 → cleaned output goes to
-    `data/processed/transcription/medusa_full_corpus_l4_<TS>_clean/`.
+  - **Medusa full-corpus transcription DONE** —
+    `medusa_full_corpus_l4_20260713_095002`. Started 09:50, finished
+    15:56 on 2026-07-13. 6.1h wall clock at 0.62 lines/s on L4
+    bs=2. All **13,677 lines transcribed, 0 skipped** (after the
+    AppleDouble cleanup; see §11). Raw output on VM at
+    `data/processed/transcription/medusa_full_corpus_l4_20260713_095002/`;
+    cleaned (chat-template artefacts stripped) at
+    `data/processed/transcription/medusa_full_corpus_l4_20260713_095002_clean/`.
+    Cleaned folder pulled to laptop 2026-07-13 evening — ready for
+    the frontend viewer via
+    `VIEWER_MODEL_TRANSCRIPTION=./data/processed/transcription/medusa_full_corpus_l4_20260713_095002_clean make frontend`.
+    First-attempt run `medusa_full_corpus_l4_20260713_091817` was
+    killed at 5-7% when we discovered macOS AppleDouble sidecars
+    were doubling the file count; both its output folder and log
+    have been deleted.
 - Cost: L4 ~$0.7/h. TrOCR grid ~$5 total. Medusa full-corpus
   ~$4. **Stop the instance when idle**: `gcloud compute instances
   stop instance-20260712-110217 --zone=us-west4-c`.
