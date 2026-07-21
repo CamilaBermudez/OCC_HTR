@@ -275,7 +275,7 @@ def stage_finetune_data(
     val_list.write_text("\n".join(str(p) for p in val_paths) + "\n", encoding="utf-8")
 
     stats = {
-        "n_source_lines": len(source_stems),
+        "n_source_lines": len(train_stems) + len(val_stems),
         "n_train_source_lines": len(train_stems),
         "n_val_source_lines": len(val_stems),
         "n_train_images": len(train_paths),
@@ -414,7 +414,7 @@ def mix_in_real_samples(
 
     stats = {
         "real_folder": str(real_folder),
-        "n_real_available": len(pairs),
+        "n_real_available": n_total,
         "real_train_frac": real_train_frac,
         "real_val_frac": real_val_frac,
         "n_real_train": n_real_train,
