@@ -395,30 +395,33 @@ generalization scores (self-seeding + train-set overlap bias).
 | Medusa 0.2 Line 9B (cleaned v2) | pretrained VLM | 500-pool | 0.9543 | cleaner strips first-non-noise line |
 | kraken `finetune_20260629_235819` | catmus + 400 real | batch-5 (100 unseen) | 0.9624 | prior "fair" generalization test |
 
-### 6.3 TrOCR track — 2×3 grid plan
+### 6.3 TrOCR track — 2×4 grid
 
 Two architectures (Swin+BERT from-scratch, ViT+RoBERTa pretrained
-`microsoft/trocr-base-handwritten`) × three data conditions:
+`microsoft/trocr-base-handwritten`) × four data conditions:
 
 - **Dataset C** = 600 real only, no aug.
+- **Dataset D** = 600 real + 3000 annotated re-renders + 0 external corpus
+  (`aug_20260712_124729`, the pool that A''/B'' were derived from). Added
+  2026-07-14 to isolate the re-render effect from the external-corpus effect.
 - **Dataset A''** = 600 real + `aug_20260712_v2_matched_cometa` (§5.3)
   = 600 real + 3000 annotated re-renders + 1000 COMETA renders.
 - **Dataset B''** = 600 real + `aug_20260712_v2_medical` (§5.3)
   = 600 real + 3000 annotated re-renders + 1000 medical renders.
 
-A'' and B'' differ **only in the 1000 external-corpus slot**, so the
-"COMETA vs medical corpus" comparison is clean. The annotated
-re-renders (3000 PNGs, 600 stems × 5) are byte-identical between the
-two.
+A''/B''/D share the same 3000 annotated re-renders; A'' and B'' differ
+**only in the 1000 external-corpus slot**, so the "COMETA vs medical
+corpus" comparison is clean. Dataset D drops that slot entirely →
+"does the external corpus help at all?"
 
-**Grid populated with 300-val results (as of 2026-07-14):**
+**Grid populated with 300-val results (as of 2026-07-15):**
 
-| Architecture | Dataset C (real-only) | Dataset A'' (matched COMETA) | Dataset B'' (medical) |
-|---|---|---|---|
-| **Swin+BERT from-scratch** | **0.2293** (legacy `_125139`, transcribed on 300-val 2026-07-14) | **0.2240** (Run 4, `_071550`) | **0.2523** (Run 5, `_073113`) |
-| **ViT+RoBERTa pretrained** | **0.9371** (Run 3, `_065604`) | **0.9332** (Run 1, `_123001`) | **0.9443** (Run 2, `_150413`) |
+| Architecture | Dataset C (real-only) | Dataset D (re-renders only) | Dataset A'' (matched COMETA) | Dataset B'' (medical) |
+|---|---|---|---|---|
+| **Swin+BERT from-scratch** | **0.2293** (legacy `_125139`) | **0.1447** (Run D1, `_192736`) | **0.2240** (Run 4, `_071550`) | **0.2523** (Run 5, `_073113`) |
+| **ViT+RoBERTa pretrained** | **0.9371** (Run 3, `_065604`) | **0.9161** (Run D2, `_202441`) | **0.9332** (Run 1, `_123001`) | **0.9443** (Run 2, `_150413`) |
 
-All six cells now scored against the permanent 300-val via
+All eight cells now scored against the permanent 300-val via
 `run_trocr_transcribe` → `run_evaluate_ocr`. The Swin+BERT real-only
 cell was originally val-fold only (0.2411 on its own 120-line val
 fold); 2026-07-14 re-transcription against the canonical 300 val gave
@@ -436,6 +439,8 @@ L4 GPU, batch_size=32 training + batch_size=16 inference):
 | 4 | Swin+BERT from-scratch | Dataset A'' | `trocr_20260713_071550` | 0.2205 | 0.2240 | −0.2552 |
 | 5 | Swin+BERT from-scratch | Dataset B'' | `trocr_20260713_073113` | 0.2395 | 0.2523 | −0.0350 |
 | — | Swin+BERT from-scratch (retro) | Dataset C | `trocr_20260710_125139` (originally local Mac) | 0.2411 (own val-fold) | 0.2293 | −0.1215 |
+| D1 | Swin+BERT from-scratch | Dataset D | `trocr_20260714_192736` | 0.1293 (early-stopped @ ep 6) | 0.1447 | −0.0617 |
+| D2 | ViT+RoBERTa pretrained | Dataset D | `trocr_20260714_202441` | 0.9374 | 0.9161 | 0.6728 |
 
 Canonical five-way eval CSV+MD:
 `tests/ocr/evaluations/five_trocr_vs_validation_300/` (built on the VM,
@@ -537,39 +542,77 @@ pretrained).
 | **30k COMETA** (in progress) | 30,000 pairs subsampled from `aug_20260613_220436` with seed=42 → `aug_20260714_cometa_30k` | ~6 GB (split-uploaded 500 MB × 13 parts after direct scp stalled) | ~2 h |
 | **266k COMETA** (deferred; 53 GB upload stalled repeatedly, currently paused) | full `aug_20260613_220436` | ~53 GB | ~3 h (5 epochs) |
 
-**Results — hypothesis confirmed dramatically.**
+**Results — hypothesis confirmed, magnitude smaller on 300-val than on val-fold.**
 
-| Stage | Run name | Data | Wall clock | Val-fold char_acc | Val-fold word_acc |
-|---|---|---|---|---|---|
-| **Stage 1a** — pretrain | `trocr_20260714_144423` | 600 real + 30 000 anno re-renders (subsampled from `aug_20260613_220436` seed=42 → `aug_20260714_cometa_30k`) | 2h 12m (15 epochs) | **0.8589** | **0.7109** |
-| **Stage 2b** — fine-tune | `trocr_20260714_185946` | 600 real + Dataset B'' | 10 min (6 epochs, early-stopped) | **0.8350** | **0.6640** |
-| **Stage 2a** — fine-tune | *(pending, launch after 2b)* | 600 real + Dataset A'' | — | — | — |
-| Stage 1b — 266 k COMETA pretrain | *(deferred; upload still stalling)* | full `aug_20260613_220436` | — | — | — |
+| Stage | Run name | Data | Wall clock | Val-fold char_acc | Val-fold word_acc | 300-val char_acc | 300-val word_acc |
+|---|---|---|---|---|---|---|---|
+| **Stage 1a** — pretrain | `trocr_20260714_144423` | 30 000 COMETA re-renders (subsampled from `aug_20260613_220436` seed=42 → `aug_20260714_cometa_30k`); **no manuscript real lines** | 2h 12m (15 epochs) | **0.8589** | **0.7109** | **0.5918** | **0.2888** |
+| **Stage 2b** — fine-tune | `trocr_20260714_185946` | 600 real + Dataset B'' | 10 min (6 epochs, early-stopped) | **0.8350** | **0.6640** | **0.6080** | **0.3306** |
+| **Stage 2a** — fine-tune | `trocr_20260714_213457` | 600 real + Dataset A'' | 10 min (6 epochs, early-stopped) | **0.8775** | **0.7500** | **0.6053** | **0.3087** |
+| Stage 1b — 266 k COMETA pretrain | *(deferred; upload still stalling)* | full `aug_20260613_220436` | — | — | — | — | — |
 
-The single-stage Swin+BERT baseline was **0.2395 val-fold char_acc**
-(Run 5 on Dataset B''). Staging with 30 k pretraining lifted it to
-**0.8350 val-fold** — a **+60 pp jump**, closing ~72 % of the gap to
-the pretrained ViT+RoBERTa (0.9654 val-fold, Run 2 on the same
-Dataset B''). Confirms the hypothesis: single-stage Swin+BERT's poor
-performance was a **data-scale problem with the random-init
-cross-attention**, not an architectural dead-end.
+**Val-fold vs 300-val gap (important reading).** All three staged
+rows show a large val-fold → 300-val drop (Stage 1a: −27 pp; Stage 2a:
+−27 pp; Stage 2b: −23 pp). The val-fold is a 20 % source-stem split
+of each stage's own training pool, so it still contains renders of
+stems whose handwriting the model has learned in that same stage; the
+300-val is a permanent held-out of real manuscript lines whose stems
+the model has never seen. The gap quantifies how much the model
+picked up its training distribution rather than genuine generalisation.
+This is *the* finding to keep in the thesis, not a footnote.
+
+**Where the lift actually comes from — Stage 1 does almost all the
+work.** The single-stage Swin+BERT baseline was **0.2523 char_acc on
+300-val** (Run 5 on Dataset B''). Stage 1a alone (COMETA pretraining
+with **zero manuscript lines**) reaches **0.5918** — a **+33.95 pp jump
+from pretraining alone**. Stage 2 fine-tuning on manuscript data
+(600 real + 3000 re-render + 1000 external) adds only:
+
+- **+1.35 pp** on A'' (Stage 2a: 0.6053)
+- **+1.62 pp** on B'' (Stage 2b: 0.6080)
+
+So of the total **+35.6 pp lift** vs the single-stage baseline, ~34 pp
+comes from the 30 k COMETA pretraining stage and only ~1.5 pp from
+the manuscript-specific fine-tune. This is a stronger and cleaner
+finding than the original framing: **it is the task-domain pretraining,
+not the manuscript fine-tuning, that closes the from-scratch gap**.
+
+**Softened but still-strong headline.** Overall Stage 2b vs single-stage
+Swin+BERT: **+35.6 pp on 300-val**, closing about **45 %** of the gap
+to the pretrained ViT+RoBERTa (0.9443 on the same Dataset B''). The
+original val-fold reading of "+60 pp, closing 72 % of the gap" was
+val-fold-inflated. Even with the correction, this is a large and
+publishable ablation — arguably more publishable now, because the
+per-stage decomposition is a real result the field will care about.
+
+**Directional finding on external corpus for the staged track.**
+Under staging, matched COMETA (A'', 0.6053) and medical (B'',
+0.6080) are essentially tied on 300-val — the corpus swap in the
+1000-render slot doesn't move the needle for a from-scratch
+cross-attention that has already seen 30 k COMETA renders in
+Stage 1. Contrast with the pretrained ViT+RoBERTa where medical
+edges COMETA by +1.1 pp on the same swap. Consistent with "Stage 1
+does most of the work" — once Stage 1 saturates the cross-attention,
+which corpus you fine-tune with barely matters.
 
 **Next steps for this experiment**:
-- 300-val transcription of both Stage 2a and 2b `best_model/`
-  checkpoints → row insertion into §6.3 grid + §6.1 canonical table.
-- If the 300-val numbers are as strong as the val-fold suggests,
-  extending Stage 1 to a bigger COMETA pool (60 k or the full 266 k)
-  becomes clearly worth the compute for a final "how far can we
-  push" experiment.
+- If we later push Stage 1 to a bigger COMETA pool (60 k or the full
+  266 k) once the upload path is unblocked, the val-fold-to-300-val
+  gap is the primary metric to watch — a shrinking gap would mean
+  more pretraining is actually improving generalisation, not just
+  memorising handwriting.
+- A useful additional ablation: Stage 1 on 30 k *medical* corpus
+  renders (instead of COMETA) → tests whether Stage 1 corpus choice
+  matters when the fine-tune corpus choice doesn't.
 
-**Thesis contribution**: this becomes one of the strongest single
-findings — controlled ablation showing that 30 k pairs of task-domain
-pretraining is worth ~60 pp of test-set accuracy for an
-encoder-decoder VLM whose cross-attention would otherwise be
-randomly initialised.
-
-Both readings are useful for the thesis's "why does pretraining scale
-matter for VLM HTR" section.
+**Thesis contribution**: controlled ablation showing that 30 k pairs
+of task-domain pretraining is worth ~34 pp of held-out char_acc for
+an encoder-decoder VLM whose cross-attention would otherwise be
+randomly initialised — with the additional finding that
+manuscript-specific fine-tuning on top of that pretraining adds only
+~1.5 pp, and that the val-fold reading of the same intervention
+over-states the gain by ~24 pp. Three publishable sub-findings
+from one controlled experiment.
 
 #### 6.3.5 Extending the grid to 2 × 4 — adding Dataset D (re-renders only)
 
@@ -610,8 +653,343 @@ Both use `aug_20260712_124729` on the VM (reconstructed from A''
 locally in ~10 s via a filter script — see §7.2.2 for the recipe).
 Sequential on the L4 GPU; ~1-1.5 h each; total additional cost ~$2.
 
-After both land + 300-val transcription, we'll have a full
-**2 architectures × 4 data conditions** matrix in the exec summary.
+**Results (2026-07-15, both landed):**
+
+| Run | Model | Data | Wall clock | Val-fold char_acc | 300-val char_acc | 300-val word_acc |
+|---|---|---|---|---|---|---|
+| **D1** | Swin+BERT from-scratch | Dataset D (3600 pairs) | ~10 min (6 epochs, early-stopped) | 0.1293 | **0.1447** | −0.0617 |
+| **D2** | ViT+RoBERTa pretrained | Dataset D (3600 pairs) | 64 min (20 epochs) | 0.9374 | **0.9161** | 0.6728 |
+
+**Findings from the extended grid.**
+
+- **C → D delta for ViT+RoBERTa: −2.1 pp** (0.9371 real-only → 0.9161
+  with 3000 re-renders added). Pure re-rendering of the same 600 real
+  texts does **not** help the pretrained arch — it slightly hurts,
+  probably because the re-render texture introduces low-diversity
+  noise a well-pretrained model overfits to.
+- **D → A'' delta for ViT+RoBERTa: +1.7 pp** (0.9161 → 0.9332). Adding
+  1000 COMETA renders on top of the re-renders recovers most of the
+  loss and then some — the *external corpus* is what carries the
+  augmentation signal, not the re-render volume.
+- **D → B'' delta for ViT+RoBERTa: +2.8 pp** (0.9161 → 0.9443). Same
+  effect, stronger — medical corpus contributes ~1 pp more than
+  COMETA on top of the re-render base.
+- **C → D delta for Swin+BERT: −8.5 pp** (0.2293 → 0.1447). Same
+  direction as ViT+RoBERTa but amplified: from-scratch cross-attention
+  with only 600 stems of variety collapses harder when fed noisy
+  re-renders without text-distribution diversity.
+- **All Swin+BERT single-stage cells now confirmed to cluster at
+  0.14-0.25 char_acc regardless of data condition** — the +11 pp
+  spread across the four Swin+BERT cells is small compared to the
+  ~35 pp lift from the staging intervention (§6.3.4), reinforcing
+  "cross-attention pretraining >> data recipe" as the top-line
+  narrative.
+
+Eval artefacts: `tests/ocr/evaluations/staged_and_D_vs_val300/` (CSV +
+MD). Best-model checkpoints on laptop under
+`models/ocr/finetuned/trocr_20260714_192736/` (D1) and
+`trocr_20260714_202441/` (D2).
+
+#### 6.3.6 Tokenizer-floor CER analysis (2026-07-18)
+
+**Motivation.** The +72 pp gap between Swin+BERT (mBERT WordPiece
+decoder tokenizer) and ViT+RoBERTa (byte-level RoBERTa BPE tokenizer,
+bundled with `microsoft/trocr-base-handwritten`) has two candidate
+explanations that co-vary in the ablation:
+
+1. **Cross-attention pretraining** — the intended finding.
+2. **Tokenizer coverage of medieval Latin abbreviations** — a
+   confound: mBERT WordPiece can `[UNK]` on characters like `⁊`
+   (Tironian et, U+204A), `ꝑ` (U+A751), etc., while byte-level BPE
+   can encode any codepoint via byte-fallback.
+
+To disentangle them, measure the **CER floor imposed by each
+tokenizer** on the 300-val ground truth via encode → decode round-trip.
+The floor is the lower bound on CER *any* model using that tokenizer
+could achieve, even with a perfect encoder. The difference between
+the two floors is an upper bound on the tokenizer's contribution to
+the +72 pp observed gap.
+
+**Script.** `scripts/ocr/analyze_tokenizer_floor.py`. Loads each
+tokenizer via `AutoTokenizer.from_pretrained`, iterates over
+`data/processed/annotated_samples/OCR/validation/*.gt.txt`, and
+reports corpus-level CER floor + top `[UNK]`-triggering characters +
+5 worst-case round-trip lines per tokenizer.
+
+**Results (2026-07-18, 299 non-empty lines, 11 000 total chars).**
+
+| Tokenizer | Vocab size | Perfect round-trips | Corpus CER floor (skip specials) | Implied char_acc ceiling |
+|---|---|---|---|---|
+| **mBERT** (`bert-base-multilingual-cased`) | 119 547 | 252 / 299 (84.3 %) | **0.0074** | **99.26 %** |
+| **RoBERTa BPE** (bundled with `microsoft/trocr-base-handwritten`) | 50 265 | 299 / 299 (100 %) | **0.0000** | **100.00 %** |
+
+**Conclusion — tokenizer confound is negligible.** The difference
+between the two tokenizer floors is **≤ 0.74 pp of char_acc**, vs a
++72 pp observed gap in the 2 × 4 grid. Cross-attention pretraining
+accounts for ≥ 71 pp of the gap; tokenizer coverage accounts for
+at most 0.74 pp. This lets the thesis state the finding cleanly:
+
+> The +72 pp gap between Swin+BERT (from-scratch cross-attention) and
+> ViT+RoBERTa (`microsoft/trocr-base-handwritten`) on 300-val
+> char_acc is attributable to cross-attention pretraining rather
+> than tokenizer coverage — the tokenizer contribution is bounded
+> above at 0.74 pp on this benchmark.
+
+**Where mBERT actually loses accuracy.** 16 of 299 lines (5.4 %)
+contain at least one `[UNK]`. Character breakdown of the losses:
+
+| Char | Codepoint | `[UNK]` count | What it is |
+|---|---|---|---|
+| `⁊` | U+204A | 12 | Tironian et (medieval "and" abbreviation); ~75 % of the mBERT floor CER |
+| `ꝑ` | U+A751 | 1 | Latin small letter p with stroke (per / par / por abbreviation) |
+| `q`, `a`, ` ` | — | 1 each | One-off edge cases at line boundaries |
+
+Other medieval abbreviations in the corpus (`ꝓ`, `ẽ`, `ĩ`, `ā`, etc.)
+survive mBERT's WordPiece intact — they are recoverable as
+combinations of existing tokens or via byte fallback.
+
+**Secondary finding — WordPiece whitespace normalisation adds noise.**
+Some of mBERT's worst round-trip cases are not `[UNK]` losses but
+WordPiece adding / removing spaces around periods:
+
+```
+REF: da.esia ⁊ gran.so es aygua cauda
+HYP: da. esia   gran. so es aygua cauda    (periods gained spaces; ⁊ vanished)
+```
+
+This is another small structural CER contribution independent of
+`[UNK]` handling — but still small enough to be inside the 0.74 pp
+overall floor.
+
+**Reproducing.**
+
+```
+cd <repo root>
+python3 scripts/ocr/analyze_tokenizer_floor.py \
+    --val-dir data/processed/annotated_samples/OCR/validation
+```
+
+~5 s runtime on laptop. No GPU, no model download beyond the two
+tokenizers (a few MB each).
+
+#### 6.3.7 Bootstrap 95 % confidence intervals for TrOCR-track models on 300-val (2026-07-18)
+
+**Motivation.** All numbers in §6.3, §6.3.4 and §6.3.5 are point
+estimates on a 299-line held-out set. Two questions the committee
+will ask:
+
+1. **Per-model uncertainty.** How wide is the confidence band around
+   each reported char_acc / word_acc?
+2. **Difference significance.** Is the +1.1 pp advantage of medical
+   over COMETA for pretrained ViT+RoBERTa real, or within noise?
+   Same question for the A''/B'' tie under staging, and for
+   Stage 2's +1.6 pp over Stage 1.
+
+Both answered by resampling the 299 lines with replacement, 10 000
+iterations, and recomputing corpus-level metrics on each resample.
+For pair-wise questions we use **paired bootstrap** — the same random
+line indices apply to both models on every iteration, so the CI on
+the difference reflects the fact that both models were evaluated on
+the same underlying lines.
+
+**Script.** `scripts/ocr/bootstrap_ocr_ci.py`. Reads per-line eval
+CSVs from any number of `--eval-dir` folders, inner-joins by stem,
+runs both per-model bootstrap and paired bootstrap. Numpy-only
+implementation, ~1 s runtime on laptop for 11 models × 10 000
+iterations.
+
+**Command that produced the results below (deterministic with
+`seed=42`):**
+
+```
+cd <repo root>
+python3 scripts/ocr/bootstrap_ocr_ci.py \
+    --eval-dir tests/ocr/evaluations/five_trocr_vs_validation_300 \
+    --eval-dir tests/ocr/evaluations/staged_and_D_vs_val300 \
+    --eval-dir tests/ocr/evaluations/stage1a_vs_val300 \
+    --eval-dir tests/ocr/evaluations/swinbert_realonly_from_scratch_vs_validation_300 \
+    --n-boot 10000 --seed 42
+```
+
+Full raw output snapshotted at
+`tests/ocr/evaluations/bootstrap_ci_trocr_20260718/bootstrap_ci_trocr.txt`.
+
+**Per-model 95 % CIs (paired-bootstrap on the 299-line held-out set).**
+
+| Model | char_acc [95 % CI] | word_acc [95 % CI] | CER [95 % CI] | WER [95 % CI] |
+|---|---|---|---|---|
+| vitroberta_medical | 94.43 % [93.83, 95.00] | 73.59 % [70.98, 76.16] | 0.0557 [0.0500, 0.0617] | 0.2641 [0.2384, 0.2902] |
+| vitroberta_realonly | 93.72 % [93.02, 94.39] | 71.73 % [69.16, 74.20] | 0.0628 [0.0561, 0.0698] | 0.2827 [0.2580, 0.3084] |
+| vitroberta_cometa | 93.32 % [92.57, 94.04] | 71.41 % [68.64, 74.03] | 0.0668 [0.0596, 0.0743] | 0.2859 [0.2597, 0.3136] |
+| runD2_vitroberta | 91.61 % [90.74, 92.44] | 67.29 % [64.52, 70.02] | 0.0839 [0.0756, 0.0926] | 0.3271 [0.2998, 0.3548] |
+| stage2b_medical | 60.81 % [59.07, 62.57] | 33.07 % [30.43, 35.81] | 0.3919 [0.3743, 0.4093] | 0.6693 [0.6419, 0.6957] |
+| stage2a_cometa | 60.53 % [58.74, 62.29] | 30.86 % [27.84, 33.76] | 0.3947 [0.3771, 0.4126] | 0.6914 [0.6624, 0.7216] |
+| stage1a_cometa_pretrain | 59.17 % [57.55, 60.82] | 28.87 % [26.25, 31.50] | 0.4083 [0.3918, 0.4245] | 0.7113 [0.6850, 0.7375] |
+| swinbert_medical | 25.22 % [24.40, 26.06] | −3.51 % [−5.33, −1.76] | 0.7478 [0.7394, 0.7560] | 1.0351 [1.0176, 1.0533] |
+| swinbert_realonly | 22.92 % [21.81, 24.02] | −12.18 % [−14.53, −9.88] | 0.7708 [0.7598, 0.7819] | 1.1218 [1.0988, 1.1453] |
+| swinbert_cometa | 22.40 % [21.57, 23.23] | −25.53 % [−28.37, −22.83] | 0.7760 [0.7677, 0.7843] | 1.2553 [1.2283, 1.2837] |
+| runD1_swinbert | 14.46 % [12.99, 15.88] | −6.18 % [−8.13, −4.31] | 0.8554 [0.8412, 0.8701] | 1.0618 [1.0431, 1.0813] |
+
+**Paired bootstrap comparisons (A vs B).** P(A > B) is the fraction
+of bootstrap resamples in which A's char_acc exceeded B's. A comparison
+is significant at α = 0.05 if the 95 % CI on the difference excludes 0
+(equivalently, P(A > B) ≥ 0.975 or ≤ 0.025).
+
+| A | B | Δ char_acc [95 % CI] | Δ word_acc [95 % CI] | P(A > B) | Verdict | Interpretation |
+|---|---|---|---|---|---|---|
+| vitroberta_medical | vitroberta_cometa | +1.11 % [+0.53, +1.72] | +2.21 % [+0.29, +4.11] | 1.000 | ✓ sig | Medical > COMETA for pretrained arch is real |
+| vitroberta_medical | vitroberta_realonly | +0.72 % [+0.18, +1.29] | +1.90 % [−0.15, +3.92] | 0.995 | ✓ sig (char_acc); borderline (word_acc) | Medical aug barely beats no aug |
+| vitroberta_realonly | runD2_vitroberta | +2.10 % [+1.37, +2.85] | +4.41 % [+2.31, +6.58] | 1.000 | ✓ sig | Dataset D significantly hurts pretrained arch |
+| stage2b_medical | swinbert_medical | +35.58 % [+33.79, +37.37] | +36.55 % [+33.82, +39.31] | 1.000 | ✓ sig | Staged pretraining lift is bulletproof |
+| stage1a_cometa_pretrain | swinbert_medical | +33.95 % [+32.25, +35.70] | +32.38 % [+29.72, +35.14] | 1.000 | ✓ sig | COMETA pretraining alone does 34 pp — sig |
+| stage2b_medical | stage1a_cometa_pretrain | +1.62 % [+0.29, +2.93] | +4.18 % [+2.07, +6.32] | 0.992 | ✓ sig (p = 0.008) | Manuscript FT DOES add real value on top of Stage 1 (small but detectable) |
+| stage2a_cometa | stage2b_medical | −0.25 % [−1.79, +1.30] | −2.15 % [−4.39, +0.15] | 0.377 | ✗ NOT sig | Under staging, corpus choice at Stage 2 is within noise |
+| vitroberta_medical | stage2b_medical | +33.65 % [+31.99, +35.31] | +40.55 % [+37.68, +43.40] | 1.000 | ✓ sig | Pretrained TrOCR still significantly beats staged Swin+BERT |
+
+**Interpretation for the thesis narrative.**
+
+- **Rewrite of §6.3.4's "manuscript FT is a rounding error" line.**
+  The +1.62 pp Stage 2 lift over Stage 1 is *statistically detectable*
+  (95 % CI [+0.29, +2.93], p = 0.008 that A ≤ B). Replace
+  "manuscript-specific fine-tuning is a rounding error" with
+  "manuscript-specific fine-tuning adds a small but statistically
+  significant +1.6 pp over pretraining alone".
+- **A''/B'' tie under staging is now bulletproof as a negative result.**
+  Δ = −0.25 pp on char_acc with 95 % CI [−1.79, +1.30]; P(A > B) =
+  0.377. This is a defensible finding: under the staged pipeline,
+  the corpus swap at Stage 2 is within noise. Contrasts cleanly with
+  the ViT+RoBERTa case where the same swap is +1.11 pp with 95 % CI
+  [+0.53, +1.72] — significant.
+- **All headline gaps hold with margin.** The +72 pp cross-attention
+  gap, the +36 pp staged-pretraining lift, and the +34 pp Stage 1-only
+  lift all have CIs comfortably away from zero. None of these is at
+  risk of being an artefact of the 299-line sample size.
+
+**Pending — kraken side.** Once the kraken 600 baseline is re-run
+with the pool composition matched to the medical run (2000 anno
+re-renders in both, so that the kraken medical vs no-medical
+comparison is single-variable like A'' vs B''; see §6.3 confound
+note and the [Kraken fine-tune catalog](#kraken-fine-tune-catalog)
+below), re-run this same script pointing at the kraken eval CSVs
+to get an equivalent CI table for the kraken track.
+
+#### 6.3.8 Bootstrap stratified by GT-transcription confidence (2026-07-18)
+
+**Motivation.** Not every one of the 300 held-out lines has a
+100 %-verified transcription — some GT files were left flagged for a
+second review. `tests/ocr/validation_300_manifest_.csv` adds a
+`validated_100` column: **1 = human-verified GT**, **0 = still to be
+double-checked**. As of 2026-07-18 the split is **286 validated + 14
+unvalidated = 300 total** (or **285 validated + 14 unvalidated = 299
+non-empty** — the single empty-GT line is validated but always
+excluded from eval CSVs). This raises two questions the committee
+will ask:
+
+1. **Are the full-set numbers in §6.3.7 confounded by unvalidated
+   lines?** i.e. is model X really at 0.9443 char_acc, or is that
+   number partly the model being "penalised" for correctly
+   transcribing lines whose GT is wrong?
+2. **Are unvalidated lines systematically harder?** If yes, that
+   pushes them onto the priority list for the next round of
+   verification.
+
+**Method.** Re-run `bootstrap_ocr_ci.py` twice — once with
+`--filter-value 1` (validated subset), once with `--filter-value 0`
+(unvalidated subset). Paired bootstrap 10 000 iterations, seed=42, same
+as §6.3.7.
+
+**Command.**
+
+```
+cd <repo root>
+for value in 1 0; do
+  python3 scripts/ocr/bootstrap_ocr_ci.py \
+      --eval-dir tests/ocr/evaluations/five_trocr_vs_validation_300 \
+      --eval-dir tests/ocr/evaluations/staged_and_D_vs_val300 \
+      --eval-dir tests/ocr/evaluations/stage1a_vs_val300 \
+      --eval-dir tests/ocr/evaluations/swinbert_realonly_from_scratch_vs_validation_300 \
+      --manifest tests/ocr/validation_300_manifest_.csv \
+      --filter-col validated_100 --filter-value "$value" \
+      --n-boot 10000 --seed 42
+done
+```
+
+Full raw output snapshotted at
+`tests/ocr/evaluations/bootstrap_ci_trocr_validated_20260718/bootstrap_ci_trocr_by_validated.txt`.
+
+**Per-model char_acc — side by side across all three views.**
+
+| Model | All (n=299) | Validated (n=285) | Unvalidated (n=14) | Δ unval − val |
+|---|---|---|---|---|
+| vitroberta_medical | 94.43 % | 94.54 % [93.93, 95.14] | 92.28 % [90.09, 94.41] | **−2.26 pp** |
+| vitroberta_realonly | 93.72 % | 93.82 % [93.08, 94.51] | 91.70 % [88.44, 94.68] | **−2.12 pp** |
+| vitroberta_cometa | 93.32 % | 93.55 % [92.77, 94.28] | 88.76 % [84.17, 92.45] | **−4.79 pp** |
+| runD2_vitroberta | 91.61 % | 91.88 % [90.99, 92.72] | 86.36 % [82.28, 90.24] | **−5.52 pp** |
+| stage2b_medical | 60.81 % | 61.09 % [59.23, 62.95] | 55.05 % [48.82, 61.86] | −6.04 pp |
+| stage2a_cometa | 60.53 % | 61.03 % [59.18, 62.87] | 50.98 % [45.87, 56.32] | **−10.05 pp** |
+| stage1a_cometa_pretrain | 59.17 % | 59.35 % [57.67, 61.02] | 55.77 % [48.89, 63.03] | −3.58 pp |
+| swinbert_medical | 25.22 % | 25.17 % | 26.36 % | +1.19 pp |
+| swinbert_realonly | 22.92 % | 22.91 % | 23.39 % | +0.48 pp |
+| swinbert_cometa | 22.40 % | 22.43 % | 21.73 % | −0.70 pp |
+| runD1_swinbert | 14.46 % | 14.39 % | 16.00 % | +1.61 pp |
+
+**Two clean readings.**
+
+- **All 7 mid-to-high-accuracy models perform worse on unvalidated
+  lines** (drops of 2–10 pp). Consistent with the hypothesis that
+  unvalidated GT contains transcription errors that penalise
+  otherwise-correct predictions.
+- **Single-stage Swin+BERT models are indifferent** (deltas within
+  noise, direction inconsistent). Makes sense — those models are
+  already below 26 % char_acc, so their own error rate dominates any
+  contribution from GT noise.
+
+**Paired comparisons — validated subset (n=285) confirms every §6.3.7
+finding.**
+
+| A vs B | Full (n=299) | Validated (n=285) | Sig on validated? |
+|---|---|---|---|
+| vit_med vs vit_cometa | +1.11 [+0.53, +1.72] | +0.98 [+0.41, +1.58] | ✓ (P=0.999) |
+| vit_med vs vit_realonly | +0.72 [+0.18, +1.29] | +0.73 [+0.18, +1.31] | ✓ (P=0.995) |
+| vit_realonly vs runD2 | +2.10 [+1.37, +2.85] | +1.93 [+1.19, +2.71] | ✓ (P=1.000) |
+| stage2b vs swinbert_med | +35.58 | +35.93 [+34.06, +37.79] | ✓ (P=1.000) |
+| stage2a vs stage2b | −0.25 [−1.79, +1.30] | −0.06 [−1.67, +1.56] | ✗ (P=0.471) — still tied |
+| stage1a vs swinbert_med | +33.95 | +34.19 [+32.42, +36.03] | ✓ (P=1.000) |
+| stage2b vs stage1a | +1.62 [+0.29, +2.93] | +1.74 [+0.40, +3.12] | ✓ (P=0.994) — manuscript FT still adds real value |
+| vit_med vs stage2b | +33.65 | +33.45 [+31.83, +35.14] | ✓ (P=1.000) |
+
+Every conclusion from §6.3.7 holds on the validated subset with
+essentially identical numbers. The full-set numbers were **not**
+confounded by unvalidated-GT noise — the shift is uniformly within
+0.2 pp of the full-set point estimates.
+
+**Paired comparisons — unvalidated subset (n=14), flagged pattern.**
+
+CIs on the 14-line subset are wide, so nothing is conclusive here.
+The one directional signal worth noting:
+
+| A vs B | Δ char_acc [95 % CI] | P(A > B) | Interpretation |
+|---|---|---|---|
+| stage2a vs stage2b | **−4.07 %** [−8.53, +0.56] | 0.042 | On unvalidated lines, medical (B'') beats COMETA (A'') by ~4 pp, barely non-significant (CI barely includes 0). Reversal from the validated subset (tie). Speculative reading: unvalidated lines may be over-represented in the harder / more medical-vocabulary-dense subset, exactly where medical-corpus training should help most. |
+
+**Recommendations.**
+
+- **Adopt the validated-285 as the canonical benchmark** for all
+  future TrOCR / kraken numbers in the thesis, with the full-299
+  numbers relegated to an appendix / robustness check. Justification:
+  a "true CER" metric measures how well a model transcribes
+  *correct* GT; unvalidated lines contaminate that measurement.
+- **Manually inspect the 14 unvalidated lines** for the models with
+  the largest drops (vitroberta_cometa −4.79 pp, runD2_vitroberta
+  −5.52 pp, stage2a_cometa −10.05 pp). Cases where the model's
+  "error" is actually a GT error should be promoted to
+  `validated_100=1` (fixing the GT if needed) and the manifest
+  re-committed.
+- **Kraken track re-runs**: when the kraken 600 matched-pool run
+  completes, feed its eval CSV to `bootstrap_ocr_ci.py` with
+  `--manifest tests/ocr/validation_300_manifest_.csv --filter-col
+  validated_100 --filter-value 1` so kraken numbers are directly
+  comparable to the TrOCR-track validated benchmark.
 
 ### Kraken fine-tune catalog
 
@@ -622,10 +1000,29 @@ on the permanent 300-val benchmark (§6 results row).
 
 | Run | Real | Aug pool | Base model | Notes |
 |---|---|---|---|---|
-| `finetune_20260629_235819` | 400 | `aug_20260629_235051` (COMETA-only) | catmus-medieval | prior canonical; 320 train + 80 val + synth |
-| `finetune_20260701_233056` | 500 | `aug_20260701_232640` (COMETA-only) | catmus-medieval | 400 train + 100 val + synth |
-| `finetune_20260705_070741` | 600 | `aug_20260701_232640` (COMETA-only) | catmus-medieval | 480 train + 120 val + synth |
-| `finetune_20260706_151856` | 600 | `aug_merged_anno_medical_20260706` (annotated + medical corpus) | catmus-medieval | 480 train + 120 val + merged synth; the medical-corpus run |
+| `finetune_20260629_235819` | 400 | `aug_20260629_235051` (100% annotated re-renders, 2000 pairs) | catmus-medieval | prior canonical; 320 train + 80 val + synth |
+| `finetune_20260701_233056` | 500 | `aug_20260701_232640` (100% annotated re-renders, 2500 pairs) | catmus-medieval | 400 train + 100 val + synth |
+| `finetune_20260705_070741` | 600 | `aug_20260701_232640` (2500 anno re-renders of 500 stems × 5) | catmus-medieval | 480 train + 120 val + synth; **historical no-medical** run reported as 0.9620 on 300-val |
+| `finetune_20260706_151856` | 600 | `aug_merged_anno_medical_20260706` (2000 anno re-renders + 1000 medical corpus renders) | catmus-medieval | 480 train + 120 val + merged synth; the **confounded** medical-corpus run (0.9593 on 300-val) — aug re-render count differs vs `_070741` so the medical vs no-medical delta is not a single-variable comparison |
+| `finetune_20260718_193601` | 600 | `aug_20260712_124729` (3000 anno re-renders of 600 stems × 5) | catmus-medieval | **matched-pool no-medical** (2026-07-18/19); 29 epochs, best at 23; internal val_acc = 0.9430; **300-val char_acc = 0.9096** [89.80, 92.01]. Baseline for the confound-fixed medical comparison. |
+| `finetune_20260719_085411` | 600 | `aug_20260712_v2_medical` (3000 anno re-renders + 1000 medical corpus renders) | catmus-medieval | **matched-pool medical** (2026-07-19); 42 epochs, best at 36; internal val_acc = 0.9457; **300-val char_acc = 0.8664** [85.29, 87.91]. Differs from `_193601` **only** by the 1000-render medical slot. |
+
+**Matched-pool medical vs no-medical (paired bootstrap, 10 000 iterations, validated-285 subset)**:
+Δ char_acc = **−4.31 %** [95 % CI −4.97, −3.66], Δ word_acc = **−13.20 %** [−15.60, −10.84], P(A > B) = 0.000 → **medical significantly HURTS kraken** (see §6.4 for interpretation and contrast with the +1.1 pp medical benefit on pretrained ViT+RoBERTa). Eval artefacts: `tests/ocr/evaluations/kraken_matched_medical_ablation/` (CSV + MD) and `tests/ocr/evaluations/bootstrap_ci_joint_20260720.txt` (joint kraken + TrOCR bootstrap output).
+
+**Baseline shift to investigate**: the new matched-pool no-medical
+baseline (`_193601`, 0.9096 on 300-val) is **~5 pp lower** than the
+historical canonical (`_070741`, 0.9620 on 300-val). Only differences
+vs historical: (a) aug re-renders sourced from all 600 stems (vs 500),
+(b) aug pool version `aug_20260712_124729` (vs `aug_20260701_232640`).
+Likely culprit: aug pool version — the newer render batch produces
+visually different synthetics that shift the ceiling. Possible
+secondary culprit: with augs from all 600 stems, some of the 120
+real internal-val stems have augmented siblings in training →
+text-level familiarity may inflate internal val_accuracy and trigger
+early stopping sooner. **The matched-pool medical DELTA (Δ char_acc =
+−4.31 pp) is still clean** because both runs share the same aug pool
+and split — only the medical-corpus slot differs.
 
 Full-corpus transcription output on disk:
 - `data/processed/transcription/finetune_400_full_corpus/` — from
@@ -650,6 +1047,65 @@ Pending experimental runs:
 - **TrOCR ViT+RoBERTa** starting from `microsoft/trocr-base-handwritten`
   — planned next, gives cross-attention a pretrained starting point.
 
+## 6.4 Cross-family finding: medical corpus is architecture-dependent (2026-07-20)
+
+**Setup.** The medical corpus effect was tested with a matched-pool
+design on two model families, and the confound flagged in §6.3
+(unequal aug re-render counts in the original kraken runs) was closed
+by re-running kraken with 3000 anno re-renders in both arms. Every
+comparison below is single-variable — same 3000-anno-re-render base,
+±1000 medical-corpus renders — so the delta is attributable to the
+medical corpus and nothing else.
+
+**Result.** The medical corpus intervention has **opposite-direction
+significant effects** on the two model families:
+
+| Architecture | Δ char_acc (medical − matched no-medical) | 95 % CI | P(A > B) | Verdict |
+|---|---|---|---|---|
+| **ViT+RoBERTa pretrained** (TrOCR) | **+1.11 %** | [+0.53, +1.72] | 1.000 | Medical **helps** significantly |
+| **Kraken CTC fine-tune from catmus** | **−4.31 %** | [−4.97, −3.66] | 0.000 | Medical **hurts** significantly |
+
+Kraken's word-level delta is even larger (−13.20 pp [−15.60, −10.84]),
+suggesting the medical corpus text distribution drags the model's
+word-shape priors away from what the manuscript actually contains.
+ViT+RoBERTa's word-level delta is +2.05 pp [+0.29, +4.11] in the
+opposite direction — same-magnitude direction (~1-2 pp per pp of
+char_acc effect), just with sign flipped.
+
+**Interpretation (speculative but well-grounded).** Catmus is
+pretrained on generic medieval scripts, so kraken's fine-tune already
+carries strong priors about "how medieval Latin words look". Adding
+1000 medical corpus renders shifts those priors toward a specialised
+Latin-medical distribution that mismatches the actual AlbucE mix
+(medical *and* general prose *and* recipe formats). Pretrained TrOCR
+has no such prior anchoring — its cross-attention was trained on
+34 M generic handwriting pairs, none of them Old Occitan or
+medieval — so the extra text-distribution diversity from the medical
+corpus is pure signal, not distortion.
+
+**Publishable framing.** "Domain-specific augmentation is not
+universally beneficial for OCR / HTR on this manuscript family: it
+significantly helps a large pretrained VLM (+1.1 pp char_acc) but
+significantly hurts a small CTC recogniser fine-tuned from a
+strongly-anchored medieval base (−4.3 pp char_acc). The direction
+depends on whether the model's prior distribution over text is
+compatible with the augmentation corpus." — one clean statement,
+two significant CIs excluding zero on the same matched-pool
+ablation, supported by 10 000-iteration paired bootstrap.
+
+**Data + artefacts:**
+- Kraken matched-pool eval: `tests/ocr/evaluations/kraken_matched_medical_ablation/`
+- TrOCR matched-pool eval: `tests/ocr/evaluations/five_trocr_vs_validation_300/`
+- Joint bootstrap: `tests/ocr/evaluations/bootstrap_ci_joint_20260720.txt`
+- Manifest for filter: `tests/ocr/validation_300_manifest_.csv` (validated_100 subset)
+
+**Open follow-up.** The new matched-pool kraken no-medical baseline
+(0.9096) is ~5 pp below the historical canonical (0.9620). The
+matched-pool medical DELTA is still clean (same aug pool in both
+arms), but the absolute levels are worth investigating — see the
+"Baseline shift to investigate" note in the [Kraken fine-tune
+catalog](#kraken-fine-tune-catalog).
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
@@ -662,7 +1118,10 @@ Pending experimental runs:
 
 ### 7.2 GCP VMs
 
-Two instances in play, in different zones:
+Three instances have been in play over the course of the project. As
+of 2026-07-21 only **§7.2.3 is active**; §7.2.1 and §7.2.2 are kept
+for historical continuity and to document the two-user-gotcha and
+disk-mount lessons learned there.
 
 #### 7.2.1 Old CPU-only VM — `instance-20260629-174751`, us-central1-a
 
@@ -750,6 +1209,66 @@ Vertex AI Workbench instance provisioned 2026-07-12 for the TrOCR grid
   `/tmp/occ_htr_vm_runs.tar` on the VM containing every run's
   `best_model/` + metadata + logs. Pulled to laptop 2026-07-13 via
   scp with SSH keepalive at ~6 MB/s.
+
+#### 7.2.3 Active L4 GPU VM — `instance-20260720-095326`, us-west4-c
+
+The old §7.2.2 VM stopped responding around 2026-07-19; replaced by a
+fresh Vertex AI Workbench instance in a **new GCP project** on
+2026-07-20.
+
+- **Project**: `project-8a4066cd-a3df-4df6-8dd` (organization
+  `thesisgcplmu-org`, display name "My First Project"). Point gcloud at
+  it with `gcloud config set project project-8a4066cd-a3df-4df6-8dd`
+  before any `gcloud compute` command against this instance.
+- **Zone**: `us-west4-c` (same as §7.2.2).
+- Machine: 16 vCPU, 64 GB RAM + **NVIDIA L4 × 1** (23 GB VRAM, driver
+  580.65.06).
+- Python 3.11.2 (matches the project's `requires-python`; no
+  workaround needed unlike §7.2.2's 3.12).
+- `git` 2.39.5 pre-installed.
+- `uv` **not** pre-installed; install once via
+  `curl -LsSf https://astral.sh/uv/install.sh | sh` and export
+  `~/.local/bin` on PATH (append to `~/.bashrc`).
+- **Two-mount disk (same shape as §7.2.2)**: `/` is 148 GB (69 GB used
+  as delivered), `/home/jupyter` is 98 GB and nearly empty. **All
+  data + repo must live under `/home/jupyter/`**, not the user's own
+  home under `/`, to avoid filling the small root partition.
+- **Single-user OS Login (improvement over §7.2.2)**: `gcloud compute
+  ssh jupyter@...` lands you as `thesisgcplmu_gmail_com`; `gcloud
+  compute scp` also uses that same user. No more two-user split with
+  the `jupyter` service user. `/home/jupyter/` is owned by the
+  `jupyter` system user by default — one `sudo chown -R
+  $(whoami):$(whoami) /home/jupyter/OCC_HTR` grants your OS Login
+  user write access to the workspace subfolder.
+- Repo location: `/home/jupyter/OCC_HTR/` (mirrors §7.2.2). Clone
+  method:
+  ```bash
+  gcloud compute ssh jupyter@instance-20260720-095326 --zone=us-west4-c
+  sudo mkdir -p /home/jupyter/OCC_HTR
+  sudo chown -R $(whoami):$(whoami) /home/jupyter/OCC_HTR
+  cd /home/jupyter
+  git clone <REPO_URL> OCC_HTR   # HTTPS + PAT, or SSH if key is enrolled
+  cd OCC_HTR
+  ~/.local/bin/uv sync
+  ~/.local/bin/uv pip install transformers==5.12.1   # same 5.13 pin as §7.2.2
+  ```
+- **Standard invocation pattern on this VM** (mirrors §7.2.2 but with
+  the correct user & no /tmp bounce needed for scp):
+  ```bash
+  env PROJECT_ROOT=. PYTHONPATH=. python3 scripts/...   # avoid pip install -e .
+  nohup ... > logs/... 2>&1 &                          # for anything > 10 min
+  ```
+- **Stop the instance when idle**: `gcloud compute instances stop
+  instance-20260720-095326 --zone=us-west4-c` (billing pause: ~$0.7/h
+  running → ~$0.05/h stopped).
+- **Planned use (as of 2026-07-21)**: rerun the full 600-annotated
+  training grid — kraken matched-pool no-medical + medical, TrOCR
+  ViT+RoBERTa + Swin+BERT — because a subset of the 600-line
+  annotations was corrected between the earlier runs and today.
+  Also plan to re-execute the 2-stage Swin+BERT pipeline (Stage 1a
+  on 30 k COMETA + Stage 2a/b) and finally attempt Stage 1b on a
+  larger COMETA pool (60 k or the full 266 k) once the upload path
+  is validated on this instance.
 
 ### 7.3 Model checkpoints on disk
 

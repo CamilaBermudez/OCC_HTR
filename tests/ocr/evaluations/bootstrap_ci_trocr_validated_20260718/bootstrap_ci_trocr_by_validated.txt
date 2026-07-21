@@ -1,0 +1,78 @@
+==================================================================
+SCOPE: validated (validated_100=1)
+==================================================================
+Manifest filter: validation_300_manifest_.csv where validated_100=1 -> 286 stems selected
+Loaded 11 models across 285 shared lines
+Bootstrap: 10000 iterations, seed=42
+
+## Per-model 95 % CIs (paired-bootstrap on the 299-line held-out set)
+
+| model                                    | char_acc [95% CI]              | word_acc [95% CI]              | CER [95% CI]                   | WER [95% CI]                   |
+|------------------------------------------|--------------------------------|--------------------------------|--------------------------------|--------------------------------|
+| runD1_swinbert                           |  14.39% [ 12.86%,  15.87%] |  -6.35% [ -8.44%,  -4.41%] | 0.8561 [0.8413, 0.8714] | 1.0635 [1.0441, 1.0844] |
+| runD2_vitroberta                         |  91.88% [ 90.99%,  92.72%] |  67.77% [ 64.87%,  70.58%] | 0.0812 [0.0728, 0.0901] | 0.3223 [0.2942, 0.3513] |
+| stage1a_cometa_pretrain                  |  59.35% [ 57.67%,  61.02%] |  29.16% [ 26.44%,  31.85%] | 0.4065 [0.3898, 0.4233] | 0.7084 [0.6815, 0.7356] |
+| stage2a_cometa                           |  61.03% [ 59.18%,  62.87%] |  31.20% [ 28.13%,  34.23%] | 0.3897 [0.3713, 0.4082] | 0.6880 [0.6577, 0.7187] |
+| stage2b_medical                          |  61.09% [ 59.23%,  62.95%] |  33.20% [ 30.46%,  35.95%] | 0.3891 [0.3705, 0.4077] | 0.6680 [0.6405, 0.6954] |
+| swinbert_cometa                          |  22.43% [ 21.55%,  23.30%] | -25.79% [-28.68%, -22.95%] | 0.7757 [0.7670, 0.7845] | 1.2579 [1.2295, 1.2868] |
+| swinbert_medical                         |  25.17% [ 24.30%,  26.04%] |  -3.75% [ -5.61%,  -1.92%] | 0.7483 [0.7396, 0.7570] | 1.0375 [1.0192, 1.0561] |
+| swinbert_realonly_from_scratch           |  22.91% [ 21.71%,  24.06%] | -12.58% [-15.04%, -10.12%] | 0.7709 [0.7594, 0.7829] | 1.1258 [1.1012, 1.1504] |
+| vitroberta_cometa                        |  93.55% [ 92.77%,  94.28%] |  71.75% [ 68.98%,  74.48%] | 0.0645 [0.0572, 0.0723] | 0.2825 [0.2552, 0.3102] |
+| vitroberta_medical                       |  94.54% [ 93.93%,  95.14%] |  73.79% [ 71.09%,  76.41%] | 0.0546 [0.0486, 0.0607] | 0.2621 [0.2359, 0.2891] |
+| vitroberta_realonly                      |  93.82% [ 93.08%,  94.51%] |  72.14% [ 69.45%,  74.75%] | 0.0618 [0.0549, 0.0692] | 0.2786 [0.2525, 0.3055] |
+
+## Paired-bootstrap comparisons (A vs B)
+
+Interpretation: 95 % CI on the *difference* A - B on the same resampled lines.
+If 0 is outside the CI, the ordering is statistically significant (α = 0.05).
+P(A better) = fraction of bootstrap resamples in which A's char_acc > B's.
+
+| A                                | B                                | Δ char_acc [95% CI]            | Δ word_acc [95% CI]            | P(A > B)   | note |
+|----------------------------------|----------------------------------|--------------------------------|--------------------------------|------------|--------|
+| vitroberta_medical               | vitroberta_cometa                |  +0.98% [ +0.41%,  +1.58%] |  +2.04% [ -0.00%,  +4.01%] |  0.999 ✓sig | corpus ablation: medical vs COMETA (pretrained arch, matched) |
+| vitroberta_medical               | vitroberta_realonly              |  +0.73% [ +0.18%,  +1.31%] |  +1.70% [ -0.31%,  +3.74%] |  0.995 ✓sig | medical aug vs no aug (pretrained arch) |
+| vitroberta_realonly              | runD2_vitroberta                 |  +1.93% [ +1.19%,  +2.71%] |  +4.32% [ +2.12%,  +6.56%] |  1.000 ✓sig | real-only vs Dataset D (re-render volume without external corpus) |
+| stage2b_medical                  | swinbert_medical                 | +35.93% [+34.06%, +37.79%] | +36.96% [+34.13%, +39.75%] |  1.000 ✓sig | staged Swin+BERT vs single-stage Swin+BERT (B'') |
+| stage2a_cometa                   | stage2b_medical                  |  -0.06% [ -1.67%,  +1.56%] |  -1.99% [ -4.26%,  +0.36%] |  0.471      | staged: does corpus choice matter? |
+| stage1a_cometa_pretrain          | swinbert_medical                 | +34.19% [+32.42%, +36.03%] | +32.90% [+30.05%, +35.82%] |  1.000 ✓sig | COMETA pretrain alone vs single-stage baseline |
+| stage2b_medical                  | stage1a_cometa_pretrain          |  +1.74% [ +0.40%,  +3.12%] |  +4.04% [ +1.85%,  +6.27%] |  0.994 ✓sig | does manuscript FT add value on top of Stage 1? |
+| vitroberta_medical               | stage2b_medical                  | +33.45% [+31.83%, +35.14%] | +40.62% [+37.73%, +43.60%] |  1.000 ✓sig | best pretrained TrOCR vs best staged Swin+BERT |
+==================================================================
+SCOPE: unvalidated (validated_100=0)
+==================================================================
+Manifest filter: validation_300_manifest_.csv where validated_100=0 -> 14 stems selected
+Loaded 11 models across 14 shared lines
+Bootstrap: 10000 iterations, seed=42
+
+## Per-model 95 % CIs (paired-bootstrap on the 299-line held-out set)
+
+| model                                    | char_acc [95% CI]              | word_acc [95% CI]              | CER [95% CI]                   | WER [95% CI]                   |
+|------------------------------------------|--------------------------------|--------------------------------|--------------------------------|--------------------------------|
+| runD1_swinbert                           |  16.00% [ 11.52%,  20.71%] |  -3.07% [-11.11%,   3.85%] | 0.8400 [0.7929, 0.8848] | 1.0307 [0.9615, 1.1111] |
+| runD2_vitroberta                         |  86.36% [ 82.28%,  90.24%] |  57.84% [ 46.60%,  68.52%] | 0.1364 [0.0976, 0.1772] | 0.4216 [0.3148, 0.5340] |
+| stage1a_cometa_pretrain                  |  55.77% [ 48.89%,  63.03%] |  23.41% [ 12.77%,  33.33%] | 0.4423 [0.3697, 0.5111] | 0.7659 [0.6667, 0.8723] |
+| stage2a_cometa                           |  50.98% [ 45.87%,  56.32%] |  24.44% [ 13.13%,  35.24%] | 0.4902 [0.4368, 0.5413] | 0.7556 [0.6476, 0.8687] |
+| stage2b_medical                          |  55.05% [ 48.82%,  61.86%] |  30.27% [ 18.75%,  41.75%] | 0.4495 [0.3814, 0.5118] | 0.6973 [0.5825, 0.8125] |
+| swinbert_cometa                          |  21.73% [ 20.62%,  22.88%] | -20.70% [-28.87%, -13.08%] | 0.7827 [0.7712, 0.7938] | 1.2070 [1.1308, 1.2887] |
+| swinbert_medical                         |  26.36% [ 24.72%,  27.92%] |   0.93% [ -5.15%,   6.54%] | 0.7364 [0.7208, 0.7528] | 0.9907 [0.9346, 1.0515] |
+| swinbert_realonly_from_scratch           |  23.39% [ 19.93%,  26.53%] |  -3.95% [-10.10%,   1.85%] | 0.7661 [0.7347, 0.8007] | 1.0395 [0.9815, 1.1010] |
+| vitroberta_cometa                        |  88.76% [ 84.17%,  92.45%] |  64.67% [ 53.06%,  75.24%] | 0.1124 [0.0755, 0.1583] | 0.3533 [0.2476, 0.4694] |
+| vitroberta_medical                       |  92.28% [ 90.09%,  94.41%] |  69.59% [ 59.00%,  79.09%] | 0.0772 [0.0559, 0.0991] | 0.3041 [0.2091, 0.4100] |
+| vitroberta_realonly                      |  91.70% [ 88.44%,  94.68%] |  63.69% [ 52.48%,  75.00%] | 0.0830 [0.0532, 0.1156] | 0.3631 [0.2500, 0.4752] |
+
+## Paired-bootstrap comparisons (A vs B)
+
+Interpretation: 95 % CI on the *difference* A - B on the same resampled lines.
+If 0 is outside the CI, the ordering is statistically significant (α = 0.05).
+P(A better) = fraction of bootstrap resamples in which A's char_acc > B's.
+
+| A                                | B                                | Δ char_acc [95% CI]            | Δ word_acc [95% CI]            | P(A > B)   | note |
+|----------------------------------|----------------------------------|--------------------------------|--------------------------------|------------|--------|
+| vitroberta_medical               | vitroberta_cometa                |  +3.49% [ +0.92%,  +7.47%] |  +4.93% [ -1.79%, +10.20%] |  1.000 ✓sig | corpus ablation: medical vs COMETA (pretrained arch, matched) |
+| vitroberta_medical               | vitroberta_realonly              |  +0.57% [ -1.68%,  +3.15%] |  +5.88% [ -3.96%, +17.76%] |  0.634      | medical aug vs no aug (pretrained arch) |
+| vitroberta_realonly              | runD2_vitroberta                 |  +5.35% [ +2.39%,  +8.41%] |  +5.93% [ -0.99%, +14.14%] |  1.000 ✓sig | real-only vs Dataset D (re-render volume without external corpus) |
+| stage2b_medical                  | swinbert_medical                 | +28.71% [+22.43%, +35.84%] | +29.38% [+18.69%, +40.78%] |  1.000 ✓sig | staged Swin+BERT vs single-stage Swin+BERT (B'') |
+| stage2a_cometa                   | stage2b_medical                  |  -4.07% [ -8.53%,  +0.56%] |  -5.94% [-14.43%,  +2.04%] |  0.042      | staged: does corpus choice matter? |
+| stage1a_cometa_pretrain          | swinbert_medical                 | +29.49% [+22.47%, +36.98%] | +22.57% [+14.29%, +31.25%] |  1.000 ✓sig | COMETA pretrain alone vs single-stage baseline |
+| stage2b_medical                  | stage1a_cometa_pretrain          |  -0.80% [ -6.79%,  +5.74%] |  +6.76% [ -0.00%, +14.41%] |  0.379      | does manuscript FT add value on top of Stage 1? |
+| vitroberta_medical               | stage2b_medical                  | +37.16% [+31.19%, +42.44%] | +39.13% [+29.29%, +48.11%] |  1.000 ✓sig | best pretrained TrOCR vs best staged Swin+BERT |
