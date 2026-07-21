@@ -29,7 +29,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-_AUG_FILENAME_RE = re.compile(r"^(.+)_aug\d+\.png$")
+_AUG_FILENAME_RE = re.compile(r"^(.+?)(?:\.gt_l\d+)?_aug\d+\.png$")
 
 
 def _sanitize_for_kraken(name: str) -> str:
