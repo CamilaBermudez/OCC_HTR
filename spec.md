@@ -1270,6 +1270,79 @@ fresh Vertex AI Workbench instance in a **new GCP project** on
   larger COMETA pool (60 k or the full 266 k) once the upload path
   is validated on this instance.
 
+#### 7.2.4 Canonical upload pattern — split tarball + reassemble
+
+**Problem.** Direct `gcloud compute scp` of large tarballs (> ~1 GB
+in practice; the failure mode kicks in earlier over residential
+Wi-Fi or NAT) frequently stalls or drops mid-transfer, and gcloud
+does not resume — a killed transfer means starting over from byte 0.
+The 6 GB `aug_20260714_cometa_30k` upload to §7.2.2 stalled
+repeatedly on direct scp; the 53 GB full COMETA pool proved outright
+infeasible with direct scp.
+
+**Fix.** Split the tarball into chunks (500 MB is a robust default
+that survives typical residential connections), scp each chunk
+separately (retries only lose one chunk, not the whole file), then
+concatenate on the VM. Deterministic naming lets a partial upload
+resume by only re-scp'ing the missing parts.
+
+**Recipe (adapt paths per upload):**
+
+Local (laptop):
+
+```
+# 1. Build tarball. COPYFILE_DISABLE=1 blocks macOS AppleDouble sidecars
+#    (see §11 — those doubled Medusa's input file count on the old VM).
+cd <REPO_ROOT>
+COPYFILE_DISABLE=1 tar -cf /tmp/<upload_name>.tar <path1> <path2> ...
+
+# 2. Split into 500 MB chunks named <upload_name>.tar.part-aa/ab/ac/...
+split -b 500m /tmp/<upload_name>.tar /tmp/<upload_name>.tar.part-
+ls -lh /tmp/<upload_name>.tar.part-*
+
+# 3. scp all chunks. --scp-flag='-o ServerAliveInterval=60' keeps the
+#    SSH session alive through Wi-Fi hiccups.
+gcloud compute scp \
+    --scp-flag='-o ServerAliveInterval=60' \
+    --scp-flag='-o ServerAliveCountMax=10' \
+    /tmp/<upload_name>.tar.part-* \
+    jupyter@<INSTANCE>:/tmp/ \
+    --zone=<ZONE>
+```
+
+Remote (VM), after all parts land:
+
+```
+cd /home/jupyter/OCC_HTR
+# 4. Reassemble deterministically — cat glob-sorts lexicographically,
+#    which matches the split naming (part-aa < part-ab < ...).
+cat /tmp/<upload_name>.tar.part-* > /tmp/<upload_name>.tar
+
+# 5. Verify byte count matches the local tarball before untarring.
+ls -l /tmp/<upload_name>.tar
+
+# 6. Untar into place, then clean up all chunks + the reassembled tar.
+tar -xf /tmp/<upload_name>.tar
+rm /tmp/<upload_name>.tar /tmp/<upload_name>.tar.part-*
+```
+
+**Resume a partial upload.** If some chunks landed and some didn't,
+re-run step 3 with the specific missing parts (or the whole glob —
+gcloud will overwrite existing chunks byte-identically, so retry is
+idempotent). Never delete a chunk that landed successfully before
+retrying — you'll re-upload data you already have.
+
+**When to bother.** Rule of thumb: anything **≥ 1 GB uncompressed**
+gets the split treatment by default. Small uploads (< 500 MB) can
+go direct — single-chunk splits are pointless overhead.
+
+**Chunk sizing.** 500 MB is the default because it balances two
+concerns: (a) small enough that a stalled scp only wastes one chunk's
+worth of transfer, (b) large enough that the total number of chunks
+stays manageable (13 chunks for 6 GB, 106 chunks for 53 GB, both
+within reason). For LAN or high-quality corporate networks, 1-2 GB
+chunks are fine and reduce round-trip overhead.
+
 ### 7.3 Model checkpoints on disk
 
 - `models/ocr/catmus-medieval.mlmodel` — kraken base.
