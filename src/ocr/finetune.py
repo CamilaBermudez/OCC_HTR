@@ -94,6 +94,60 @@ def _source_stem(aug_filename: str) -> str | None:
     return m.group(1) if m else None
 
 
+def _compute_real_stem_split(
+    real_folder: Path,
+    real_train_frac: float,
+    real_val_frac: float,
+    seed: int,
+) -> tuple[list[tuple[Path, Path]], list[tuple[Path, Path]], set[str], set[str], list[str]]:
+    """Deterministic stem-level split of the real folder.
+
+    Returns ``(train_pairs, val_pairs, train_stems, val_stems, skipped_empty)``.
+
+    The ``train_stems`` and ``val_stems`` sets are what the aug staging step
+    uses to route each aug file to the SAME side its source real stem
+    landed on. That way, a stem in real val has both its real image AND
+    its 5 aug siblings in val (no text-level leak into training).
+    """
+    assert 0.0 <= real_train_frac <= 1.0, f"real_train_frac out of range: {real_train_frac}"
+    assert 0.0 <= real_val_frac <= 1.0, f"real_val_frac out of range: {real_val_frac}"
+    assert real_train_frac + real_val_frac <= 1.0 + 1e-9, (
+        f"real_train_frac + real_val_frac must be <= 1.0, got "
+        f"{real_train_frac} + {real_val_frac} = {real_train_frac + real_val_frac}"
+    )
+    assert real_folder.is_dir(), f"Real folder not found: {real_folder}"
+
+    pngs = sorted(real_folder.glob("*.png"))
+    pairs: list[tuple[Path, Path]] = []
+    skipped_empty: list[str] = []
+    for p in pngs:
+        gt = p.with_suffix(".gt.txt")
+        if not gt.is_file():
+            continue
+        if not gt.read_text(encoding="utf-8").strip():
+            skipped_empty.append(p.stem)
+            continue
+        pairs.append((p, gt))
+    assert pairs, f"No usable <stem>.png + non-empty <stem>.gt.txt pairs in {real_folder}"
+
+    n_total = len(pairs)
+    n_real_train = int(n_total * real_train_frac)
+    n_real_val = int(n_total * real_val_frac)
+    assert n_real_train + n_real_val > 0, (
+        f"Real fractions yield 0 train + 0 val from {n_total} pairs — "
+        f"either raise the fractions or add more samples."
+    )
+
+    rng = random.Random(seed)
+    rng.shuffle(pairs)
+    train_pairs = pairs[:n_real_train]
+    val_pairs = pairs[n_real_train : n_real_train + n_real_val]
+
+    train_stems = {p.stem for p, _ in train_pairs}
+    val_stems = {p.stem for p, _ in val_pairs}
+    return train_pairs, val_pairs, train_stems, val_stems, skipped_empty
+
+
 def _link_or_copy(src: Path, dst: Path) -> None:
     """Create a symlink from dst -> src; fall back to copy on failure.
 
@@ -117,12 +171,23 @@ def stage_finetune_data(
     seed: int,
     smoke_size: int | None,
     logger: logging.Logger,
+    route_by_stems: tuple[set[str], set[str]] | None = None,
 ) -> tuple[Path, Path, dict]:
     """Stage augmented PNGs + .gt.txt siblings into train/val subdirs.
 
     Returns ``(train_list_path, val_list_path, stats)``. The list files
     contain one absolute image path per line, which is what ``ketos
     train`` expects via ``-t`` and ``-e``.
+
+    If ``route_by_stems=(train_stems, val_stems)`` is provided, aug files
+    are routed strictly by their source stem's membership in those sets
+    — aug of a val stem goes to val, aug of a train stem goes to train.
+    This makes the aug pool's split CONSISTENT with an external real
+    split (see ``_compute_real_stem_split`` + ``mix_in_real_samples``)
+    and closes the text-level leak that used to occur when the two
+    partitions were computed independently. ``val_fraction`` and
+    ``smoke_size`` are ignored when routing is active — the external
+    sets fully determine the partition.
     """
     labels: dict[str, str] = json.loads(labels_json.read_text(encoding="utf-8"))
     assert labels, f"Empty labels file: {labels_json}"
@@ -137,17 +202,35 @@ def stage_finetune_data(
             continue
         by_source.setdefault(stem, []).append(aug_name)
 
-    source_stems = sorted(by_source.keys())
-    rng = random.Random(seed)
-    rng.shuffle(source_stems)
+    if route_by_stems is not None:
+        external_train, external_val = route_by_stems
+        aug_stems_set = set(by_source.keys())
+        train_stems = external_train & aug_stems_set
+        val_stems = external_val & aug_stems_set
+        unrouted = aug_stems_set - external_train - external_val
+        logger.info(
+            f"stage_finetune_data: routing by external stem split "
+            f"(aug pool has {len(aug_stems_set)} stems; "
+            f"routed {len(train_stems)} to train + {len(val_stems)} to val; "
+            f"{len(unrouted)} unrouted aug stems dropped)"
+        )
+        if smoke_size is not None:
+            logger.warning(
+                "route_by_stems given AND smoke_size given: smoke_size ignored, "
+                "external partition governs."
+            )
+    else:
+        source_stems = sorted(by_source.keys())
+        rng = random.Random(seed)
+        rng.shuffle(source_stems)
 
-    if smoke_size is not None:
-        source_stems = source_stems[:smoke_size]
-        logger.info(f"Smoke mode: restricting to {len(source_stems)} source lines")
+        if smoke_size is not None:
+            source_stems = source_stems[:smoke_size]
+            logger.info(f"Smoke mode: restricting to {len(source_stems)} source lines")
 
-    n_val = max(1, int(round(len(source_stems) * val_fraction)))
-    val_stems = set(source_stems[:n_val])
-    train_stems = set(source_stems[n_val:])
+        n_val = max(1, int(round(len(source_stems) * val_fraction)))
+        val_stems = set(source_stems[:n_val])
+        train_stems = set(source_stems[n_val:])
     assert train_stems and val_stems, (
         f"Split produced empty side (train={len(train_stems)}, val={len(val_stems)}). "
         f"Need at least 2 source lines."
@@ -215,6 +298,7 @@ def mix_in_real_samples(
     real_replaces_synth_val: bool,
     seed: int,
     logger: logging.Logger,
+    precomputed_pairs: tuple[list[tuple[Path, Path]], list[tuple[Path, Path]]] | None = None,
 ) -> dict:
     """Drop real-manuscript ``<stem>.png + <stem>.gt.txt`` pairs into the
     staging train/val splits so the fine-tune sees real data alongside
@@ -246,49 +330,59 @@ def mix_in_real_samples(
     Asserts: real samples must form ``.png + .gt.txt`` pairs, fractions
     must be non-negative and sum to ``<= 1.0``.
     """
-    assert 0.0 <= real_train_frac <= 1.0, f"real_train_frac out of range: {real_train_frac}"
-    assert 0.0 <= real_val_frac <= 1.0, f"real_val_frac out of range: {real_val_frac}"
-    assert real_train_frac + real_val_frac <= 1.0 + 1e-9, (
-        f"real_train_frac + real_val_frac must be <= 1.0, got "
-        f"{real_train_frac} + {real_val_frac} = {real_train_frac + real_val_frac}"
-    )
     real_folder = Path(real_folder)
-    assert real_folder.is_dir(), f"Real folder not found: {real_folder}"
-    pngs = sorted(real_folder.glob("*.png"))
-    pairs: list[tuple[Path, Path]] = []
-    skipped_empty: list[str] = []
-    for p in pngs:
-        gt = p.with_suffix(".gt.txt")
-        if not gt.is_file():
-            continue
-        if not gt.read_text(encoding="utf-8").strip():
-            # A reviewer marked the image unreadable by emptying the .gt.txt;
-            # we silently drop it rather than letting kraken raise
-            # "No text for ground truth line ...". The pair stays on disk so
-            # the user can come back and correct it later.
-            skipped_empty.append(p.stem)
-            continue
-        pairs.append((p, gt))
-    if skipped_empty:
-        logger.warning(
-            f"Skipped {len(skipped_empty)} real sample(s) with empty .gt.txt: "
-            + ", ".join(skipped_empty[:5])
-            + ("…" if len(skipped_empty) > 5 else "")
+    if precomputed_pairs is not None:
+        train_pairs, val_pairs = precomputed_pairs
+        n_total = len(train_pairs) + len(val_pairs)
+        n_real_train = len(train_pairs)
+        n_real_val = len(val_pairs)
+        logger.info(
+            f"mix_in_real_samples: using precomputed split "
+            f"({n_real_train} train + {n_real_val} val = {n_total} pairs)"
         )
-    assert pairs, f"No usable <stem>.png + non-empty <stem>.gt.txt pairs in {real_folder}"
+    else:
+        assert 0.0 <= real_train_frac <= 1.0, f"real_train_frac out of range: {real_train_frac}"
+        assert 0.0 <= real_val_frac <= 1.0, f"real_val_frac out of range: {real_val_frac}"
+        assert real_train_frac + real_val_frac <= 1.0 + 1e-9, (
+            f"real_train_frac + real_val_frac must be <= 1.0, got "
+            f"{real_train_frac} + {real_val_frac} = {real_train_frac + real_val_frac}"
+        )
+        assert real_folder.is_dir(), f"Real folder not found: {real_folder}"
+        pngs = sorted(real_folder.glob("*.png"))
+        pairs: list[tuple[Path, Path]] = []
+        skipped_empty: list[str] = []
+        for p in pngs:
+            gt = p.with_suffix(".gt.txt")
+            if not gt.is_file():
+                continue
+            if not gt.read_text(encoding="utf-8").strip():
+                # A reviewer marked the image unreadable by emptying the .gt.txt;
+                # we silently drop it rather than letting kraken raise
+                # "No text for ground truth line ...". The pair stays on disk so
+                # the user can come back and correct it later.
+                skipped_empty.append(p.stem)
+                continue
+            pairs.append((p, gt))
+        if skipped_empty:
+            logger.warning(
+                f"Skipped {len(skipped_empty)} real sample(s) with empty .gt.txt: "
+                + ", ".join(skipped_empty[:5])
+                + ("…" if len(skipped_empty) > 5 else "")
+            )
+        assert pairs, f"No usable <stem>.png + non-empty <stem>.gt.txt pairs in {real_folder}"
 
-    n_total = len(pairs)
-    n_real_train = int(n_total * real_train_frac)
-    n_real_val = int(n_total * real_val_frac)
-    assert n_real_train + n_real_val > 0, (
-        f"Real fractions yield 0 train + 0 val from {n_total} pairs — "
-        f"either raise the fractions or add more samples."
-    )
+        n_total = len(pairs)
+        n_real_train = int(n_total * real_train_frac)
+        n_real_val = int(n_total * real_val_frac)
+        assert n_real_train + n_real_val > 0, (
+            f"Real fractions yield 0 train + 0 val from {n_total} pairs — "
+            f"either raise the fractions or add more samples."
+        )
 
-    rng = random.Random(seed)
-    rng.shuffle(pairs)
-    train_pairs = pairs[:n_real_train]
-    val_pairs = pairs[n_real_train : n_real_train + n_real_val]
+        rng = random.Random(seed)
+        rng.shuffle(pairs)
+        train_pairs = pairs[:n_real_train]
+        val_pairs = pairs[n_real_train : n_real_train + n_real_val]
 
     train_dir = staging_dir / "train"
     val_dir = staging_dir / "val"
@@ -642,6 +736,39 @@ def finetune(
     (run_dir / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
     logger.info(f"Config: {json.dumps(config)}")
 
+    # If both real and synth pools are in play, compute the real stem
+    # split ONCE up front and route the aug pool by the same partition.
+    # This guarantees a stem in real val has its 5 aug siblings in val
+    # too (not in train), closing the text-level leak that used to
+    # occur when the two shuffles were independent (see finetune.py
+    # commit + spec.md §6.3 leak-fix note).
+    mixing_real_and_synth = (
+        not no_synth_train
+        and real_folder is not None
+        and (real_train_frac > 0 or real_val_frac > 0)
+    )
+    if mixing_real_and_synth:
+        (
+            precomputed_train_pairs,
+            precomputed_val_pairs,
+            real_train_stems,
+            real_val_stems,
+            _skipped_empty,
+        ) = _compute_real_stem_split(
+            real_folder=Path(real_folder),
+            real_train_frac=real_train_frac,
+            real_val_frac=real_val_frac,
+            seed=seed,
+        )
+        route_by_stems = (real_train_stems, real_val_stems)
+        logger.info(
+            f"Coordinated split: real={len(real_train_stems)} train + "
+            f"{len(real_val_stems)} val stems; aug files will follow same partition."
+        )
+    else:
+        precomputed_train_pairs = precomputed_val_pairs = None
+        route_by_stems = None
+
     if no_synth_train:
         # Real-only training: skip the synthetic staging step entirely.
         # Catmus already understands medieval text generically, so for
@@ -670,8 +797,21 @@ def finetune(
             seed=seed,
             smoke_size=effective_smoke_size,
             logger=logger,
+            route_by_stems=route_by_stems,
         )
     if real_folder is not None and (real_train_frac > 0 or real_val_frac > 0):
+        # When we've already routed augs by the real split, the val_list
+        # holds aug files for val stems that we WANT to keep. Forcing
+        # real_replaces_synth_val=False makes mix_in_real_samples append
+        # (not overwrite), so val = aug of val stems + real val images.
+        effective_rrsv = real_replaces_synth_val
+        if mixing_real_and_synth and real_replaces_synth_val:
+            logger.info(
+                "route_by_stems in effect; overriding real_replaces_synth_val=True "
+                "-> False so aug files of val stems (already routed to val) are retained "
+                "alongside the real val images."
+            )
+            effective_rrsv = False
         real_stats = mix_in_real_samples(
             real_folder=Path(real_folder),
             staging_dir=staging_dir,
@@ -679,9 +819,12 @@ def finetune(
             val_list=val_list,
             real_train_frac=real_train_frac,
             real_val_frac=real_val_frac,
-            real_replaces_synth_val=real_replaces_synth_val,
+            real_replaces_synth_val=effective_rrsv,
             seed=seed,
             logger=logger,
+            precomputed_pairs=(
+                (precomputed_train_pairs, precomputed_val_pairs) if mixing_real_and_synth else None
+            ),
         )
         stats.update(real_stats)
     (run_dir / "stats.json").write_text(json.dumps(stats, indent=2), encoding="utf-8")
