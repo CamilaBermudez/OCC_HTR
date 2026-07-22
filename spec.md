@@ -774,6 +774,12 @@ tokenizers (a few MB each).
 
 #### 6.3.7 Bootstrap 95 % confidence intervals for TrOCR-track models on 300-val (2026-07-18)
 
+> **⚠ Two findings here were reversed by the corrected-annotation rerun
+> (§6.3.10).** "Medical > COMETA for pretrained ViT+RoBERTa" (+1.11 pp) and
+> "manuscript FT adds +1.62 pp over Stage 1" are both **no longer significant**
+> on the corrected 300-val. The bootstrap machinery and the still-significant
+> comparisons below remain valid.
+
 **Motivation.** All numbers in §6.3, §6.3.4 and §6.3.5 are point
 estimates on a 299-line held-out set. Two questions the committee
 will ask:
@@ -1090,6 +1096,104 @@ same "clean-methodology" section). Recommend an appendix subsection
 titled "Text-level leak in the mixed-real-and-synthetic split" with
 this exact diagnosis and the before/after numbers above.
 
+#### 6.3.10 Corrected-annotation full rerun (2026-07-22) — refreshed leaderboard + collapsed findings
+
+**What changed.** Commit `f42d0ed` corrected **22 train + 10 val
+annotations**. The full grid was then retrained on the new L4 VM
+(§7.2.3) and re-evaluated against the permanent 300-val (299 non-empty).
+GT parity verified: the VM validation `.gt.txt` set is byte-identical
+(`sha1 69cd999…`) to the committed corrected local set, so every number
+below is against the same corrected benchmark.
+
+**Runs re-scored (2026-07-22 queue, all against corrected 300-val):**
+7 TrOCR (`refresh_trocr_vs_val300_20260722`) + 2 leak-fixed kraken
+(`kraken_leakfixed_vs_val300_20260722`). Both eval dirs pulled to laptop
+under `tests/ocr/evaluations/`.
+
+**Refreshed per-model char_acc (paired bootstrap, 10 000 it, seed=42,
+299 lines):**
+
+| Model | char_acc [95 % CI] | word_acc | vs prior spec |
+|---|---|---|---|
+| ViT+RoBERTa · medical (B″) | 93.89 % [93.06, 94.63] | 73.44 % | 0.9443 |
+| ViT+RoBERTa · matched COMETA (A″) | 93.45 % [92.70, 94.17] | 72.09 % | 0.9332 |
+| Swin+BERT · Stage 1a COMETA pretrain | 61.73 % [59.89, 63.51] | 32.93 % | 0.5918 |
+| Swin+BERT · Stage 2b medical | 61.30 % [59.54, 63.04] | 33.23 % | 0.6080 |
+| Swin+BERT · Stage 2a matched COMETA | 61.24 % [59.55, 62.97] | 32.68 % | 0.6053 |
+| Swin+BERT single-stage COMETA | 19.53 % [18.65, 20.38] | −7.20 % | 0.2240 |
+| Swin+BERT single-stage medical | 12.38 % [10.83, 13.81] | −15.00 % | 0.2523 |
+| kraken matched **no-medical** leak-fixed (`_200641`) | 90.18 % [89.17, 91.15] | 55.61 % | 0.9620 (hist.) |
+| kraken matched **medical** leak-fixed (`_021723`) | 89.94 % [88.97, 90.86] | 54.09 % | — |
+
+**Findings that HOLD (paired bootstrap, corrected annotations):**
+- **Staging lifts Swin+BERT massively**: Stage 2b vs single-stage medical
+  Δ char_acc = **+48.90 %** [+46.59, +51.30], and **Stage 1 pretrain alone**
+  vs single-stage = **+49.38 %** [+47.00, +51.83]. Both P(A > B) = 1.000.
+  (Larger than the §6.3.4 reading of +35.6 pp — because the single-stage
+  medical baseline fell to 0.1238 this run, widening the gap.)
+- **Pretrained ViT+RoBERTa ≫ best staged Swin+BERT**: +32.60 %
+  [+30.91, +34.27], P = 1.000.
+- **A″/B″ tie under staging**: Stage 2a vs Stage 2b Δ = −0.05 %
+  [−1.49, +1.39], P = 0.474 — still within noise (as in §6.3.7).
+
+**Findings that COLLAPSED (were significant → now within noise):**
+
+| Comparison | Old (spec) | Corrected (2026-07-22) | Now |
+|---|---|---|---|
+| Medical vs COMETA, pretrained ViT+RoBERTa | **+1.11 % ✓sig** (§6.3.7) | +0.44 % [−0.31, +1.14], P = 0.88 | **not sig** |
+| Medical **hurts** kraken | **−4.31 % ✓sig** (§6.4) | −0.23 % [−0.65, +0.24], P = 0.85 | **not sig** |
+| Manuscript FT adds value over Stage 1 | **+1.62 % ✓sig** (§6.3.7) | −0.45 % [−1.89, +0.99], P = 0.27 | **not sig / gone** |
+
+The first two together **undercut the §6.4 "medical corpus is
+architecture-dependent" cross-family story** — on the corrected benchmark
+neither the +helps-TrOCR nor the −hurts-kraken effect is significant. The
+§6.3.7 "manuscript fine-tuning adds a small but significant lift" is gone.
+These reversals are the headline of the corrected-annotation rerun and
+need to be reflected before any of §6.1/§6.3/§6.4 point estimates are
+cited. **Caveat:** catmus + Medusa have **not yet** been re-evaluated
+against the corrected GT, and the validated-285 manifest (§6.3.8) predates
+the 10 val corrections — both are follow-ups before a fully consistent
+leaderboard.
+
+**Kraken baseline-drop investigation (aug-pool hypothesis REFUTED).**
+The leak-fixed kraken runs land at ~0.90 on 300-val — ~6 pp below the
+historical canonical 0.9620 and now below catmus (0.9613) and the best
+TrOCR (0.9389). Root-cause investigation:
+- **Aug pool is not the cause.** The new pool `aug_20260721_121550`
+  (601 stems) is a filename-superset of the historical
+  `aug_20260701_232640` (501 stems); shared base renders are **byte-for-byte
+  md5-identical**. The 18 corrected-annotation stems were **re-rendered
+  consistently** (image matches new label; 0 stale image/label mismatches).
+  `⁊` / normalisation consistent across both. Renders + labels are clean.
+- **Not undertraining — the model converged.** Internal val_accuracy
+  plateaued at ~0.953–0.958 over the final ~15 epochs of `_200641`
+  (best 0.958 @ ep 51, early-stopped @ 56). The low 300-val is therefore
+  **not** an early-stopping artefact (an earlier draft's claim, now
+  falsified by the curve). Instead there is a large **synth→real
+  generalisation gap that inverted vs history**: historical `_070741` had
+  internal val 0.889 but real 0.962 (real ≫ synth, +7 pp); the leak-fixed
+  run has internal val 0.958 but real 0.902 (synth ≫ real, −6 pp). The
+  model now masters the synthetic renders and transfers to real manuscript
+  *worse* than it used to. Error mode on hard real lines is truncation /
+  repeated-char output — the manifestation of that gap, not a codec offset.
+- **No pipeline error, and the data matches TrOCR.** kraken-medical
+  (`_021723`) and TrOCR-B″-medical (`trocr_20260722_103007`) train on the
+  **identical** pool `aug_20260721_v2_medical` + same 600 real folder; they
+  differ only in architecture, `val_fraction` (kraken 0.1 vs TrOCR 0.2) and
+  the (now stem-grouped, leak-free) split. The §6.3.9 leak fix is verified
+  (0 val stems leaked). So the ~4 pp kraken-below-TrOCR and ~6 pp
+  kraken-below-history are **real generalisation results, not a bug**.
+- **Open — which change flipped the synth→real transfer.** Candidates: the
+  500→600-stem pool growth, `val_fraction` 0.1, or an interaction with the
+  fixed split. Needs a one-variable ablation to isolate — e.g. re-run
+  leak-fixed kraken on the historical 500-stem `aug_20260701_232640`, or
+  bump `val_fraction` to 0.2 to match TrOCR.
+
+Artefacts: `tests/ocr/evaluations/refresh_trocr_vs_val300_20260722/`,
+`tests/ocr/evaluations/kraken_leakfixed_vs_val300_20260722/` (both CSV+MD,
+on laptop). Bootstrap reproduced locally via `bootstrap_ocr_ci.py` with
+`--pair` overrides for the new run labels.
+
 ### Kraken fine-tune catalog
 
 Every kraken fine-tune this project has produced, with its training
@@ -1105,6 +1209,14 @@ on the permanent 300-val benchmark (§6 results row).
 | `finetune_20260706_151856` | 600 | `aug_merged_anno_medical_20260706` (2000 anno re-renders + 1000 medical corpus renders) | catmus-medieval | 480 train + 120 val + merged synth; the **confounded** medical-corpus run (0.9593 on 300-val) — aug re-render count differs vs `_070741` so the medical vs no-medical delta is not a single-variable comparison |
 | `finetune_20260718_193601` | 600 | `aug_20260712_124729` (3000 anno re-renders of 600 stems × 5) | catmus-medieval | **matched-pool no-medical** (2026-07-18/19); 29 epochs, best at 23; internal val_acc = 0.9430; **300-val char_acc = 0.9096** [89.80, 92.01]. Baseline for the confound-fixed medical comparison. |
 | `finetune_20260719_085411` | 600 | `aug_20260712_v2_medical` (3000 anno re-renders + 1000 medical corpus renders) | catmus-medieval | **matched-pool medical** (2026-07-19); 42 epochs, best at 36; internal val_acc = 0.9457; **300-val char_acc = 0.8664** [85.29, 87.91]. Differs from `_193601` **only** by the 1000-render medical slot. |
+| `finetune_20260721_200641` | 600 | `aug_20260721_121550` (3000 anno re-renders of 600 stems × 5, corrected annotations) | catmus-medieval | **leak-fixed matched no-medical** (§6.3.9 fix + corrected annotations); 56 epochs, best at 51; internal val_acc = 0.9581; **300-val char_acc = 0.9018** [89.17, 91.15]. See §6.3.10 for the baseline-drop investigation. |
+| `finetune_20260722_021723` | 600 | `aug_20260721_v2_medical` (3000 anno re-renders + 1000 medical corpus renders, corrected annotations) | catmus-medieval | **leak-fixed matched medical**; **300-val char_acc = 0.8994** [88.97, 90.86]. Differs from `_200641` **only** by the 1000-render medical slot. |
+
+> **⚠ SUPERSEDED on corrected annotations (see §6.3.10).** On the leak-fixed
+> corrected-annotation runs (`_200641` vs `_021723`) the medical vs no-medical
+> delta is **−0.23 %** [−0.65, +0.24], P = 0.85 → **not significant**. The
+> −4.31 pp figure below is from the earlier (leak-affected, pre-correction)
+> `_193601`/`_085411` pair and should not be cited without that caveat.
 
 **Matched-pool medical vs no-medical (paired bootstrap, 10 000 iterations, validated-285 subset)**:
 Δ char_acc = **−4.31 %** [95 % CI −4.97, −3.66], Δ word_acc = **−13.20 %** [−15.60, −10.84], P(A > B) = 0.000 → **medical significantly HURTS kraken** (see §6.4 for interpretation and contrast with the +1.1 pp medical benefit on pretrained ViT+RoBERTa). Eval artefacts: `tests/ocr/evaluations/kraken_matched_medical_ablation/` (CSV + MD) and `tests/ocr/evaluations/bootstrap_ci_joint_20260720.txt` (joint kraken + TrOCR bootstrap output).
@@ -1147,6 +1259,13 @@ Pending experimental runs:
   — planned next, gives cross-attention a pretrained starting point.
 
 ## 6.4 Cross-family finding: medical corpus is architecture-dependent (2026-07-20)
+
+> **⚠ SUPERSEDED by the corrected-annotation rerun (§6.3.10).** Both legs of
+> this finding lose significance on the corrected 300-val: medical vs COMETA
+> for pretrained ViT+RoBERTa drops to +0.44 % [−0.31, +1.14] (P = 0.88), and
+> medical vs no-medical for leak-fixed kraken to −0.23 % [−0.65, +0.24]
+> (P = 0.85). The "opposite-direction significant effects" story below held on
+> the pre-correction data only; do not cite it without the §6.3.10 caveat.
 
 **Setup.** The medical corpus effect was tested with a matched-pool
 design on two model families, and the confound flagged in §6.3
