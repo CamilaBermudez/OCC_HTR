@@ -991,6 +991,105 @@ The one directional signal worth noting:
   validated_100 --filter-value 1` so kraken numbers are directly
   comparable to the TrOCR-track validated benchmark.
 
+#### 6.3.9 Kraken train/val split text-level leak — diagnosis + fix (2026-07-21)
+
+**Symptom.** After the annotation-correction re-run for kraken
+matched-pool (finetune_20260718_193601, finetune_20260719_085411),
+the new baseline dropped ~5 pp char_acc (0.9620 → 0.9096) vs the
+historical canonical kraken 600 (finetune_20260705_070741). Internal
+val_accuracy was *higher* than the old run (0.943 vs 0.889) but true
+300-val performance was *lower*, and training stopped at only 29
+epochs vs the historical 88 with the same `--lag 5` early stopping.
+
+**Root cause (verified by tracing `src/ocr/finetune.py`).** The
+kraken finetune script did two INDEPENDENT stem-level shuffles when
+both `--augmented-folder` and `--real-folder` were supplied:
+
+1. `stage_finetune_data()` shuffled the 600 aug source stems with
+   seed=42, taking 60 (10 %) as synth val + 540 (90 %) as synth train.
+2. `mix_in_real_samples()` shuffled the 600 real pairs with seed=42
+   too, taking first 480 (80 %) as real train + next 120 (20 %) as
+   real val, then discarded the synth val by default.
+
+Both shuffles operated on the same alphabetically-sorted 600 stems
+with the same seed, so the SAME permutation was applied — but the
+two functions carved the shuffled list at different points. Result:
+positions 480-599 in the permutation ended up as **synth train + real
+val**. **All 120 real val stems had their 5 aug siblings sitting in
+synth train.** The model saw synthetic renders of every val text
+during training, so its internal val_accuracy on the real val images
+converged fast (text-level familiarity) and triggered `--lag 5` early
+stopping while the model was still under-trained on true
+generalisation.
+
+Verified by smoke-test on the current data: intersection of
+`real_val_stems` with `synth_train_stems` = **120 of 120 val stems
+had their augs in train**.
+
+**Fix (commits: kraken finetune coordinate-split + regex + stats-dict
+fixes; `_summarize_and_prune` graceful missing-kraken).** Three
+changes to `src/ocr/finetune.py`:
+
+1. New helper `_compute_real_stem_split()` — determines the 480 train
+   + 120 val real stems ONCE from the real folder (seed 42).
+2. `stage_finetune_data()` accepts an optional `route_by_stems=
+   (train_stems, val_stems)` argument. When given, aug files are
+   routed by their source stem's membership in those sets — augs of
+   a real train stem go to train, augs of a real val stem go to val.
+   Nothing is dropped.
+3. `finetune()` main computes the real split up front (when both
+   real and aug folders are supplied), passes the same partition to
+   both `stage_finetune_data()` and `mix_in_real_samples()`, and
+   force-disables `real_replaces_synth_val` so the val staging
+   preserves the aug val samples that got routed there.
+
+Also fixed `_AUG_FILENAME_RE` (from the greedy `^(.+)_aug\d+\.png$`
+to the non-greedy `^(.+?)(?:\.gt_l\d+)?_aug\d+\.png$` that matches
+`trocr_finetune.py`) so aug source stems now equal real stems and the
+intersection is well-defined. Also patched `_summarize_and_prune` to
+tolerate the `kraken` package not being importable in the parent
+Python (system python vs `uv run`) — best_model preserved by ketos
+either way, extras still pruned even without kraken.
+
+**TrOCR was already correct.** `src/ocr/trocr_finetune.py`
+`_split_by_source_stem()` groups ALL images (real + aug) by source
+stem BEFORE splitting, so all 6 files of one stem (1 real + 5 aug)
+land on the same side by construction. No leak in trocr; no patch
+needed there.
+
+**Post-fix training pool for kraken (matched-pool no-medical
+2026-07-21):**
+- TRAIN: 2400 aug + 480 real = 2880 images (from 480 stems)
+- VAL:   600 aug + 120 real = 720 images  (from 120 disjoint stems)
+- Zero leaked stems across the boundary.
+
+**Post-fix result — Kraken Run 1 (matched no-medical, leak-fixed,
+corrected 600 annotations):**
+
+| Metric | Leak-affected `_193601` (2026-07-18) | Leak-fixed `_20260721_200641` (2026-07-22) | Δ |
+|---|---|---|---|
+| Epochs trained | 29 | 56 | +27 |
+| Best epoch | 23 | 51 | +28 |
+| Internal val_accuracy | 0.9430 | **0.9581** | **+1.51 pp** |
+| Internal val_word_accuracy | 0.7457 | **0.815** | **+6.9 pp** |
+| 300-val char_acc (measured after training) | 0.9096 | *pending transcription* | — |
+
+Kraken Run 2 (matched + medical, leak-fixed) and the four
+single-stage TrOCR runs + Stage 1a/2a/2b Swin+BERT pipeline queue
+via `scripts/ocr/queue_all_reruns.sh` — expected finish ~14:00
+2026-07-22. Full leaderboard refresh (transcription + eval +
+bootstrap CI + word-freq recall) will follow once the queue empties.
+
+**Publishable framing.** The leak was a *pipeline bug*, not a data
+issue — a subtle coordination gap between two independent split
+routines in the kraken helper. Documenting the diagnosis + fix in
+the thesis strengthens methodology: it shows we notice and correct
+protocol issues rather than ignoring them (compare with §6.3 kraken
+confound + §6.3.6 tokenizer-floor + §6.3.7 bootstrap CIs, all in the
+same "clean-methodology" section). Recommend an appendix subsection
+titled "Text-level leak in the mixed-real-and-synthetic split" with
+this exact diagnosis and the before/after numbers above.
+
 ### Kraken fine-tune catalog
 
 Every kraken fine-tune this project has produced, with its training
