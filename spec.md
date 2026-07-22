@@ -1827,10 +1827,22 @@ login` as `thesisgcplmu@gmail.com` on the VM first. Until then, laptop
 scp is the only working path.
 
 **Freeing VM disk (needed before the §6.5.2 COMETA upload).** After
-`best_model/`s are backed up, prune the epoch checkpoints:
-`find models/ocr/finetuned -maxdepth 2 -type d -name 'checkpoint-*' -exec
-rm -rf {} +` — frees most of the 57 GB. **Never prune before the backup
-byte count is verified on the laptop.**
+`best_model/`s are backed up, prune each TrOCR run's intermediate
+checkpoints. **The dir is named `checkpoints/` (not `checkpoint-*`)** —
+each run dir is `trocr_<TS>/{best_model,checkpoints}`. Guard on the
+sibling `best_model/` existing so a run that only has `checkpoints/` is
+never nuked:
+
+```bash
+cd models/ocr/finetuned
+for ck in $(find . -maxdepth 2 -type d -name checkpoints); do
+  [ -d "$(dirname "$ck")/best_model" ] && rm -rf "$ck" || echo "SKIP $ck"
+done
+```
+
+On 2026-07-22 this freed ~48 GB (7 runs; `/home/jupyter` 25 GB → 72 GB
+free). **Never prune before the backup byte count is verified on the
+laptop.**
 
 ## 8. Command cheat-sheet
 
