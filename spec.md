@@ -1375,6 +1375,22 @@ whether 90–120k pushes it further and shrinks the val-fold→300-val gap.
   Stage 2a/2b fine-tunes on Datasets A″/B″. Watch the val-fold→300-val
   gap as the primary signal.
 
+**STATUS (2026-07-22, in progress).** 90k run underway autonomously:
+- Pool built: `aug_20260722_cometa_90k` = existing 30k
+  (`aug_20260714_cometa_30k`) ∪ 60k more sampled seed=42 from the 266k
+  `aug_20260613_220436` (so 90k ⊃ 30k → monotonic comparison). Labels:
+  `labels_20260722_cometa_90k/labels.json` (90000 entries). Built locally
+  via hardlinks; tarred 19.2 GB, split into 37 × 500 MB chunks, uploading
+  to VM `/tmp/cometa90k_up/` (resume-friendly, sha256 recorded locally).
+- Driver script (scratchpad `queue_stage1_90k.sh`) runs Stage 1a on 90k →
+  Stage 2a (A″) → Stage 2b (B″), same knobs as §6.3.4. Stage-1a run dir
+  will be `models/ocr/finetuned/trocr_<TS>` on the VM; downstream stages
+  load its `best_model`.
+- Expected: Stage 1a ~6–7 h (90k ≈ 3× the 30k's 2h12m). Compare Stage-1a
+  90k 300-val char_acc vs 30k baseline **0.5918** (§6.3.4) and watch
+  whether the val-fold→300-val gap (was ~27 pp) shrinks. **Results table
+  to be filled in here when training + eval complete.**
+
 ### 6.5.3 External-corpus ratio sweep (re-render : external)
 
 Current A″/B″ pools fix the ratio at **3000 anno re-renders : 1000
