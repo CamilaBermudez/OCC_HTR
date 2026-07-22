@@ -1324,6 +1324,57 @@ arms), but the absolute levels are worth investigating — see the
 "Baseline shift to investigate" note in the [Kraken fine-tune
 catalog](#kraken-fine-tune-catalog).
 
+## 6.5 Planned next experiments (queued 2026-07-22)
+
+Concrete, agreed next steps. Each is a single-variable move so the
+result is interpretable. Back up before starting anything on the VM
+(§7.5).
+
+### 6.5.1 Kraken synth→real gap ablations (deferred)
+
+Goal: isolate which change flipped kraken's synth→real transfer
+(§6.3.10 — internal val 0.958 but real 0.902, inverted vs the historical
+0.889 → 0.962). Both runs use `run_finetune_ocr` on the corrected
+600-real folder; change exactly one knob per run and re-score on the
+permanent 300-val:
+
+- **Ablation A — historical 500-stem pool.** Re-run leak-fixed kraken with
+  `--augmented-folder aug_20260701_232640` (the 2500-render, 500-stem pool
+  that produced the historical 0.9620) instead of `aug_20260721_121550`.
+  Isolates the 500→600-stem pool growth. If 300-val climbs back toward
+  0.96, the pool composition (not the leak fix) drove the drop.
+- **Ablation B — match TrOCR's val split.** Re-run leak-fixed kraken with
+  `--val-fraction 0.2` (currently 0.1; TrOCR uses 0.2). Isolates the
+  internal-split-size effect on early stopping / generalisation.
+
+Both ~1 h on the L4. Feed each eval CSV to `bootstrap_ocr_ci.py` for CIs.
+
+### 6.5.2 Stage-1 COMETA scale-up: 30k → 90k / 120k (2-stage Swin+BERT)
+
+Goal: test whether more task-domain pretraining data improves Stage 1
+(and hence the staged Swin+BERT ceiling). §6.3.4 showed 30k COMETA
+pretraining does ~34 pp of the from-scratch lift; the open question is
+whether 90–120k pushes it further and shrinks the val-fold→300-val gap.
+
+- **Source**: subsample from the local full COMETA pool
+  `data/processed/synthetic_samples/augmented_images/aug_20260613_220436`
+  (266,479 renders, 53 GB) with a deterministic seed, exactly as the 30k
+  pool `aug_20260714_cometa_30k` was built (seed=42
+  `random.Random(seed).sample`). Name the new pool
+  `aug_<TS>_cometa_<N>k`.
+- **Size vs VM disk**: 30k = 5.9 GB, so 90k ≈ 18 GB, 120k ≈ 24 GB. VM
+  `/home/jupyter` currently has only ~25 GB free and
+  `models/ocr/finetuned` holds 57 GB (mostly prunable epoch
+  checkpoints). **Free VM space first** (back up `best_model/`s, prune
+  intermediate checkpoints — §7.5) before uploading, or 120k will not
+  fit. 90k is the safer size if disk stays tight.
+- **Upload**: split-tarball per §7.2.4 (500 MB chunks; 18 GB ≈ 36 chunks,
+  24 GB ≈ 48 chunks). Resume-friendly; never re-scp a landed chunk.
+- **Train**: Stage 1a on the new pool (mirror §6.3.4 knobs: 15 epochs,
+  bs=32, lr=5e-5, val_fraction=0.05, early_stopping_patience=4), then
+  Stage 2a/2b fine-tunes on Datasets A″/B″. Watch the val-fold→300-val
+  gap as the primary signal.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
@@ -1636,6 +1687,72 @@ The FastAPI reloader watches Python files; edits to `static/*.html`,
 - `models/ocr/finetuned/trocr_<TS>/best_model/` — TrOCR run outputs
   (each dir is a self-contained VisionEncoderDecoderModel + processor +
   tokenizer, loadable by `trocr_transcribe.py`).
+
+### 7.5 VM → local backup & results-safety procedure
+
+**Why.** VMs get stopped, deleted, or die (the §7.2.2 instance stopped
+responding and was replaced). Anything that lives *only* on the VM is at
+risk. Rule: after any training batch, pull the small artefacts
+immediately and back up the models before the VM is idle-stopped.
+
+**What to save, in priority order:**
+
+1. **Results (tiny, pull always):** `tests/ocr/evaluations/*` (eval
+   CSV+MD, ~KB each), `logs/**/*.log` + `*.out` (training curves, config
+   dumps), and each run's `final_metrics.json` / `metrics.json`. These
+   are the numbers the thesis cites — losing them = re-running everything.
+2. **Kraken checkpoints (small, ~16 MB each):**
+   `models/ocr/finetuned/<run>/model_best.mlmodel`.
+3. **TrOCR checkpoints (large, ~1.1–1.3 GB each):**
+   `models/ocr/finetuned/trocr_<TS>/best_model/` — the self-contained
+   VisionEncoderDecoderModel. Only `best_model/` is needed; the sibling
+   `checkpoint-*/` epoch dirs (the bulk of the 57 GB `finetuned/` folder)
+   are prunable once `best_model/` is safe.
+
+**Pull commands (laptop, from repo root).** Small stuff direct scp:
+
+```bash
+INST=jupyter@instance-20260720-095326; ZONE=us-west4-c
+PROJ=project-8a4066cd-a3df-4df6-8dd
+REPO=/home/jupyter/OCC_HTR
+# results (evals + logs) — always safe over the flaky link (KBs)
+gcloud compute scp --recurse --zone=$ZONE --project=$PROJ \
+  $INST:$REPO/tests/ocr/evaluations ./tests/ocr/
+gcloud compute scp --recurse --zone=$ZONE --project=$PROJ \
+  $INST:$REPO/logs ./
+# kraken mlmodels (small)
+gcloud compute scp --zone=$ZONE --project=$PROJ \
+  "$INST:$REPO/models/ocr/finetuned/finetune_*/model_best.mlmodel" \
+  ./models/ocr/finetuned/   # (fix per-run subdir after)
+```
+
+**Large TrOCR `best_model/`s — split-tarball per §7.2.4** (each ~1.2 GB;
+7 runs ≈ 8 GB). Build one tar of all `best_model/`s on the VM, split into
+500 MB chunks, scp per-chunk (resume-friendly), reassemble + extract on
+the laptop:
+
+```bash
+# ON VM: tar just the best_model dirs (COPYFILE_DISABLE not needed on Linux)
+cd /home/jupyter/OCC_HTR/models/ocr/finetuned
+tar -cf /tmp/best_models_<TS>.tar */best_model
+split -b 500m /tmp/best_models_<TS>.tar /tmp/best_models_<TS>.tar.part-
+# ON LAPTOP: pull all chunks (retry only loses one chunk), then
+#   cat parts > tar ; tar -xf ; verify byte count ; rm parts
+```
+
+**GCS alternative (currently BLOCKED).** `gsutil`/`gcloud storage` exist
+on the VM but the default compute service account lacks
+`storage.buckets.list` / write permission (403 as of 2026-07-22). To use
+a bucket as durable backup (survives VM deletion, no laptop transfer),
+grant the SA `roles/storage.objectAdmin` on a bucket, or `gcloud auth
+login` as `thesisgcplmu@gmail.com` on the VM first. Until then, laptop
+scp is the only working path.
+
+**Freeing VM disk (needed before the §6.5.2 COMETA upload).** After
+`best_model/`s are backed up, prune the epoch checkpoints:
+`find models/ocr/finetuned -maxdepth 2 -type d -name 'checkpoint-*' -exec
+rm -rf {} +` — frees most of the 57 GB. **Never prune before the backup
+byte count is verified on the laptop.**
 
 ## 8. Command cheat-sheet
 
