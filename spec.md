@@ -1375,6 +1375,84 @@ whether 90–120k pushes it further and shrinks the val-fold→300-val gap.
   Stage 2a/2b fine-tunes on Datasets A″/B″. Watch the val-fold→300-val
   gap as the primary signal.
 
+### 6.5.3 External-corpus ratio sweep (re-render : external)
+
+Current A″/B″ pools fix the ratio at **3000 anno re-renders : 1000
+external** (3:1). Sweep the external-corpus slot while holding the 3000
+re-render base fixed, for **both** COMETA and medical:
+
+| Variant | Anno re-renders | External | Ratio |
+|---|---|---|---|
+| current (A″/B″) | 3000 | 1000 | 3:1 |
+| sweep-500 | 3000 | 500 | 6:1 |
+| sweep-2000 | 3000 | 2000 | 3:2 |
+| sweep-4000 | 3000 | 4000 | 3:4 |
+
+- Build each pool by merging the fixed 3000-re-render base with an
+  N-render external slot (seed=42) — reuse
+  `scripts/ocr/merge_base_with_corpus_slot.py`.
+- Train the **pretrained ViT+RoBERTa** (best arch) on each; single-stage;
+  score on corrected 300-val + bootstrap. Goal: is 3:1 optimal, or does
+  more/less external corpus help? Medical corpus (12,012 entries) easily
+  supports 4000 renders.
+
+### 6.5.4 Stage-1 pretraining on medical corpus (instead of COMETA)
+
+§6.3.4 open follow-up. In the 2-stage Swin+BERT, swap the Stage-1
+pretraining corpus from COMETA to **medical**. **Caveat / open feasibility
+question:** the medical corpus (12,012 entries) is far smaller than the
+COMETA source (266k renders), so a 30k/90k medical pretraining pool may
+not be reachable without heavy augmentation multiplicity — quantify the
+max renders first. Even a smaller medical Stage-1 gives a conclusion:
+does Stage-1 corpus choice matter when §6.3.4 showed Stage-2 corpus
+choice does not?
+
+### 6.5.5 TrOCR top-k / confidence analysis
+
+For the ViT+RoBERTa runs, capture generation scores and beam candidates.
+On lines the model got wrong (per-line CER > 0), check whether the
+**correct GT is among the top-5 beam hypotheses** (oracle top-5 accuracy)
+and log token-level probabilities. Implementation: extend
+`trocr_transcribe` with `num_return_sequences=5` + `output_scores=True`.
+Goal: quantify how much error is a recoverable "close miss" (rerankable
+by an external LM) vs a genuine miss.
+
+### 6.5.6 Encoder / decoder swap ablation (1-stage)
+
+The grid contrasts Swin+BERT (from-scratch) vs ViT+RoBERTa (pretrained).
+Add the **cross combinations** — **ViT+BERT** and **Swin+RoBERTa** —
+single-stage, to isolate the encoder (ViT vs Swin) from the decoder
+(BERT vs RoBERTa) contribution. **Caveat:** only ViT+RoBERTa exists as a
+pretrained-cross-attention checkpoint (`microsoft/trocr-base-handwritten`);
+the swaps have randomly-initialised cross-attention, so expect
+Swin+BERT-like numbers — the value is the component-isolation, not
+competitiveness.
+
+### 6.5.7 GPT-style decoder
+
+Exploratory: build the `VisionEncoderDecoderModel` with a causal GPT
+decoder (e.g. GPT-2) instead of BERT/RoBERTa. Tests whether an
+autoregressive LM decoder helps over the masked-LM-derived decoders.
+
+### 6.5.8 Full bootstrap CI + ink-bleed stratification refresh
+
+Re-run `bootstrap_ocr_ci.py` across **all** models on the corrected
+300-val — catmus, Medusa, leak-fixed kraken, and the refreshed TrOCR grid
+— and the **ink-bleed-stratified** stats using the already-defined
+ink-bleed metric (prior conclusions in spec; artefacts
+`tests/ocr/evaluations/bootstrap_ci_trocr_bleed_20260718/` and
+`ink_bleed_val300_20260718/`). Depends on catmus + Medusa first being
+re-evaluated against the corrected GT (§6.3.10 caveat).
+
+### 6.5.9 Word-frequency recall error analysis (re-run)
+
+Re-run `scripts/ocr/word_frequency_recall.py` for the refreshed /
+leak-fixed models: take the **600 + 300 annotated lines as the vocabulary**,
+compute per-model per-word **recall** on the 300-val (multiset
+bag-of-words intersection), stratified by corpus frequency. Existing
+artefact: `tests/ocr/evaluations/word_frequency_recall_20260721/`; refresh
+it with the corrected-annotation model set.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
