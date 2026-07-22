@@ -510,8 +510,23 @@ def _summarize_and_prune(
     entries that includes the pretrained model's entire history followed
     by the epochs from the current fine-tuning run. We slice off the last
     ``completed_epochs`` entries to get only the run's own epochs.
+
+    Robustness: if the ``kraken`` package isn't importable in the calling
+    Python (common when the parent runner is system-python while training
+    itself is spawned under ``uv run``), the per-epoch metrics extraction
+    is skipped — but the extra per-epoch checkpoints are still pruned
+    (deletion doesn't need kraken), and ``model_best.mlmodel`` (which
+    ketos already wrote at the end of training) is preserved.
     """
-    from kraken.lib import models as kmodels  # local import: heavy, lazy
+    try:
+        from kraken.lib import models as kmodels  # local import: heavy, lazy
+    except ImportError as e:
+        logger.warning(
+            "Cannot import kraken (%s); skipping per-epoch metric extraction. "
+            "model_best.mlmodel from ketos is preserved; extras will still be pruned.",
+            e,
+        )
+        kmodels = None  # type: ignore[assignment]
 
     # Sort by the trailing integer in the filename, NOT lexicographically.
     # Default `sorted` orders "model_10" before "model_2" and puts
@@ -531,6 +546,33 @@ def _summarize_and_prune(
     )
     if not model_files:
         logger.warning("No model_*.mlmodel checkpoints found in %s", run_dir)
+        return
+
+    if kmodels is None:
+        # No kraken -> can't extract epoch metrics, but we can still prune.
+        best_dest = run_dir / "model_best.mlmodel"
+        if not best_dest.is_file():
+            logger.warning(
+                "kraken import failed AND ketos didn't leave a model_best.mlmodel; "
+                "cannot prune safely — leaving %d per-epoch checkpoints in place.",
+                len(model_files),
+            )
+            return
+        if keep_all_checkpoints:
+            logger.info(
+                "keep_all_checkpoints=True — leaving %d per-epoch checkpoints in place.",
+                len(model_files),
+            )
+            return
+        removed = 0
+        for m in model_files:
+            m.unlink()
+            removed += 1
+        logger.info(
+            "Pruned %d per-epoch checkpoints (kraken unavailable — no epoch_stats generated). "
+            "model_best.mlmodel preserved.",
+            removed,
+        )
         return
 
     # Load the last checkpoint (most complete history) to extract metrics.
