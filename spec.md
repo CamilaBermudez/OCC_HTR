@@ -264,6 +264,32 @@ Common properties (apply to every pool):
   `aug_merged_anno_medical_20260706` that trained
   `finetune_20260706_151856` (see §6 kraken catalog).
 
+### 5.4.1 External-corpus render source pools (the raw render banks)
+
+Distinct from the §5.3 *training* pools: these are the large
+render-and-augment banks the external-corpus slot is **drawn from**. Each
+was built by `medieval_text_generation → augmentation_techniques` (render
+corpus text lines onto parchment crops, then augment ×N). Filenames are
+`<source>_l<NNNNN>_aug<NN>.png`; the **stem** (`<source>_l<NNNNN>`) is one
+distinct text line, and `_aug<NN>` are augmentation variants of that same
+line — so **one stem = one text**, and 1-aug-per-stem sampling (§6.5.3)
+means one render per distinct text.
+
+| Pool | Renders | Distinct stems | ×aug | Corpus | Notes |
+|---|---|---|---|---|---|
+| `aug_20260613_220436` | 266,478 | 88,828 | ×3 | COMETA (general medieval) | canonical COMETA render bank; source of the 30k/90k Stage-1 pools + COMETA external slots. Sibling `aug_20260614_080601` is a duplicate run. |
+| `aug_20260626_105610` | 18,000 | 6,001 | ×3 | **medical** | canonical medical render bank. Source text `synthetic_text/medieval_text_20260626_104935`; 172 parchment backgrounds; seed=42. Stems are medical-manuscript lines: `AnatMondG` (Anatomia of Mondino), `RecMedAVB` / `RecChantC` (recipe collections), etc. Sibling `aug_20260625_145218` is a parallel run (also 18k / 6001 stems). |
+
+**Provenance nuance for the existing B″ medical 1000.** The 1000-medical
+slot inside `aug_20260721_v2_medical` (and the earlier
+`aug_merged_anno_medical_20260706`) was rendered in a **different batch**
+than the 18k bank — only 509 of its renders overlap `aug_20260626_105610`,
+and its 1000 stems mostly differ from the bank's 6001. So the full medical
+text universe available for a sweep = existing-1000 ∪ 18k-bank ≈ **6,492
+distinct medical stems** (enough for a 4000-stem slot). The §6.5.3 medical
+sweep anchors on the existing 1000 stems and extends with new stems from
+the 18k bank.
+
 ## 6. Models & results (as of 2026-07-10)
 
 All char/word accuracies are **corpus-level** (Levenshtein distance
