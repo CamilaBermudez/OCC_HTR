@@ -1431,13 +1431,26 @@ re-render base fixed, for **both** COMETA and medical:
 | sweep-2000 | 3000 | 2000 | 3:2 |
 | sweep-4000 | 3000 | 4000 | 3:4 |
 
-- Build each pool by merging the fixed 3000-re-render base with an
-  N-render external slot (seed=42) — reuse
-  `scripts/ocr/merge_base_with_corpus_slot.py`.
-- Train the **pretrained ViT+RoBERTa** (best arch) on each; single-stage;
-  score on corrected 300-val + bootstrap. Goal: is 3:1 optimal, or does
-  more/less external corpus help? Medical corpus (12,012 entries) easily
-  supports 4000 renders.
+- Build each pool by merging the fixed 3000-re-render base
+  (`aug_20260721_121550`) with an N-render external slot (seed=42) —
+  reuse `scripts/data_augmentation/merge_base_with_corpus_slot.py`
+  (classifies real-derived vs corpus-derived by the 600 stems; carries the
+  corpus slot over).
+- Train **both architectures** on each pool (2026-07-23 decision): the
+  **pretrained ViT+RoBERTa** *and* the **Swin+BERT single-stage** — so the
+  sweep is 2 archs × 2 corpora × 3 new sizes = **12 runs** (the 1000/3:1
+  point already exists for all 4 combos from the §6.3.10 A″/B″ runs).
+  Single-stage; score on corrected 300-val + bootstrap. Goal: is 3:1
+  optimal, or does more/less external corpus help — and does the optimum
+  differ by architecture?
+- **Feasibility (external-render availability):** COMETA is effectively
+  unlimited (266k renders in `aug_20260613_220436`), so COMETA
+  {500,2000,4000} builds immediately. **Medical has only ~1000 renders**
+  (the corpus slot inside `aug_20260721_v2_medical`), so medical 500 is a
+  subsample but **medical 2000 & 4000 require GENERATING new medical
+  renders** from the 12k-entry corpus
+  (`data/processed/synthetic_seeds/categorize_20260625_143327/medical_texts_categorized.json`)
+  via `medieval_text_generation → augmentation_techniques` first.
 
 ### 6.5.4 Stage-1 pretraining on medical corpus (instead of COMETA)
 
