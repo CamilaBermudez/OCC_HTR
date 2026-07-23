@@ -1375,21 +1375,48 @@ whether 90–120k pushes it further and shrinks the val-fold→300-val gap.
   Stage 2a/2b fine-tunes on Datasets A″/B″. Watch the val-fold→300-val
   gap as the primary signal.
 
-**STATUS (2026-07-22, in progress).** 90k run underway autonomously:
-- Pool built: `aug_20260722_cometa_90k` = existing 30k
-  (`aug_20260714_cometa_30k`) ∪ 60k more sampled seed=42 from the 266k
-  `aug_20260613_220436` (so 90k ⊃ 30k → monotonic comparison). Labels:
-  `labels_20260722_cometa_90k/labels.json` (90000 entries). Built locally
-  via hardlinks; tarred 19.2 GB, split into 37 × 500 MB chunks, uploading
-  to VM `/tmp/cometa90k_up/` (resume-friendly, sha256 recorded locally).
-- Driver script (scratchpad `queue_stage1_90k.sh`) runs Stage 1a on 90k →
-  Stage 2a (A″) → Stage 2b (B″), same knobs as §6.3.4. Stage-1a run dir
-  will be `models/ocr/finetuned/trocr_<TS>` on the VM; downstream stages
-  load its `best_model`.
-- Expected: Stage 1a ~6–7 h (90k ≈ 3× the 30k's 2h12m). Compare Stage-1a
-  90k 300-val char_acc vs 30k baseline **0.5918** (§6.3.4) and watch
-  whether the val-fold→300-val gap (was ~27 pp) shrinks. **Results table
-  to be filled in here when training + eval complete.**
+**RESULTS (2026-07-23, complete).** 90k pool = existing 30k
+(`aug_20260714_cometa_30k`) ∪ 60k more (seed=42) from the 266k
+`aug_20260613_220436`, so **90k ⊃ 30k → monotonic**
+(`aug_20260722_cometa_90k`, `labels_20260722_cometa_90k`). Trained on the
+L4 (Stage 1a 15 ep ~7h1m; Stage 2a/2b ~13 min each). Runs:
+`trocr_20260723_064813` (Stage 1a), `_135820` (Stage 2a A″), `_141110`
+(Stage 2b B″). **The 30k rows below are the corrected-annotation 30k runs
+(§6.3.10), so 30k↔90k is a clean single-variable comparison** (both
+corrected annotations, same A″/B″ Stage-2 pools, only Stage-1 size
+differs).
+
+| Stage | val-fold char_acc | 30k 300-val (§6.3.10) | **90k 300-val** | Δ char_acc [95 % CI] | P(A>B) |
+|---|---|---|---|---|---|
+| 1a (pretrain only) | 0.9639 | 0.6172 | **0.7581** | **+14.08 % [+12.53, +15.65]** | 1.000 ✓ |
+| 2a (A″ fine-tune) | 0.9587 | 0.6123 | **0.7613** | +14.90 % [+13.42, +16.41] | 1.000 ✓ |
+| 2b (B″ fine-tune) | 0.9233 | 0.6129 | **0.7554** | +14.24 % [+12.66, +15.81] | 1.000 ✓ |
+
+Paired bootstrap 10 000 it, seed=42, 299 lines
+(`refresh_trocr_90k_vs_val300_20260723` vs
+`refresh_trocr_vs_val300_20260722`).
+
+**Findings:**
+- **Scaling Stage-1 COMETA 30k→90k adds ~+14 pp char_acc on the real
+  300-val, all three stages, highly significant.** Task-domain
+  pretraining data scales the from-scratch Swin+BERT's real-manuscript
+  performance almost 1:1 with the val-fold gain.
+- **The val-fold→300-val gap narrows**: Stage 1a 24.2 pp (30k:
+  0.8589→0.6172) → **20.6 pp** (90k: 0.9639→0.7581). More pretraining
+  improves genuine generalisation, not just synthetic-val memorisation —
+  the §6.3.4 signal, now confirmed with a shrinking gap.
+- **Stage 2 still adds nothing**: Stage 2a vs Stage 1a (90k) Δ = +0.33 %
+  [−0.93, +1.58], P = 0.70 (n.s.). Consistent with §6.3.10 — the entire
+  lift is in Stage-1 pretraining; manuscript fine-tuning is inert.
+- **Scaling ladder** (Swin+BERT, 300-val char_acc): single-stage ~0.25 →
+  30k-staged 0.62 → **90k-staged 0.76**. Monotonic and large, but still
+  below pretrained ViT+RoBERTa (0.939), kraken (0.90), catmus (0.96) —
+  staged Swin+BERT scales but is not yet competitive.
+- **Next**: 120k / full-266k Stage-1 to test whether the +14 pp/2.25×
+  trend continues or plateaus (the shrinking gap suggests headroom
+  remains). Artefacts:
+  `tests/ocr/evaluations/refresh_trocr_90k_vs_val300_20260723/` (CSV+MD);
+  3 best_models backed up to laptop.
 
 ### 6.5.3 External-corpus ratio sweep (re-render : external)
 
