@@ -318,7 +318,7 @@ def _build_model(
     the checkpoint already carries the right ids; we still mirror them
     onto ``generation_config`` for defence.
     """
-    from transformers import VisionEncoderDecoderModel
+    from transformers import AutoConfig, VisionEncoderDecoderModel
 
     if pretrained_model_id is not None:
         model = VisionEncoderDecoderModel.from_pretrained(pretrained_model_id)
@@ -352,29 +352,56 @@ def _build_model(
         assert (
             encoder_id is not None and decoder_id is not None
         ), "Must set either pretrained_model_id or (encoder_id, decoder_id)"
+        # Force the decoder into decoder-mode with cross-attention by passing
+        # an explicit decoder config. BERT / RoBERTa get these flags set
+        # implicitly by from_encoder_decoder_pretrained, but GPT-2's config
+        # (transformers 5.x) does not declare ``is_decoder`` — and passing
+        # ``decoder_is_decoder=True`` as a kwarg does NOT help because
+        # ``AutoConfig.from_pretrained(..., return_unused_kwargs=True)``
+        # silently drops kwargs the config doesn't declare. Building the config
+        # ourselves and setting the attributes via setattr sidesteps that
+        # filtering, and passing ``decoder_config=`` bypasses the internal
+        # ``AutoConfig.from_pretrained`` path that trips the AttributeError.
+        decoder_config = AutoConfig.from_pretrained(decoder_id)
+        decoder_config.is_decoder = True
+        decoder_config.add_cross_attention = True
         model = VisionEncoderDecoderModel.from_encoder_decoder_pretrained(
             encoder_id,
             decoder_id,
-            # tie_encoder_decoder=False is the default; leaving it here to make
-            # the choice explicit — Swin and BERT have different hidden sizes,
-            # so weight-tying between encoder embeddings and decoder embeddings
-            # is not applicable.
+            decoder_config=decoder_config,
+            # tie_encoder_decoder=False is the default; Swin/ViT and the text
+            # decoder have different hidden sizes, so weight-tying is N/A.
         )
-        # BERT uses [CLS] as the sequence-start marker and [SEP] as end-of-
-        # sequence, so the decoder needs those wired up. Without this the
-        # decoder cannot start generation and the loss will be NaN. These
-        # are STRUCTURAL config fields (not generation-control), so they
-        # legitimately live on ``model.config``.
-        model.config.decoder_start_token_id = tokenizer.cls_token_id
-        model.config.pad_token_id = tokenizer.pad_token_id
-        model.config.eos_token_id = tokenizer.sep_token_id
+        # Wire up the decoder's sequence-start / eos / pad tokens. BERT uses
+        # [CLS]/[SEP], RoBERTa uses <s>/</s> (both exposed as cls/sep by their
+        # tokenizers), but GPT-2 has neither — only bos/eos and no pad. Resolve
+        # each with fallbacks so any decoder (BERT, RoBERTa, GPT-2) works.
+        # Without a valid decoder_start_token_id the decoder cannot start
+        # generation and the loss is NaN. STRUCTURAL config fields.
+        start_id = tokenizer.cls_token_id
+        if start_id is None:
+            start_id = tokenizer.bos_token_id
+        if start_id is None:
+            start_id = tokenizer.eos_token_id
+        eos_id = tokenizer.sep_token_id
+        if eos_id is None:
+            eos_id = tokenizer.eos_token_id
+        pad_id = tokenizer.pad_token_id
+        if pad_id is None:
+            pad_id = tokenizer.eos_token_id
+        assert (
+            start_id is not None and eos_id is not None
+        ), f"Decoder {decoder_id!r} tokenizer exposes no usable start/eos token"
+        model.config.decoder_start_token_id = start_id
+        model.config.pad_token_id = pad_id
+        model.config.eos_token_id = eos_id
         model.config.vocab_size = model.config.decoder.vocab_size
         # Generation-time defaults. transformers 5.x refuses to read these
         # from ``model.config`` any more (raises ValueError on generate()) —
         # they must live on ``model.generation_config``.
-        model.generation_config.decoder_start_token_id = tokenizer.cls_token_id
-        model.generation_config.pad_token_id = tokenizer.pad_token_id
-        model.generation_config.eos_token_id = tokenizer.sep_token_id
+        model.generation_config.decoder_start_token_id = start_id
+        model.generation_config.pad_token_id = pad_id
+        model.generation_config.eos_token_id = eos_id
 
     # Generation defaults common to both modes.
     model.generation_config.max_length = max_length
@@ -623,6 +650,13 @@ def finetune_trocr(
         image_processor = AutoImageProcessor.from_pretrained(encoder_id)
         logger.info("Loading tokenizer: %s", decoder_id)
         tokenizer = AutoTokenizer.from_pretrained(decoder_id)
+        # Some causal decoders (e.g. GPT-2) ship without a pad token, which
+        # breaks batch padding in the dataset/collator. TrOCR convention: pad
+        # with eos. BERT/RoBERTa already have a pad token, so this is a no-op
+        # for them.
+        if tokenizer.pad_token_id is None:
+            tokenizer.pad_token = tokenizer.eos_token
+            logger.info("Decoder tokenizer had no pad token; set pad_token = eos_token")
 
     train_ds = TrOCRLineDataset(train_pairs, image_processor, tokenizer, max_target_length)
     val_ds = TrOCRLineDataset(val_pairs, image_processor, tokenizer, max_target_length)
