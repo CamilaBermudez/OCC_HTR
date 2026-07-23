@@ -1443,14 +1443,27 @@ re-render base fixed, for **both** COMETA and medical:
   Single-stage; score on corrected 300-val + bootstrap. Goal: is 3:1
   optimal, or does more/less external corpus help — and does the optimum
   differ by architecture?
-- **Feasibility (external-render availability):** COMETA is effectively
-  unlimited (266k renders in `aug_20260613_220436`), so COMETA
-  {500,2000,4000} builds immediately. **Medical has only ~1000 renders**
-  (the corpus slot inside `aug_20260721_v2_medical`), so medical 500 is a
-  subsample but **medical 2000 & 4000 require GENERATING new medical
-  renders** from the 12k-entry corpus
-  (`data/processed/synthetic_seeds/categorize_20260625_143327/medical_texts_categorized.json`)
-  via `medieval_text_generation → augmentation_techniques` first.
+- **External-render sources (no generation needed):** COMETA =
+  `aug_20260613_220436` (266k renders, 88 828 distinct stems ×3 augs);
+  medical = `aug_20260626_105610` (18 000 renders, **6 001 distinct
+  stems** ×3 augs) + the existing 1000-stem B″ slot (from a different
+  render batch; only 509 renders overlap the 18k, but the medical text
+  universe = existing 1000 ∪ 18k ≈ 6 492 distinct stems → enough for 4000).
+- **1-aug-per-stem constraint (2026-07-23 decision).** The external slot
+  must hold **exactly one render per distinct source stem** (no two augs
+  of the same corpus text) to maximise text diversity per render budget.
+  A naive random sample over all render filenames violates this (first
+  build had up to 73/4000 stems with 2 augs). **Fix:** build in *stem
+  space* — anchor on the existing 1000-stem slot, extend with new distinct
+  stems (seed=42), one render each. Builder:
+  scratchpad `build_stem_unique_sweep.py`.
+- **Pools built + validated (2026-07-23), `aug_20260723_v3_<corpus>_<N>`**
+  for corpus ∈ {cometa, medical}, N ∈ {500, 2000, 4000}, each = fixed 3000
+  re-render base + N-stem external slot; **all validated dup_stems=0,
+  max_augs/stem=1**, nested 500 ⊂ 2000 ⊂ 4000. COMETA training in progress
+  (ViT+RoBERTa ×3 then Swin+BERT ×3); medical to follow. The 1000/3:1 point
+  = existing A″/B″ runs (§6.3.10; COMETA 994-stem-unique, medical
+  1000-stem-unique).
 
 ### 6.5.4 Stage-1 pretraining on medical corpus (instead of COMETA)
 
