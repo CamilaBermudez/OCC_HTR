@@ -1559,23 +1559,31 @@ single-stage, bs=16.
 
 **RESULTS (2026-07-24, 300-val char_acc, from-scratch cross-attention).**
 
-| Combo | A″ (COMETA) | B″ (medical) | run dirs |
+Full from-scratch grid (300-val char_acc; GPT-2 rows are the fixed `*_v2`
+runs, §6.5.7):
+
+| Encoder \ Decoder | BERT | xlm-RoBERTa | GPT-2 |
 |---|---|---|---|
-| Swin+BERT (grid ref, §6.3.10) | 0.1953 | 0.1238 | — |
-| **ViT+BERT** | 0.2058 | 0.1985 | `trocr_20260724_001117` / `_004802` |
-| **Swin+xlm-RoBERTa** | **0.2810** | **0.2736** | `trocr_20260724_011650` / `_020755` |
+| **Swin** | 0.1953 (ref, §6.3.10) | **0.2810** | 0.2586 |
+| **ViT** | 0.2058 | — (not run) | 0.2054 |
+
+(A″/COMETA condition shown; B″/medical is 1–8 pp lower throughout — see the
+per-run tables in §6.5.6/§6.5.7.)
 
 **Findings:**
 - **The decoder matters more than the encoder** (for from-scratch
-  cross-attention). Swapping BERT→xlm-RoBERTa lifts Swin from 0.195→0.281
-  (+8.6 pp); swapping Swin→ViT with BERT barely moves it (0.195→0.206).
-  **Swin+xlm-RoBERTa is the best from-scratch combo (0.281)** — the
-  multilingual decoder's broader token coverage helps on Old Occitan.
-- **All still architecture-bound at ~0.20–0.28**, an order below the
-  pretrained ViT+RoBERTa (0.94). Reinforces §6.3.6/§6.3.7: pretrained
-  cross-attention is the decisive factor; no encoder/decoder swap rescues
-  a from-scratch build. Eval:
-  `tests/ocr/evaluations/decoder_interchange_vs_val300_20260724/`.
+  cross-attention). With the Swin encoder, decoder choice spans
+  0.195→0.281 (+8.6 pp); swapping Swin→ViT with BERT barely moves it
+  (0.195→0.206). **Decoder ranking (Swin encoder), all paired-bootstrap
+  significant: xlm-RoBERTa (0.281) > GPT-2 (0.259) > BERT (0.195).**
+  The multilingual RoBERTa's broad token coverage wins on Old Occitan;
+  autoregressive GPT-2 beats masked-LM BERT (+6.3 pp).
+- **Swin+xlm-RoBERTa is the best from-scratch combo (0.281)**, but **all
+  are architecture-bound at ~0.20–0.28**, an order below the pretrained
+  ViT+RoBERTa (0.94). Reinforces §6.3.6/§6.3.7: pretrained cross-attention
+  is the decisive factor; no encoder/decoder swap rescues a from-scratch
+  build. Evals: `decoder_interchange_vs_val300_20260724/` +
+  `gpt2_v2_vs_val300_20260724/`.
 
 ### 6.5.7 GPT-style decoder
 
@@ -1596,10 +1604,23 @@ input image. Two root causes, both fixed in commit `fe7879c`:
    Fix: `TrOCRLineDataset` now appends eos when the tokenizer doesn't.
 
 Post-fix smoke: pad≠eos, labels end with eos, pad masked, embeddings
-resized, forward finite. First epoch of the re-run drops eval_cer from
-~6.4 to **0.93** — generation is bounded again. **Re-running the 4 GPT-2
-combos** (`*_v2`); results table + bootstrap to be added here on
-completion.
+resized, forward finite.
+
+**RESULTS (2026-07-24, 300-val char_acc, `*_v2` re-runs).**
+
+| Combo | A″ (COMETA) | B″ (medical) | run dirs |
+|---|---|---|---|
+| ViT+GPT2 | 0.2054 | 0.1813 | `trocr_20260724_065719` / `_071400` |
+| Swin+GPT2 | **0.2586** | 0.2029 | `trocr_20260724_072709` / `_073854` |
+
+The fix works — char_acc is back in the architecture-bound range (0.18–0.26)
+vs the broken −5.4. **Finding: for a from-scratch decoder, GPT-2
+(autoregressive) significantly beats BERT (masked-LM)** — Swin+GPT2 0.2586
+vs Swin+BERT 0.1953, Δ = **+6.33 %** [+5.33, +7.33], P=1.000 — but still
+trails **Swin+xlm-RoBERTa 0.2810** (Δ RoBERTa−GPT2 = +2.24 % [+1.11, +3.37],
+P=1.000). So the decoder ranking for from-scratch cross-attention is
+**xlm-RoBERTa > GPT-2 > BERT**, all significant. Eval:
+`tests/ocr/evaluations/gpt2_v2_vs_val300_20260724/`.
 
 ### 6.5.8 Full bootstrap CI + ink-bleed stratification refresh
 
