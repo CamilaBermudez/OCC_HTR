@@ -1550,11 +1550,56 @@ the swaps have randomly-initialised cross-attention, so expect
 Swin+BERT-like numbers — the value is the component-isolation, not
 competitiveness.
 
+Enabled by the `trocr_finetune` patch (commits 65375d1 + fe7879c) that
+supports arbitrary `--encoder-id`/`--decoder-id`. Encoders: ViT
+`google/vit-base-patch16-224-in21k`, Swin `microsoft/swin-base-patch4-window7-224`;
+decoders: BERT `bert-base-multilingual-cased`, RoBERTa `xlm-roberta-base`
+(multilingual). Trained on A″ (COMETA 3:1) and B″ (medical 3:1),
+single-stage, bs=16.
+
+**RESULTS (2026-07-24, 300-val char_acc, from-scratch cross-attention).**
+
+| Combo | A″ (COMETA) | B″ (medical) | run dirs |
+|---|---|---|---|
+| Swin+BERT (grid ref, §6.3.10) | 0.1953 | 0.1238 | — |
+| **ViT+BERT** | 0.2058 | 0.1985 | `trocr_20260724_001117` / `_004802` |
+| **Swin+xlm-RoBERTa** | **0.2810** | **0.2736** | `trocr_20260724_011650` / `_020755` |
+
+**Findings:**
+- **The decoder matters more than the encoder** (for from-scratch
+  cross-attention). Swapping BERT→xlm-RoBERTa lifts Swin from 0.195→0.281
+  (+8.6 pp); swapping Swin→ViT with BERT barely moves it (0.195→0.206).
+  **Swin+xlm-RoBERTa is the best from-scratch combo (0.281)** — the
+  multilingual decoder's broader token coverage helps on Old Occitan.
+- **All still architecture-bound at ~0.20–0.28**, an order below the
+  pretrained ViT+RoBERTa (0.94). Reinforces §6.3.6/§6.3.7: pretrained
+  cross-attention is the decisive factor; no encoder/decoder swap rescues
+  a from-scratch build. Eval:
+  `tests/ocr/evaluations/decoder_interchange_vs_val300_20260724/`.
+
 ### 6.5.7 GPT-style decoder
 
-Exploratory: build the `VisionEncoderDecoderModel` with a causal GPT
-decoder (e.g. GPT-2) instead of BERT/RoBERTa. Tests whether an
-autoregressive LM decoder helps over the masked-LM-derived decoders.
+Build the `VisionEncoderDecoderModel` with a causal GPT-2 decoder instead
+of BERT/RoBERTa. Tests whether an autoregressive LM decoder helps over the
+masked-LM-derived decoders.
+
+**Bug found + fixed (2026-07-24).** The first GPT-2 runs
+(`vitgpt2_A/B`, `swingpt2_A/B`) **over-generated catastrophically** —
+CER ≈ 6.4, char_acc ≈ **−5.4**, run-on output nearly independent of the
+input image. Two root causes, both fixed in commit `fe7879c`:
+1. **pad aliased to eos.** GPT-2 has no pad token; the first patch set
+   `pad = eos`, so masking pad positions in the labels (−100) also masked
+   eos → the model never learned to emit eos. Fix: add a **distinct
+   [PAD]** token + resize the decoder embeddings.
+2. **no eos in labels.** The GPT-2 tokenizer doesn't append eos (BERT/
+   RoBERTa add `[SEP]`/`</s>`), so label sequences never ended with eos.
+   Fix: `TrOCRLineDataset` now appends eos when the tokenizer doesn't.
+
+Post-fix smoke: pad≠eos, labels end with eos, pad masked, embeddings
+resized, forward finite. First epoch of the re-run drops eval_cer from
+~6.4 to **0.93** — generation is bounded again. **Re-running the 4 GPT-2
+combos** (`*_v2`); results table + bootstrap to be added here on
+completion.
 
 ### 6.5.8 Full bootstrap CI + ink-bleed stratification refresh
 
