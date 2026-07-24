@@ -266,6 +266,14 @@ class TrOCRLineDataset(Dataset):
         self.tokenizer = tokenizer
         self.max_target_length = max_target_length
         self._pad_id = tokenizer.pad_token_id
+        # Every label sequence must end with eos so the decoder learns to
+        # stop. BERT/RoBERTa tokenizers append [SEP]/</s> on their own; GPT-2
+        # does not — for decoders like it we append eos manually in
+        # __getitem__ (otherwise the model over-generates at inference).
+        self._eos_id = tokenizer.eos_token_id
+        probe = tokenizer("probe").input_ids
+        _adds_eos = bool(probe) and self._eos_id is not None and probe[-1] == self._eos_id
+        self._will_append_eos = (not _adds_eos) and (self._eos_id is not None)
 
     def __len__(self) -> int:
         return len(self.pairs)
@@ -274,13 +282,18 @@ class TrOCRLineDataset(Dataset):
         img_path, text = self.pairs[idx]
         image = Image.open(img_path).convert("RGB")
         pixel_values = self.image_processor(images=image, return_tensors="pt").pixel_values[0]
-        encoding = self.tokenizer(
-            text,
-            padding="max_length",
-            truncation=True,
-            max_length=self.max_target_length,
-        )
-        labels = [tok if tok != self._pad_id else -100 for tok in encoding.input_ids]
+        max_len = self.max_target_length
+        # Reserve a slot for the manually-appended eos when the tokenizer
+        # doesn't add one, so the sequence still ends with eos after truncation.
+        budget = max_len - 1 if self._will_append_eos else max_len
+        ids = self.tokenizer(text, truncation=True, max_length=budget).input_ids
+        if self._will_append_eos:
+            ids = ids + [self._eos_id]
+        # Right-pad to max_len; pad positions are masked to -100 in the loss.
+        # pad is a DISTINCT token from eos, so eos itself is never masked.
+        if len(ids) < max_len:
+            ids = ids + [self._pad_id] * (max_len - len(ids))
+        labels = [tok if tok != self._pad_id else -100 for tok in ids]
         return {
             "pixel_values": pixel_values,
             "labels": torch.tensor(labels, dtype=torch.long),
@@ -372,6 +385,10 @@ def _build_model(
             # tie_encoder_decoder=False is the default; Swin/ViT and the text
             # decoder have different hidden sizes, so weight-tying is N/A.
         )
+        # Grow the decoder embedding matrix to cover any special tokens added
+        # to the tokenizer (e.g. the distinct [PAD] added for GPT-2). No-op
+        # when the tokenizer vocab already matches the decoder's.
+        model.decoder.resize_token_embeddings(len(tokenizer))
         # Wire up the decoder's sequence-start / eos / pad tokens. BERT uses
         # [CLS]/[SEP], RoBERTa uses <s>/</s> (both exposed as cls/sep by their
         # tokenizers), but GPT-2 has neither — only bos/eos and no pad. Resolve
@@ -395,7 +412,8 @@ def _build_model(
         model.config.decoder_start_token_id = start_id
         model.config.pad_token_id = pad_id
         model.config.eos_token_id = eos_id
-        model.config.vocab_size = model.config.decoder.vocab_size
+        model.config.vocab_size = len(tokenizer)
+        model.config.decoder.vocab_size = len(tokenizer)
         # Generation-time defaults. transformers 5.x refuses to read these
         # from ``model.config`` any more (raises ValueError on generate()) —
         # they must live on ``model.generation_config``.
@@ -650,13 +668,17 @@ def finetune_trocr(
         image_processor = AutoImageProcessor.from_pretrained(encoder_id)
         logger.info("Loading tokenizer: %s", decoder_id)
         tokenizer = AutoTokenizer.from_pretrained(decoder_id)
-        # Some causal decoders (e.g. GPT-2) ship without a pad token, which
-        # breaks batch padding in the dataset/collator. TrOCR convention: pad
-        # with eos. BERT/RoBERTa already have a pad token, so this is a no-op
-        # for them.
+        # Some causal decoders (e.g. GPT-2) ship without a pad token. Add a
+        # DISTINCT [PAD] rather than reusing eos: if pad == eos, masking the
+        # pad positions in the labels (-100) also masks eos, so the model
+        # never learns to emit eos and over-generates unboundedly at inference
+        # (observed GPT-2 failure: CER ~6, run-on output). A separate [PAD]
+        # keeps eos a real, learnable target. Embeddings are resized to cover
+        # the new token in _build_model. No-op for BERT/RoBERTa (already have
+        # a distinct pad).
         if tokenizer.pad_token_id is None:
-            tokenizer.pad_token = tokenizer.eos_token
-            logger.info("Decoder tokenizer had no pad token; set pad_token = eos_token")
+            tokenizer.add_special_tokens({"pad_token": "[PAD]"})
+            logger.info("Decoder tokenizer had no pad token; added a distinct [PAD] token")
 
     train_ds = TrOCRLineDataset(train_pairs, image_processor, tokenizer, max_target_length)
     val_ds = TrOCRLineDataset(val_pairs, image_processor, tokenizer, max_target_length)
