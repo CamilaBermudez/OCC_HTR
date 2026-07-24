@@ -1515,8 +1515,31 @@ optimum is architecture-dependent:**
   exploit extra text diversity; more external renders just dilute the
   manuscript signal. Architecture-bound throughout (~0.18–0.23).
 - Eval: `tests/ocr/evaluations/cometa_sweep_vs_val300_20260724/`.
-- **Medical sweep pools (`aug_20260723_v3_medical_<N>`) are built +
-  validated but not yet trained** (deferred with the medical-track work).
+
+**MEDICAL RESULTS (2026-07-24, 300-val char_acc).** Same design, medical
+external slot (the 1000 point = §6.3.10 B″):
+
+| External medical | ratio | **ViT+RoBERTa** | Swin+BERT |
+|---|---|---|---|
+| 500 | 6:1 | 0.9381 | 0.2422 |
+| 1000 (existing B″) | 3:1 | 0.9389 | 0.1238 |
+| 2000 | 3:2 | 0.9445 | 0.2226 |
+| 4000 | 3:4 | **0.9487** | 0.2103 |
+
+**The COMETA finding replicates on medical — and medical edges ahead:**
+- **ViT+RoBERTa: monotonic ↑ with more medical corpus.** 4000 vs 1000 =
+  **+0.98 % [+0.30, +1.72]** (P=0.998 ✓), 4000 vs 500 = +1.05 % [+0.52,
+  +1.58] (P=1.000 ✓). **medical-4000 = 0.9487 is the best TrOCR char_acc on
+  300-val to date** — above COMETA-4000 (0.9438) and the prior 0.9443,
+  closing toward catmus (0.9613) / kraken (0.9620).
+- **Swin+BERT: declines with more medical** (0.2422 → 0.2103), same as
+  COMETA — architecture-bound.
+- **Cross-corpus conclusion:** for the pretrained arch, *more external
+  corpus helps regardless of corpus* (COMETA or medical), with a small
+  medical advantage at high volume; the 3:1 default is sub-optimal, ~3:4
+  is better. For the from-scratch arch, more external corpus *hurts*
+  either way. Eval:
+  `tests/ocr/evaluations/medical_sweep_vs_val300_20260724/`.
 
 ### 6.5.4 Stage-1 pretraining on medical corpus (instead of COMETA)
 
