@@ -1486,10 +1486,37 @@ re-render base fixed, for **both** COMETA and medical:
 - **Pools built + validated (2026-07-23), `aug_20260723_v3_<corpus>_<N>`**
   for corpus ∈ {cometa, medical}, N ∈ {500, 2000, 4000}, each = fixed 3000
   re-render base + N-stem external slot; **all validated dup_stems=0,
-  max_augs/stem=1**, nested 500 ⊂ 2000 ⊂ 4000. COMETA training in progress
-  (ViT+RoBERTa ×3 then Swin+BERT ×3); medical to follow. The 1000/3:1 point
+  max_augs/stem=1**, nested 500 ⊂ 2000 ⊂ 4000. The 1000/3:1 point
   = existing A″/B″ runs (§6.3.10; COMETA 994-stem-unique, medical
   1000-stem-unique).
+
+**COMETA RESULTS (2026-07-24, 300-val, single-stage).** External slot
+size vs char_acc, both architectures (the 1000 point = §6.3.10 A″):
+
+| External COMETA | ratio | **ViT+RoBERTa** | Swin+BERT |
+|---|---|---|---|
+| 500 | 6:1 | 0.9358 | 0.2265 |
+| 1000 (existing A″) | 3:1 | 0.9345 | 0.1953 |
+| 2000 | 3:2 | 0.9403 | 0.1942 |
+| 4000 | 3:4 | **0.9438** | 0.1825 |
+
+**Finding — more external corpus helps the pretrained arch, and the
+optimum is architecture-dependent:**
+- **ViT+RoBERTa: monotonic ↑ with more COMETA.** Paired bootstrap: 4000 vs
+  1000 = **+0.94 % [+0.36, +1.49]** (P=0.999 ✓), 4000 vs 500 = +0.80 %
+  [+0.25, +1.35] (P=0.999 ✓), 2000 vs 1000 = +0.58 % [+0.04, +1.12]
+  (P=0.981 ✓). **The 3:1 ratio is sub-optimal — 3:4 (4000) is best, at
+  0.9438, the highest TrOCR char_acc on 300-val so far** (vs prior best
+  0.9443 medical B″; now essentially tied / ahead within noise, and clears
+  kraken-leak-fixed 0.90). More external text diversity keeps helping a
+  well-pretrained cross-attention.
+- **Swin+BERT: the opposite — declines with more COMETA** (0.2265 → 0.1825).
+  From-scratch cross-attention with only 600 stems of image variety can't
+  exploit extra text diversity; more external renders just dilute the
+  manuscript signal. Architecture-bound throughout (~0.18–0.23).
+- Eval: `tests/ocr/evaluations/cometa_sweep_vs_val300_20260724/`.
+- **Medical sweep pools (`aug_20260723_v3_medical_<N>`) are built +
+  validated but not yet trained** (deferred with the medical-track work).
 
 ### 6.5.4 Stage-1 pretraining on medical corpus (instead of COMETA)
 
