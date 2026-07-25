@@ -1779,8 +1779,25 @@ cross-attention (trained on 34 M handwriting pairs) absorbs the image
 degradation almost entirely — the best model (medical-4000) drops only
 1 pp. This is a robustness argument for the pretrained TrOCR that the
 raw-accuracy leaderboard hides. (from-scratch Swin is flat because it is
-already at ~0.19 garbage — no headroom to drop.) Artefacts:
-`tests/ocr/evaluations/inkbleed_refresh_20260725/`.
+already at ~0.19 garbage — no headroom to drop.)
+
+**Severity check — p90 (top-10 % most-bled, n=30 vs 270 clean).** The gap
+*widens sharply* with bleed severity:
+
+| Model | clean | severe-bleed (p90) | Δ p90 | (Δ p75) |
+|---|---|---|---|---|
+| kraken no-medical | 91.24 % | 80.15 % | **−11.09 pp** | (−6.60) |
+| kraken medical | 90.87 % | 81.21 % | **−9.66 pp** | (−5.83) |
+| ViT+RoBERTa medical 3:1 | 93.99 % | 93.04 % | −0.95 pp | (+0.10) |
+| ViT+RoBERTa **medical-4000** | 95.04 % | 93.22 % | −1.82 pp | (−1.00) |
+| Swin staged-120k | 78.73 % | 78.22 % | −0.51 pp | (−3.43) |
+
+On the worst 10 % of lines kraken loses **~10 pp** while the pretrained
+TrOCR loses only **~1–2 pp** — the more severe the ink bleed, the larger
+kraken's disadvantage. (p90 CIs are wider, n=29 shared; the direction is
+unambiguous.) Artefacts:
+`tests/ocr/evaluations/inkbleed_refresh_20260725/` (both `bleed_p75_*` and
+`bleed_p90_*`, + `inkbleed_summary.md` / `inkbleed_p90_summary.md`).
 
 ### 6.5.9 Word-frequency recall error analysis (refresh, 2026-07-25)
 
