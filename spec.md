@@ -1872,29 +1872,26 @@ the single 1000-point.
   Data: 600-only = real folder only; 600+3000 = `aug_20260721_121550`
   (3000 anno re-renders, no external). bs=32 for Swin+BERT & ViT+RoBERTa,
   bs=16 for the decoder-swap archs (matches their A″/B″ runs).
-- **Stage-1 corpus comparison at matched 18k — 6 runs**
-  (`scratchpad/queue_stage1_corpus_18k.sh`, §6.5.4): Swin+BERT pretrain on
-  **medical-18k** (the full bank `aug_20260626_105610`, 18 000 renders =
-  medical's ceiling: only 6001 distinct texts ×3) **and** on **COMETA-18k**
-  (`aug_20260725_cometa_18k`, 18 000 random renders from the 266k, seed=42
-  — the size-matched control), each → Stage 2a (A″) / 2b (B″).
-  **Decision (2026-07-25): use the full 18k, not 4k** — more Stage-1 data
-  helps (§6.5.2 scaling) and 18k is the corpus max; the COMETA-18k control
-  makes the medical-vs-COMETA Stage-1 comparison **single-variable
-  (corpus, at fixed size)** rather than confounding corpus with size.
-  Also comparable to the COMETA scaling curve (18k sits between
-  single-stage 0.25 and 30k 0.62).
+- **Stage-1 on medical — 3 runs** (`scratchpad/queue_stage1_medical_18k.sh`,
+  §6.5.4): Swin+BERT pretrain on the **full medical-18k bank**
+  (`aug_20260626_105610`, 18 000 renders = medical's ceiling: only 6001
+  distinct texts ×3), then Stage 2a (A″) / 2b (B″). **Decision
+  (2026-07-25): use the full 18k, not 4k** — more Stage-1 data helps
+  (§6.5.2). This is the *only* missing 2-stage cell: **COMETA Stage-1 is
+  already covered** by the 30k/90k/120k rows (§6.5.2), so no COMETA-18k
+  control is needed — compare medical-18k directly against that COMETA
+  scaling curve (18k sits between single-stage 0.25 and COMETA-30k 0.62).
 - **Ratio sweep is already complete** for both arches, both corpora
   (§6.5.3) — the {500,2000,4000} points beyond the 1000-baseline; best
   overall = medical-4000 = 0.9487.
 
-**Data staged for upload** (`scratchpad/coverage_data_chunks/`, 8.3 GB,
-17 chunks, sha `656e1919…`): medical-18k bank `aug_20260626_105610` +
-`aug_20260725_cometa_18k` + `aug_20260721_121550` (3000-base) + labels. On
-VM restart: verify A″/B″ still present (disk persists across a stop),
-upload the bundle (stream-extract to dodge the `/`-partition limit), then
-deploy + launch both drivers. Total ~8–9 h GPU (ViT+RoBERTa grid-fill runs
-+ 2 Stage-1a-18k pretrains dominate).
+**Data staged for upload** (`scratchpad/coverage_data_chunks/`, 4.7 GB,
+10 chunks, sha `a84d72ea…`): medical-18k bank `aug_20260626_105610` +
+`aug_20260721_121550` (3000-base) + labels. On VM restart: verify A″/B″
+still present (disk persists across a stop), upload the bundle
+(stream-extract to dodge the `/`-partition limit), then deploy + launch
+both drivers (grid-fill 12 + medical-Stage-1 3 = 15 runs). Total ~7–8 h GPU
+(the ViT+RoBERTa grid-fill runs + the medical-18k pretrain dominate).
 
 ## 7. Infrastructure
 
