@@ -290,12 +290,93 @@ distinct medical stems** (enough for a 4000-stem slot). The §6.5.3 medical
 sweep anchors on the existing 1000 stems and extends with new stems from
 the 18k bank.
 
-## 6. Models & results (as of 2026-07-10)
+## 6. Models & results
 
 All char/word accuracies are **corpus-level** (Levenshtein distance
 via `rapidfuzz`, aggregated over all val lines).
 
-### 6.1 Permanent 300-val benchmark (canonical numbers)
+### 6.0 CONSOLIDATED STATUS — read this first (2026-07-25)
+
+High-level review of the whole program. Detailed derivations in the
+numbered subsections below; this is the map.
+
+**Current 300-val leaderboard (char_acc).** ⚠ = scored against the
+*pre-correction* GT (needs re-eval on corrected GT before apples-to-apples
+comparison, see "Missing" below); ✓ = corrected-GT (post-§6.3.10).
+
+| Rank | Model | char_acc | GT |
+|---|---|---|---|
+| 1 | kraken 600-real historical (`_070741`) | 0.9620 | ⚠ old GT + old pool |
+| 2 | catmus baseline | 0.9613 | ⚠ old GT |
+| 3 | Medusa 0.2 Line 9B (cleaned) | 0.9510 | ⚠ old GT |
+| 4 | **TrOCR ViT+RoBERTa · medical-4000** (best reproducible) | **0.9487** | ✓ |
+| 5 | TrOCR ViT+RoBERTa · cometa-4000 | 0.9438 | ✓ |
+| 6 | TrOCR ViT+RoBERTa · medical 3:1 / cometa 3:1 | 0.9389 / 0.9345 | ✓ |
+| 7 | kraken leak-fixed matched (no-med / med) | 0.9018 / 0.8994 | ✓ |
+| 8 | Swin+BERT staged (120k / 90k / 30k) | 0.7868 / 0.7581 / 0.6172 | ✓ |
+| 9 | Swin from-scratch (decoder swap best = Swin+xlm-RoBERTa) | 0.281 | ✓ |
+
+**Honest headline:** on the *corrected* benchmark the best clean number is
+**TrOCR ViT+RoBERTa medical-4000 = 0.9487**. The three higher historical
+numbers (kraken/catmus/Medusa ≈ 0.96/0.95) are on the *old* GT and are
+**not yet reproduced on the corrected GT** — and kraken specifically
+dropped to 0.90 when re-run on corrected data (§6.3.10 baseline shift).
+Closing that gap (re-eval catmus/Medusa, resolve the kraken shift) is the
+main thing standing between us and a single clean leaderboard.
+
+**Headline findings (all bootstrap-validated unless noted):**
+1. **Cross-attention pretraining is the dominant factor** (§6.3.6/§6.3.7):
+   the +72 pp Swin+BERT-from-scratch → ViT+RoBERTa-pretrained gap is ≥71 pp
+   pretraining, ≤0.74 pp tokenizer.
+2. **Staged pretraining recovers most of the from-scratch gap** (§6.3.4,
+   §6.3.10): +49 pp; **Stage-1 COMETA pretraining does ~all of it**,
+   manuscript fine-tuning (Stage 2) is inert.
+3. **Stage-1 data scaling** (§6.5.2): 30k→90k→120k = 0.62→0.76→0.79;
+   +14 pp then +2.9 pp (diminishing but each significant); val-fold→real
+   gap narrows 24→21→19 pp = real generalisation, not just synth-val fit.
+4. **External-corpus ratio** (§6.5.3): more external corpus **helps the
+   pretrained arch** (COMETA *and* medical, monotonic, significant) and
+   **hurts the from-scratch arch**; the 3:1 default is sub-optimal, 3:4 is
+   best → medical-4000 0.9487.
+5. **Medical-vs-COMETA effect is not robust** (§6.4 → §6.3.10): the
+   "architecture-dependent, opposite-signed significant" story held on the
+   pre-correction data; on corrected annotations both directions lose
+   significance. Cautionary methodology result.
+6. **Decoder interchange** (§6.5.6/§6.5.7): from-scratch decoder ranking
+   **xlm-RoBERTa > GPT-2 > BERT** (all significant); GPT-2 required a real
+   over-generation fix; all from-scratch ≪ pretrained.
+7. **Ink-bleed robustness** (§6.5.8): pretrained TrOCR barely affected
+   (−0.5 pp on high-bleed lines) vs **kraken −6.2 pp**.
+8. **Word-frequency** (§6.5.9): kraken weak on mid/rare words (→ high WER
+   despite good CER); ViT+RoBERTa most balanced; Medusa best on rare words.
+9. **Pipeline bug found + fixed** (§6.3.9): text-level train/val leak in
+   the kraken mixed real+synthetic split.
+
+**Code contributions committed:** arbitrary `--encoder-id`/`--decoder-id`
+incl. GPT-2 support in `trocr_finetune` (`65375d1`, `fe7879c`); kraken
+coordinated-split leak fix (§6.3.9).
+
+**DONE:** full TrOCR track (2×4 grid, staging, 30k/90k/120k scaling, COMETA
+& medical ratio sweeps, decoder interchange); leak-fixed kraken matched
+pool; per-track bootstrap CIs; ink-bleed + word-frequency analyses. **All
+models backed up locally + sha-verified.**
+
+**MISSING / pending (needs the VM restarted for the training/transcription
+ones):**
+- **catmus + Medusa re-eval against corrected GT** — the #1 gap; their
+  0.9613 / 0.9510 are on the old GT. (transcription exists; just re-run
+  `run_evaluate_ocr` against corrected `validation/`.)
+- **Full joint bootstrap CI across ALL models on corrected GT** (§6.5.8
+  headline table) — depends on the above.
+- **validated-285 manifest refresh** for the 10 corrected val lines
+  (§6.3.8) so the validated-subset numbers stay exact.
+- **Kraken baseline-shift ablations** (§6.5.1): re-run leak-fixed kraken on
+  the historical 500-stem pool and with `val_fraction=0.2` to isolate the
+  0.96→0.90 drop.
+- **Optional extensions:** Stage-1 on full 266k COMETA; Stage-1 on the
+  medical corpus instead of COMETA (§6.5.4).
+
+### 6.1 Permanent 300-val benchmark (historical baseline, pre-correction)
 
 The eval every model is compared against for thesis reporting. Two
 eval runs live on disk:
