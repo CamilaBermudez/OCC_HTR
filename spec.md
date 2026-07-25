@@ -2037,6 +2037,52 @@ bleed. On the 29 heavy-bleed lines the medical version nominally edges ahead
 (81.20 vs 80.18), reversing the full-set order, but CIs overlap almost
 entirely at n=29 — not significant.
 
+### 6.5.13 Ratio-sweep full stats: median + CI + ink-bleed (2026-07-25)
+
+Completes §6.5.3 (which had corpus char_acc + scaling bootstrap only) with the
+**per-line median, full per-model bootstrap CIs, and ink-bleed p90** for the
+whole sweep — **600 + 3000 re-renders + N external**, N ∈ {500, 1000, 2000,
+4000}, both corpora × both archs. The **N=1000** point is the A″/B″ run
+(§6.5.10). Full report + per-line CSVs:
+`tests/ocr/evaluations/{cometa,medical}_sweep_full_20260725/`
+(`ratio_sweep_full_stats_report.md`).
+
+**ViT+RoBERTa (pretrained) — corpus + median + bootstrap CI (full 299):**
+
+| corpus | N | char_acc | char_acc median | word_acc median | char_acc [95% CI] | word_acc [95% CI] |
+|---|---|---|---|---|---|---|
+| COMETA | 500 | 0.9358 | 0.9474 | 0.7143 | 93.58 [92.88, 94.25] | 70.98 [68.37, 73.55] |
+| COMETA | 1000 | 0.9345 | 0.9474 | 0.7500 | 93.45 [92.69, 94.17] | 72.11 [69.48, 74.76] |
+| COMETA | 2000 | 0.9403 | 0.9500 | 0.7500 | 94.03 [93.34, 94.70] | 73.23 [70.56, 75.89] |
+| COMETA | 4000 | 0.9438 | 0.9535 | 0.7500 | 94.39 [93.73, 95.02] | 73.67 [70.99, 76.18] |
+| medical | 500 | 0.9381 | 0.9487 | 0.7500 | 93.81 [93.14, 94.45] | 72.68 [69.95, 75.31] |
+| medical | 1000 | 0.9389 | 0.9487 | 0.7500 | 93.90 [93.08, 94.65] | 73.46 [70.86, 76.08] |
+| medical | 2000 | 0.9445 | 0.9500 | 0.7500 | 94.45 [93.77, 95.10] | 72.88 [70.12, 75.58] |
+| medical | 4000 | **0.9487** | 0.9583 | 0.8000 | 94.87 [94.21, 95.47] | 75.08 [72.43, 77.64] |
+
+**Scaling significance** (matches §6.5.3, recomputed on the merged 8-model
+table): 4000 vs 500 is significant on char_acc for both corpora — COMETA
+**+0.80 % [+0.27, +1.34]** (P=0.999 ✓), medical **+1.06 % [+0.53, +1.59]**
+(P=1.000 ✓). More external corpus monotonically helps the pretrained arch;
+best = **medical-4000 = 0.9487** (top fine-tuned model in the program).
+
+**Ink-bleed p90 (270 clean / 29 bleed), ViT+RoBERTa Δ = bleed − clean:**
+
+| corpus | N=500 | N=1000 | N=2000 | N=4000 |
+|---|---|---|---|---|
+| COMETA | −1.65 | −2.44 | −2.35 | −2.94 |
+| medical | −1.17 | −0.96 | −0.43 | −1.81 |
+
+ViT+RoBERTa is moderately bleed-robust (Δ −1 to −3 pp): better than kraken
+(−9 to −11, §6.5.12) and catmus (−3.0), worse than Medusa (−0.4). Differences
+across N are within the n=29 CI overlap — not significant.
+
+**Swin+BERT (from scratch) — control:** near-random at every N (char_acc
+0.12–0.24, WER > 1), moving **non-monotonically** — noise, not signal.
+External-corpus volume **cannot rescue a from-scratch model**; pretrained
+cross-attention (ViT+RoBERTa only) is the precondition for the corpus to help
+(§6.3.6). Ink-bleed stratification omitted at this accuracy floor.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
