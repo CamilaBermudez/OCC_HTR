@@ -173,6 +173,35 @@ data/processed/annotated_samples/OCR/full_annotated/
 data/processed/annotated_samples/OCR/validation/
 ```
 
+### 4.1 Layout detection (YOLOv8 / YALTAi) performance
+
+The layout stage is a **YOLOv8n** detector fine-tuned via **YALTAi** on the
+hand-annotated AlbucE pages. Best checkpoint:
+`models/layout/y8_YALTAi_50epochs_best_+9annotated_fix50.pt` (50 epochs).
+14 SegmOnto zone classes are defined, but the manuscript is annotated with
+a **single region type — `MainZone` (main text block)** — so all metrics
+are single-class text-block detection.
+
+**Results** (source: `logs/evaluation/20260430_104426_metrics.json`, conf =
+0.25; COCO mAP re-computed via `ultralytics.YOLO.val`, imgsz=1024). Test
+set = the annotated pages `data/processed/annotated_samples/retrain/images`
+(24 pages, 132 region instances):
+
+| Metric | Value |
+|---|---|
+| mAP@50 | **0.936** |
+| mAP@[50:95] | **0.835** |
+| Precision @IoU 0.5 | 0.977 |
+| Recall @IoU 0.5 | 0.947 |
+| F1 @IoU 0.5 | 0.962 |
+| (P/R/F1 @IoU 0.3) | 0.984 / 0.955 / 0.969 |
+| (P/R/F1 @IoU 0.7) | 0.961 / 0.932 / 0.946 |
+
+Epoch progression (F1@0.5, `logs/evaluation/`): 5-ep 0.921, 20-ep 0.908,
+**50-ep 0.962 (best)**. **Caveat:** the eval set is the annotated/retrain
+pool (likely overlaps training), so these are strong but not held-out —
+report as "on the annotated set" pending a dedicated held-out test split.
+
 ## 5. Datasets
 
 ### 5.1 Real annotated pool — `data/processed/annotated_samples/OCR/full_annotated/`
