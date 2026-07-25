@@ -2111,6 +2111,55 @@ External-corpus volume **cannot rescue a from-scratch model**; pretrained
 cross-attention (ViT+RoBERTa only) is the precondition for the corpus to help
 (§6.3.6). Ink-bleed stratification omitted at this accuracy floor.
 
+### 6.5.14 6-arch grid A″/B″ full stats (1000-external, 2026-07-25)
+
+Full-stats treatment (corpus + median + bootstrap CI + ink-bleed p90) for the
+two **completed** scenarios of the 6-arch × 4-scenario grid: **600 + 3000
+re-renders + 1000 external**, external ∈ {COMETA = A″, medical = B″}, across all
+six encoder×decoder combos. (Scenarios 600-only and 600+3000 are the fill runs
+still training on the VM, §6.5.10.) GPT-2 archs = **v2 pad/eos-fix** (§6.5.7).
+Report + per-line CSVs:
+`tests/ocr/evaluations/grid_{cometa,medical}1000_6arch_20260725/`
+(`grid_6arch_1000_stats_report.md`).
+
+**Scenario A″ = 600+3000+COMETA(1000):**
+
+| arch | char_acc | char_acc median | word_acc median | char_acc [95% CI] | word_acc [95% CI] | bleed Δ char |
+|---|---|---|---|---|---|---|
+| ViT+RoBERTa | **0.9345** | 0.9474 | 0.7500 | 93.45 [92.69, 94.18] | 72.12 [69.41, 74.82] | −2.42 |
+| Swin+xlm-RoBERTa | 0.2810 | 0.2821 | 0.0000 | 28.09 [27.29, 28.90] | −3.30 [−5.14, −1.54] | +0.22 |
+| Swin+GPT2 | 0.2586 | 0.2500 | 0.0000 | 25.85 [25.04, 26.63] | 0.96 [−0.20, 2.07] | +1.98 |
+| ViT+BERT | 0.2058 | 0.2000 | 0.0000 | 20.58 [19.70, 21.48] | −7.11 [−9.05, −5.24] | +0.15 |
+| ViT+GPT2 | 0.2054 | 0.2000 | −0.1429 | 20.55 [19.72, 21.38] | −14.73 [−16.87, −12.67] | −2.30 |
+| Swin+BERT | 0.1952 | 0.1944 | 0.0000 | 19.53 [18.66, 20.38] | −7.21 [−9.16, −5.31] | −0.95 |
+
+**Scenario B″ = 600+3000+medical(1000):**
+
+| arch | char_acc | char_acc median | word_acc median | char_acc [95% CI] | word_acc [95% CI] | bleed Δ char |
+|---|---|---|---|---|---|---|
+| ViT+RoBERTa | **0.9389** | 0.9487 | 0.7500 | 93.89 [93.07, 94.63] | 73.48 [70.84, 76.08] | −0.98 |
+| Swin+xlm-RoBERTa | 0.2736 | 0.2703 | 0.0000 | 27.37 [26.51, 28.23] | −3.79 [−5.85, −1.82] | +0.22 |
+| Swin+GPT2 | 0.2029 | 0.2000 | 0.0000 | 20.29 [19.53, 21.06] | −4.03 [−5.51, −2.60] | +1.65 |
+| ViT+BERT | 0.1985 | 0.2000 | 0.0000 | 19.85 [19.00, 20.71] | −8.23 [−10.32, −6.27] | +0.86 |
+| ViT+GPT2 | 0.1813 | 0.1765 | 0.0000 | 18.13 [17.20, 19.08] | −8.41 [−10.11, −6.81] | +0.41 |
+| Swin+BERT | 0.1238 | 0.1282 | −0.1429 | 12.38 [10.84, 13.86] | −14.98 [−17.77, −12.38] | −0.61 |
+
+(`bleed Δ char` = char_acc on 29 p90-bleed lines − char_acc on 270 clean lines;
+full clean/bleed CIs in the report. word_acc < 0 ⇔ WER > 1, i.e. more word
+errors than reference words.)
+
+**Reading:**
+- **Only ViT+RoBERTa does real OCR** (~0.934–0.939). The other five are
+  **near-random** (0.12–0.28, WER > 1 ⇒ negative word_acc) — the §6.3.6
+  cross-attention-pretraining dominance in a single side-by-side grid.
+- **Corpus choice barely moves ViT+RoBERTa** at 1000 external: medical 0.9389
+  vs COMETA 0.9345 (overlapping CIs) — corrected-GT collapse of the old
+  medical>COMETA finding (§6.4). Scaling external → 4000 is what helps (§6.5.13).
+- **Ink-bleed Δ is only interpretable for ViT+RoBERTa** (−2.42 A″ / −0.98 B″).
+  For the near-random archs several Δ are *positive* — the model isn't reading
+  glyphs, so bleed can't hurt what was never decoded; do not read robustness
+  into it.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
