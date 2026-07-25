@@ -2231,6 +2231,120 @@ stays manageable (13 chunks for 6 GB, 106 chunks for 53 GB, both
 within reason). For LAN or high-quality corporate networks, 1-2 GB
 chunks are fine and reduce round-trip overhead.
 
+#### 7.2.5 Fresh-VM setup runbook (replicable, distilled 2026-07-25)
+
+Single self-contained checklist to stand up a **new** GPU VM from zero and
+reach a "can train / transcribe" state, distilling every lesson from
+§7.2.1–§7.2.4. Follow top to bottom; each step notes *why* so you can adapt
+if the provider/image differs. Target parity with the active §7.2.3 instance.
+
+**0. Provisioning (GCP console or `gcloud`).**
+- **Image**: Vertex AI Workbench / Deep Learning VM with a **Python 3.11**
+  base (matches `requires-python = ">=3.11,<3.12"` — a 3.12 image forces the
+  `PYTHONPATH=.` workaround of §7.2.2; avoid it if you can pick the image).
+- **GPU**: 1 × NVIDIA **L4** (24 GB VRAM) — fits every model in the program
+  (Swin/ViT TrOCR bs=32, Medusa 9B bs=2, kraken). Driver 580.x / CUDA 12–13
+  ships pre-installed on the DLVM image; do **not** hand-install CUDA.
+- **Machine**: 16 vCPU / 64 GB RAM (dataloader workers + Medusa RAM). 8 vCPU
+  also works but halves dataloader throughput.
+- **Disk**: request ≥ **150 GB** on the workspace mount. The DLVM two-mount
+  shape gives a small `/` (~148 GB, ~half used by the image) and a separate
+  `/home/jupyter` (~98 GB, empty). **Everything lives under `/home/jupyter/`**
+  — the augmented banks + checkpoints will overflow `/` otherwise (§7.2.3
+  disk-full failures came from ignoring this).
+- **Zone**: any L4 zone (`us-west4-c` used throughout). Note the **project id**
+  and **zone** — you need both on every `gcloud compute` call.
+
+**1. First connect + gcloud pointing.**
+```bash
+gcloud config set project <PROJECT_ID>      # e.g. project-8a4066cd-a3df-4df6-8dd
+gcloud compute ssh jupyter@<INSTANCE> --zone=<ZONE>
+```
+On the current OS-Login image, `ssh` and `scp` both act as the *same* OS-Login
+user (`<you>_gmail_com`) — no two-home split like §7.2.1/§7.2.2, so scp can
+land directly in `/home/jupyter/…` (older images: scp to `/tmp` then `cp`).
+
+**2. Grant your user the workspace + install `uv`.**
+```bash
+sudo mkdir -p /home/jupyter/OCC_HTR
+sudo chown -R $(whoami):$(whoami) /home/jupyter/OCC_HTR   # /home/jupyter owned by 'jupyter' svc user
+curl -LsSf https://astral.sh/uv/install.sh | sh          # uv NOT pre-installed
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+(`uv` = fast Rust-based Python package/venv manager; it's the project's source
+of truth via `pyproject.toml`/`uv.lock`, not `requirements.txt`.)
+
+**3. Clone + build the environment.**
+```bash
+cd /home/jupyter && git clone <REPO_URL> OCC_HTR && cd OCC_HTR
+uv sync                                    # builds .venv from uv.lock
+uv pip install transformers==5.12.1        # HARD PIN: 5.13.x breaks TrOCR-base
+                                           #   tokenizer load, unworkaroundable (§11)
+```
+- **torch/CUDA**: `pyproject` pins `torch==2.4.1`; on a Linux-x86 GPU VM the
+  default PyPI wheel is CUDA-enabled (cu121), so `uv sync` gives you GPU torch
+  with **no manual reinstall** — the L4 driver is back-compatible. Confirm:
+  `uv run python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"`
+  must print `True NVIDIA L4`. If it prints `False`, you got a CPU wheel —
+  `uv pip install torch==2.4.1 --index-url https://download.pytorch.org/whl/cu121`.
+- The annotated GT (`full_annotated` 600, `validation` 300) is **git-tracked**
+  (allowlisted in `.gitignore`) and arrives with the clone — no upload needed.
+
+**4. Upload the training data banks (NOT in git).**
+The augmented image banks + their `labels.json` live outside git and must be
+uploaded via the split-tarball pattern (§7.2.4). Only upload what the queued
+work needs — full inventory of banks is in
+`data/processed/synthetic_samples/{augmented_images,img_labels}/`. Bank →
+purpose map for the **current** fill queue (staged in
+`scratchpad/coverage_data_chunks/`, 4.7 GB, sha `a84d72ea…`):
+
+| bank (`aug_*` + matching `labels_*`) | rows | used by |
+|---|---|---|
+| `aug_20260721_121550` | 3000 anno re-renders | grid-fill 600+3000 (§6.5.10) |
+| `aug_20260626_105610` | 18k medical bank | medical Stage-1 pretrain (§6.5.4) |
+| `aug_20260721_v2_matched_cometa` | A″ COMETA 3:1 | Stage-2a fine-tunes |
+| `aug_20260721_v2_medical` | B″ medical 3:1 | Stage-2b fine-tunes |
+| `aug_20260722_cometa_90k` / `_20260724_cometa_120k` | 90k/120k | Stage-1 scale-up (§6.5.2) |
+
+Each pairs 1:1 with `img_labels/labels_<same-stamp>/labels.json`. Disk
+persists across a *stop* (not a delete), so on a restarted VM verify presence
+first (`ls data/processed/synthetic_samples/augmented_images/`) and only
+re-upload what's missing.
+
+**5. Standard invocation.**
+```bash
+cd /home/jupyter/OCC_HTR
+env PROJECT_ROOT=. PYTHONPATH=. uv run python3 scripts/ocr/run_trocr_finetune.py <flags> --device cuda
+# anything > ~10 min: detach so an SSH drop doesn't kill it
+nohup setsid env PROJECT_ROOT=. PYTHONPATH=. uv run python3 scripts/... > logs/run.out 2>&1 < /dev/null &
+```
+Multi-run queues use a driver script (`scratchpad/queue_*.sh`) that prunes
+each run's `checkpoints/` right after `best_model/` is written (`rm -rf
+<run>/checkpoints`) — mandatory or the small partition fills mid-queue.
+
+**6. Pull results + back up, then stop.**
+- Pull only the small artefacts (eval CSV/MD ~tens of KB) routinely; tar
+  `best_model/` folders for a full backup via the split pattern (§7.2.4),
+  sha-verify, then delete on-VM copies that are backed up to free disk.
+- **Always stop when idle** (billing ~$0.7/h running → ~$0.05/h stopped):
+  ```bash
+  gcloud compute instances stop <INSTANCE> --zone=<ZONE>
+  ```
+- Cost reference: TrOCR grid ~$5, Medusa full-corpus ~$4, a 15-run fill
+  queue ~7–8 h GPU ≈ $5–6.
+
+**Gotcha checklist (each cost real time earlier — see cross-refs):**
+- 3.12 base image → `pip install -e .` blocked by `requires-python`; use
+  `PYTHONPATH=.` (§7.2.2).
+- `transformers` 5.13.x → TrOCR tokenizer load crash; pin 5.12.1 (§11).
+- Writing under `/` instead of `/home/jupyter` → root partition fills (§7.2.3).
+- Forgetting `chown` on the workspace → permission-denied writes as OS-Login user.
+- `&`-in-a-path (`LMU-STATISTICS & DATA…`) is a `sed` metachar → never build
+  remote paths with `sed`; quote literally (§ model-pull bug).
+- macOS `tar` without `COPYFILE_DISABLE=1` → AppleDouble sidecars double the
+  input file count (§11 / §7.2.4 step 1).
+- Direct scp of > 1 GB stalls with no resume → split-tarball (§7.2.4).
+
 ### 7.3 Model checkpoints on disk
 
 - `models/ocr/catmus-medieval.mlmodel` — kraken base.
