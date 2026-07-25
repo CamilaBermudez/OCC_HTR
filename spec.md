@@ -2066,16 +2066,31 @@ table): 4000 vs 500 is significant on char_acc for both corpora — COMETA
 (P=1.000 ✓). More external corpus monotonically helps the pretrained arch;
 best = **medical-4000 = 0.9487** (top fine-tuned model in the program).
 
-**Ink-bleed p90 (270 clean / 29 bleed), ViT+RoBERTa Δ = bleed − clean:**
+**Ink-bleed p90 segregated (paired bootstrap CI within each subset: clean
+`p90=F` n=270, bleed `p90=T` n=29), ViT+RoBERTa:**
 
-| corpus | N=500 | N=1000 | N=2000 | N=4000 |
-|---|---|---|---|---|
-| COMETA | −1.65 | −2.44 | −2.35 | −2.94 |
-| medical | −1.17 | −0.96 | −0.43 | −1.81 |
+| corpus | N | char clean [95% CI] | char bleed [95% CI] | Δc | word clean [95% CI] | word bleed [95% CI] | Δw |
+|---|---|---|---|---|---|---|---|
+| COMETA | 500 | 93.74 [93.04, 94.41] | 92.09 [88.97, 94.83] | −1.65 | 71.32 [68.54, 74.00] | 67.67 [58.97, 76.33] | −3.65 |
+| COMETA | 1000 | 93.68 [92.92, 94.41] | 91.24 [88.06, 94.09] | −2.44 | 72.62 [69.75, 75.34] | 67.15 [58.13, 76.12] | −5.47 |
+| COMETA | 2000 | 94.26 [93.58, 94.92] | 91.91 [88.94, 94.60] | −2.35 | 73.90 [71.23, 76.54] | 66.69 [57.14, 75.88] | −7.21 |
+| COMETA | 4000 | 94.67 [94.02, 95.29] | 91.73 [88.71, 94.45] | −2.94 | 74.45 [71.66, 77.11] | 66.20 [58.09, 74.27] | −8.25 |
+| medical | 500 | 93.92 [93.23, 94.58] | 92.75 [90.01, 95.23] | −1.17 | 72.97 [70.13, 75.67] | 69.72 [61.93, 77.89] | −3.25 |
+| medical | 1000 | 93.99 [93.16, 94.76] | 93.03 [90.58, 95.34] | −0.96 | 73.97 [71.28, 76.62] | 68.70 [60.00, 77.66] | −5.27 |
+| medical | 2000 | 94.49 [93.77, 95.15] | 94.06 [92.14, 95.87] | −0.43 | 73.09 [70.27, 75.81] | 70.72 [61.69, 79.37] | −2.37 |
+| medical | 4000 | 95.04 [94.38, 95.66] | 93.23 [91.22, 95.14] | −1.81 | 75.84 [73.07, 78.60] | 67.77 [59.33, 76.14] | −8.07 |
 
-ViT+RoBERTa is moderately bleed-robust (Δ −1 to −3 pp): better than kraken
-(−9 to −11, §6.5.12) and catmus (−3.0), worse than Medusa (−0.4). Differences
-across N are within the n=29 CI overlap — not significant.
+ViT+RoBERTa is moderately bleed-robust on char_acc (Δc −1 to −3 pp): better
+than kraken (−9 to −11, §6.5.12) and catmus (−3.0), worse than Medusa (−0.4).
+The word_acc drop is larger (Δw −2 to −8) — a bled line that loses a few chars
+usually loses whole words. The 29-line bleed CIs are wide and overlap the clean
+CIs at every N, so within-arch differences across N are **not** significant:
+the ratio ranking is a clean-subset effect, not bleed-driven.
+
+**Swin+BERT ink-bleed (char_acc, clean/bleed)** — included for completeness but
+not meaningful at the near-random floor (clean ≈ bleed at every N): COMETA
+clean 22.6/19.6/19.5/17.9 vs bleed 23.1/18.7/18.9/21.3; medical clean
+24.2/12.4/22.3/21.0 vs bleed 24.7/11.8/22.1/21.7 (N = 500/1000/2000/4000).
 
 **Swin+BERT (from scratch) — control:** near-random at every N (char_acc
 0.12–0.24, WER > 1), moving **non-monotonically** — noise, not signal.

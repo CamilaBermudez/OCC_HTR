@@ -48,22 +48,41 @@ significant on char_acc for *both* corpora (+0.8 to +1.1 pp; 0 outside CI). The
 gain is real but small — a ~1 pp char ceiling effect. Best overall =
 **medical-4000 = 0.9487**, the top fine-tuned model in the program.
 
-### Ink-bleed p90 stratification (270 clean / 29 bleed)
+### Ink-bleed p90 stratification — full segregation (270 clean / 29 bleed)
 
-| corpus | N ext | char_acc clean | char_acc bleed | Δ |
+Paired bootstrap 95 % CI computed **within** each subset (`has_bleed_p90` =
+False = clean n=270, True = bleed n=29). char_acc:
+
+| corpus | N | char_acc clean (p90=F) [95% CI] | char_acc bleed (p90=T) [95% CI] | Δ char |
 |---|---|---|---|---|
-| COMETA | 500 | 93.74% | 92.09% | −1.65 pp |
-| COMETA | 1000 | 93.68% | 91.24% | −2.44 pp |
-| COMETA | 2000 | 94.26% | 91.91% | −2.35 pp |
-| COMETA | 4000 | 94.67% | 91.73% | −2.94 pp |
-| medical | 500 | 93.92% | 92.75% | −1.17 pp |
-| medical | 1000 | 93.99% | 93.03% | −0.96 pp |
-| medical | 2000 | 94.49% | 94.06% | −0.43 pp |
-| medical | 4000 | 95.04% | 93.23% | −1.81 pp |
+| COMETA | 500 | 93.74 [93.04, 94.41] | 92.09 [88.97, 94.83] | −1.65 |
+| COMETA | 1000 | 93.68 [92.92, 94.41] | 91.24 [88.06, 94.09] | −2.44 |
+| COMETA | 2000 | 94.26 [93.58, 94.92] | 91.91 [88.94, 94.60] | −2.35 |
+| COMETA | 4000 | 94.67 [94.02, 95.29] | 91.73 [88.71, 94.45] | −2.94 |
+| medical | 500 | 93.92 [93.23, 94.58] | 92.75 [90.01, 95.23] | −1.17 |
+| medical | 1000 | 93.99 [93.16, 94.76] | 93.03 [90.58, 95.34] | −0.96 |
+| medical | 2000 | 94.49 [93.77, 95.15] | 94.06 [92.14, 95.87] | −0.43 |
+| medical | 4000 | 95.04 [94.38, 95.66] | 93.23 [91.22, 95.14] | −1.81 |
 
-ViT+RoBERTa is moderately ink-bleed-robust (Δ −1 to −3 pp) — better than kraken
-(−9 to −11) and catmus (−3.0), worse than Medusa (−0.4). Deltas on n=29 have
-wide overlapping CIs, so within-arch differences across N are not significant.
+word_acc (same subsets):
+
+| corpus | N | word_acc clean (p90=F) [95% CI] | word_acc bleed (p90=T) [95% CI] | Δ word |
+|---|---|---|---|---|
+| COMETA | 500 | 71.32 [68.54, 74.00] | 67.67 [58.97, 76.33] | −3.65 |
+| COMETA | 1000 | 72.62 [69.75, 75.34] | 67.15 [58.13, 76.12] | −5.47 |
+| COMETA | 2000 | 73.90 [71.23, 76.54] | 66.69 [57.14, 75.88] | −7.21 |
+| COMETA | 4000 | 74.45 [71.66, 77.11] | 66.20 [58.09, 74.27] | −8.25 |
+| medical | 500 | 72.97 [70.13, 75.67] | 69.72 [61.93, 77.89] | −3.25 |
+| medical | 1000 | 73.97 [71.28, 76.62] | 68.70 [60.00, 77.66] | −5.27 |
+| medical | 2000 | 73.09 [70.27, 75.81] | 70.72 [61.69, 79.37] | −2.37 |
+| medical | 4000 | 75.84 [73.07, 78.60] | 67.77 [59.33, 76.14] | −8.07 |
+
+ViT+RoBERTa is moderately ink-bleed-robust on char_acc (Δ −1 to −3 pp) — better
+than kraken (−9 to −11, §6.5.12) and catmus (−3.0), worse than Medusa (−0.4).
+The word_acc drop is larger (−2 to −8 pp): a bled line that loses a few chars
+usually loses whole words. The 29-line bleed CIs are wide and overlap the clean
+CIs at every N, so within-arch differences across N are **not** significant —
+the ranking of ratios is a clean-subset effect, not a bleed-driven one.
 
 ## Swin+BERT (from scratch) — control
 
@@ -79,5 +98,13 @@ char_acc stays 0.12–0.24 (WER > 1, i.e. more word errors than reference words)
 and moves **non-monotonically** — noise, not signal. **External-corpus volume
 cannot rescue a from-scratch model**; the pretrained cross-attention (present
 only in the ViT+RoBERTa arch) is the precondition for the corpus to help at all
-(§6.3.6 dominant-factor finding). Ink-bleed stratification is not meaningful at
-this accuracy floor and is omitted.
+(§6.3.6 dominant-factor finding).
+
+Ink-bleed p90 char_acc (clean n=270 / bleed n=29), included for completeness
+though not meaningful at this floor — clean ≈ bleed at every N, confirming the
+model is not really reading the glyphs either way:
+
+| corpus | N | char_acc clean | char_acc bleed |
+|---|---|---|---|
+| COMETA | 500 / 1000 / 2000 / 4000 | 22.60 / 19.61 / 19.47 / 17.93 | 23.11 / 18.66 / 18.93 / 21.31 |
+| medical | 500 / 1000 / 2000 / 4000 | 24.17 / 12.42 / 22.26 / 20.96 | 24.70 / 11.81 / 22.14 / 21.70 |
