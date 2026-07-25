@@ -1438,11 +1438,32 @@ Paired bootstrap 10 000 it, seed=42, 299 lines
   30k-staged 0.62 → **90k-staged 0.76**. Monotonic and large, but still
   below pretrained ViT+RoBERTa (0.939), kraken (0.90), catmus (0.96) —
   staged Swin+BERT scales but is not yet competitive.
-- **Next**: 120k / full-266k Stage-1 to test whether the +14 pp/2.25×
-  trend continues or plateaus (the shrinking gap suggests headroom
-  remains). Artefacts:
+- Artefacts:
   `tests/ocr/evaluations/refresh_trocr_90k_vs_val300_20260723/` (CSV+MD);
   3 best_models backed up to laptop.
+
+**120k EXTENSION (2026-07-25).** Pushed Stage-1 to 120k
+(`aug_20260724_cometa_120k` = 90k ∪ 30k more, seed=42, monotonic). Stage 1a
+~8h40m (53 700 steps), Stage 2a/2b ~11 min each. Runs
+`trocr_20260724_222822` (1a) / `trocr_20260725_075917` (2a) /
+`trocr_20260725_081018` (2b). 300-val:
+
+| Stage-1 pool | Stage-1a val-fold | Stage-1a 300-val | val→real gap |
+|---|---|---|---|
+| 30k | 0.8589 | 0.6172 | 24.2 pp |
+| 90k | 0.9639 | 0.7581 | 20.6 pp |
+| **120k** | **0.9761** | **0.7868** | **18.9 pp** |
+
+**Finding — scaling continues, with diminishing returns, and the gap keeps
+narrowing.** 90k→120k Stage-1a = **+2.86 % char_acc [95 % CI +1.66, +4.08],
+P=1.000 ✓sig**. Per-unit-data the return is falling (30k→90k: +14.1 pp for
++60k renders ≈ 0.24 pp/1k; 90k→120k: +2.86 pp for +30k ≈ 0.10 pp/1k), but
+it is **still significantly improving** and the **val-fold→300-val gap keeps
+shrinking (24.2 → 20.6 → 18.9 pp)** — more task-domain pretraining continues
+to buy genuine generalisation, not just synthetic-val fit. Stage 2 remains
+inert (120k Stage 2a 0.7789 / 2b 0.7840 ≈ Stage 1a 0.7868). Full ladder
+(Swin+BERT 300-val char_acc): single-stage 0.25 → 30k 0.62 → 90k 0.76 →
+**120k 0.79**. Eval: `tests/ocr/evaluations/stage1_120k_vs_val300_20260725/`.
 
 ### 6.5.3 External-corpus ratio sweep (re-render : external)
 
