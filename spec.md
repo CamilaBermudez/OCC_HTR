@@ -1844,6 +1844,49 @@ numbers elsewhere predate the §6.3.10 annotation corrections — re-eval
 against the corrected GT before merging them into the headline bootstrap
 table.
 
+### 6.5.10 Experiment coverage matrix + planned fill runs (2026-07-25)
+
+Reconciliation of what the encoder/decoder × data-scenario grid actually
+covers, on **corrected GT**. Each single-stage cell = char_acc on 300-val.
+
+| Arch \ scenario | 600 only | 600+3000 | +COMETA A″ (3:1) | +medical B″ (3:1) |
+|---|---|---|---|---|
+| Swin+BERT | ⚠0.2293 | ⚠0.1447 | ✓0.1953 | ✓0.1238 |
+| ViT+RoBERTa (pretrained) | ⚠0.9371 | ⚠0.9161 | ✓0.9345 | ✓0.9389 |
+| Swin+xlm-RoBERTa | ✗ | ✗ | ✓0.2810 | ✓0.2736 |
+| ViT+BERT | ✗ | ✗ | ✓0.2058 | ✓0.1985 |
+| Swin+GPT2 | ✗ | ✗ | ✓0.2586 | ✓0.2029 |
+| ViT+GPT2 | ✗ | ✗ | ✓0.2054 | ✓0.1813 |
+
+✓ = done on corrected GT; ⚠ = only the **pre-correction** grid value exists
+(§6.3.5 Datasets C/D — old GT, needs corrected rerun); ✗ = not run.
+The A″/B″ columns are additionally the **1000-point** of the {500, 1000,
+2000, 4000} external-corpus ratio sweep, but the sweep was only run for
+**Swin+BERT and ViT+RoBERTa** (§6.5.3) — the 4 decoder-swap archs have only
+the single 1000-point.
+
+**Planned fill runs (scripts prepared 2026-07-25; awaiting VM restart):**
+- **Grid fill — 12 runs** (`scratchpad/queue_coverage_fill.sh`): 600-only
+  and 600+3000 for **all 6 archs** on corrected GT. Fixes the ⚠ cells for
+  Swin+BERT / ViT+RoBERTa and the ✗ cells for the 4 decoder-swap archs.
+  Data: 600-only = real folder only; 600+3000 = `aug_20260721_121550`
+  (3000 anno re-renders, no external). bs=32 for Swin+BERT & ViT+RoBERTa,
+  bs=16 for the decoder-swap archs (matches their A″/B″ runs).
+- **Stage-1 on medical — 3 runs** (`scratchpad/queue_medical_stage1.sh`,
+  §6.5.4): Swin+BERT pretrain on **medical-4k** (`aug_20260725_medical_4k`
+  = 4000 random renders from the 18k medical bank, seed=42) → Stage 2a
+  (A″) / 2b (B″). Directly comparable to the 30k/90k/120k COMETA Stage-1
+  rows (§6.5.2) — tests whether Stage-1 corpus choice matters.
+- **Ratio sweep is already complete** for both arches, both corpora
+  (§6.5.3) — the {500,2000,4000} points beyond the 1000-baseline; best
+  overall = medical-4000 = 0.9487.
+
+**Data staged for upload** (`scratchpad/coverage_data_chunks/`, 1.64 GB,
+sha `e239231e…`): `aug_20260725_medical_4k` + `aug_20260721_121550` (the
+3000-base) + labels. On VM restart: verify A″/B″ + 3000-base still present
+(disk persists across a stop), upload only what's missing, then deploy +
+launch both drivers. Total ~7–8 h GPU (ViT+RoBERTa runs dominate).
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
