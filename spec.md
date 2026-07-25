@@ -1994,6 +1994,49 @@ overall, ahead of the best TrOCR (ViT+RoBERTa medical-4000 = 0.9487). The
 old historical kraken 0.9620 is the only remaining ⚠ (old GT + old pool;
 collapses to 0.90 leak-fixed, §6.3.10) and is excluded from the ranked rows.
 
+### 6.5.12 Kraken matched-pool full stats on corrected GT (2026-07-25)
+
+Same statistics pipeline as §6.5.11 for the two **leak-fixed matched-pool**
+kraken runs (catmus-medieval base fine-tuned; these are the 0.9018 / 0.8994
+rows of the §6.0 leaderboard). Artefacts:
+`tests/ocr/evaluations/kraken_600_3000_corrected_20260725/`.
+- **kraken 600+3000** = 600 real + 3000 anno re-renders, no external corpus.
+- **kraken 600+3000+Medical(1000)** = same + 1000 medical-corpus re-renders.
+
+**Corpus + per-line median (299 lines):**
+
+| model | CER | char_acc | WER | word_acc | char_acc median | word_acc median |
+|---|---|---|---|---|---|---|
+| kraken 600+3000 | 0.0982 | **0.9018** | 0.4439 | 0.5561 | 0.9189 | 0.5714 |
+| kraken 600+3000+Medical(1000) | 0.1006 | 0.8994 | 0.4589 | 0.5411 | 0.9167 | 0.5714 |
+
+**Paired bootstrap 95 % CI (10k iters, seed=42, full 299 lines):**
+
+| model | char_acc [95% CI] | word_acc [95% CI] |
+|---|---|---|
+| kraken 600+3000 | 90.18% [89.15, 91.14] | 55.60% [52.24, 58.86] |
+| kraken 600+3000+Medical(1000) | 89.94% [88.97, 90.89] | 54.10% [50.72, 57.49] |
+| **Δ (no-med − medical)** | **+0.23% [−0.24, +0.65] ns** | **+1.50% [−0.14, +3.13] ns** |
+
+P(no-med > medical) = 0.842. **Adding 1000 medical re-renders neither helps
+nor hurts kraken** on corrected GT — 0 inside both difference CIs. This is the
+corrected-GT collapse of the earlier "medical-hurts-kraken" finding (§6.4):
+significant on old GT, **not** significant here.
+
+**Ink-bleed p90 stratification (270 clean / 29 bleed):**
+
+| model | char_acc clean (p90=F) | char_acc bleed (p90=T) | Δ (bleed − clean) |
+|---|---|---|---|
+| kraken 600+3000 | 91.24% | 80.18% | **−11.06 pp** |
+| kraken 600+3000+Medical(1000) | 90.87% | 81.20% | **−9.67 pp** |
+
+**Kraken is the least ink-bleed-robust family in the whole program** (Δ −9.7
+to −11.1 pp) — vs Medusa −0.37, catmus −3.04, TrOCR −2 to −5 (§6.5.8/§6.5.11).
+A CTC model with no language prior has nothing to fall back on when glyphs
+bleed. On the 29 heavy-bleed lines the medical version nominally edges ahead
+(81.20 vs 80.18), reversing the full-set order, but CIs overlap almost
+entirely at n=29 — not significant.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
