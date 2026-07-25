@@ -335,23 +335,26 @@ comparison, see "Missing" below); ✓ = corrected-GT (post-§6.3.10).
 
 | Rank | Model | char_acc | GT |
 |---|---|---|---|
-| 1 | kraken 600-real historical (`_070741`) | 0.9620 | ⚠ old GT + old pool |
-| 2 | catmus baseline | 0.9613 | ⚠ old GT |
-| 3 | Medusa 0.2 Line 9B (cleaned) | 0.9510 | ⚠ old GT |
-| 4 | **TrOCR ViT+RoBERTa · medical-4000** (best reproducible) | **0.9487** | ✓ |
+| 1 | **catmus baseline** (best corrected) | **0.9603** | ✓ (2026-07-25) |
+| 2 | Medusa 0.2 Line 9B (cleaned) | 0.9505 | ✓ (2026-07-25) |
+| 3 | TrOCR ViT+RoBERTa · medical-4000 (best TrOCR) | 0.9487 | ✓ |
+| — | kraken 600-real historical (`_070741`) | 0.9620 | ⚠ old GT + old pool; NOT reproduced on corrected (leak-fixed = 0.90) |
 | 5 | TrOCR ViT+RoBERTa · cometa-4000 | 0.9438 | ✓ |
 | 6 | TrOCR ViT+RoBERTa · medical 3:1 / cometa 3:1 | 0.9389 / 0.9345 | ✓ |
 | 7 | kraken leak-fixed matched (no-med / med) | 0.9018 / 0.8994 | ✓ |
 | 8 | Swin+BERT staged (120k / 90k / 30k) | 0.7868 / 0.7581 / 0.6172 | ✓ |
 | 9 | Swin from-scratch (decoder swap best = Swin+xlm-RoBERTa) | 0.281 | ✓ |
 
-**Honest headline:** on the *corrected* benchmark the best clean number is
-**TrOCR ViT+RoBERTa medical-4000 = 0.9487**. The three higher historical
-numbers (kraken/catmus/Medusa ≈ 0.96/0.95) are on the *old* GT and are
-**not yet reproduced on the corrected GT** — and kraken specifically
-dropped to 0.90 when re-run on corrected data (§6.3.10 baseline shift).
-Closing that gap (re-eval catmus/Medusa, resolve the kraken shift) is the
-main thing standing between us and a single clean leaderboard.
+**Honest headline (updated 2026-07-25):** on the *corrected* benchmark the
+best number is **catmus baseline = 0.9603**, followed by **Medusa = 0.9505**
+and **TrOCR ViT+RoBERTa medical-4000 = 0.9487** (the best fine-tuned model).
+catmus and Medusa are frozen off-the-shelf models — their predictions never
+changed, so re-scoring them against the corrected GT is a fully valid
+corrected number (done 2026-07-25, §6.5.11). The only remaining ⚠ is the
+historical kraken 0.9620, which is on the *old* GT + old aug-pool and
+**dropped to 0.90 when re-run on the corrected GT** (§6.3.10 baseline shift);
+it is not a reproducible corrected number and is excluded from the ranked
+rows above. Net: the corrected leaderboard is now clean end-to-end.
 
 **Headline findings (all bootstrap-validated unless noted):**
 1. **Cross-attention pretraining is the dominant factor** (§6.3.6/§6.3.7):
@@ -392,9 +395,10 @@ models backed up locally + sha-verified.**
 
 **MISSING / pending (needs the VM restarted for the training/transcription
 ones):**
-- **catmus + Medusa re-eval against corrected GT** — the #1 gap; their
-  0.9613 / 0.9510 are on the old GT. (transcription exists; just re-run
-  `run_evaluate_ocr` against corrected `validation/`.)
+- ~~**catmus + Medusa re-eval against corrected GT**~~ — **DONE 2026-07-25**
+  (§6.5.11): catmus **0.9603**, Medusa **0.9505** on corrected GT; full
+  corpus + median + bootstrap CI + ink-bleed p90 computed. catmus is now the
+  top corrected number; Medusa is the most ink-bleed-robust model (Δ−0.37pp).
 - **Full joint bootstrap CI across ALL models on corrected GT** (§6.5.8
   headline table) — depends on the above.
 - **validated-285 manifest refresh** for the 10 corrected val lines
@@ -1575,6 +1579,27 @@ inert (120k Stage 2a 0.7789 / 2b 0.7840 ≈ Stage 1a 0.7868). Full ladder
 (Swin+BERT 300-val char_acc): single-stage 0.25 → 30k 0.62 → 90k 0.76 →
 **120k 0.79**. Eval: `tests/ocr/evaluations/stage1_120k_vs_val300_20260725/`.
 
+**Full statistics for the 6 COMETA two-stage runs** (2026-07-25;
+`tests/ocr/evaluations/twostage_cometa_stats_20260725/`). Corpus-level +
+per-line median, bootstrap 95 % CIs, and ink-bleed p90 stratification.
+
+| Config | char_acc | word_acc | CER | WER | char_acc (med) | WER (med) |
+|---|---|---|---|---|---|---|
+| 30k → COMETA | 0.6123 | 0.3267 | 0.3877 | 0.6733 | 0.6000 | 0.7000 |
+| 30k → Medical | 0.6129 | 0.3320 | 0.3871 | 0.6680 | 0.6111 | 0.6667 |
+| 90k → COMETA | 0.7613 | 0.4818 | 0.2387 | 0.5182 | 0.7692 | 0.5000 |
+| 90k → Medical | 0.7554 | 0.4662 | 0.2446 | 0.5338 | 0.7500 | 0.5000 |
+| 120k → COMETA | 0.7789 | 0.5027 | 0.2211 | 0.4973 | 0.7949 | 0.5000 |
+| 120k → Medical | 0.7840 | 0.5163 | 0.2160 | 0.4837 | 0.7949 | 0.5000 |
+
+Bootstrap 95 % CIs (char_acc): 30k ≈ 61.2–61.3 % [±1.7], 90k ≈ 75.6–76.1 %
+[±1.5], 120k ≈ 77.9–78.4 % [±1.4]. **Paired:** Stage-1 90k vs 30k
+**+14.9 % [+13.4, +16.4] ✓**, 120k vs 90k **+1.77 % [+0.47, +3.10] ✓**;
+**Stage-2 corpus (Medical vs COMETA) non-significant at every size**
+(P = 0.53 / 0.17 / 0.83). **Ink-bleed p90** (severe-bleed − clean Δ): 30k
+−4.4/−2.4 pp, 90k −4.7/−5.9 pp, **120k only −1.5/−2.3 pp** — more Stage-1
+data buys ink-bleed robustness.
+
 ### 6.5.3 External-corpus ratio sweep (re-render : external)
 
 Current A″/B″ pools fix the ratio at **3000 anno re-renders : 1000
@@ -1921,6 +1946,53 @@ still present (disk persists across a stop), upload the bundle
 (stream-extract to dodge the `/`-partition limit), then deploy + launch
 both drivers (grid-fill 12 + medical-Stage-1 3 = 15 runs). Total ~7–8 h GPU
 (the ViT+RoBERTa grid-fill runs + the medical-18k pretrain dominate).
+
+### 6.5.11 catmus + Medusa re-eval on corrected GT (2026-07-25)
+
+Closes the "#1 gap" from §6.0. Both are frozen off-the-shelf models
+(catmus-medieval kraken baseline; Medusa 0.2 Line 9B VLM, cleaned output) —
+their prediction files never changed, so re-scoring them against the
+**corrected** 300-val GT is a fully valid corrected-benchmark number. Same
+`run_evaluate_ocr.py` + `bootstrap_ocr_ci.py` pipeline as every TrOCR track.
+Artefacts: `tests/ocr/evaluations/catmus_medusa_corrected_20260725/`.
+
+**Corpus + per-line median (299 non-empty lines):**
+
+| model | CER | char_acc | WER | word_acc | char_acc median | word_acc median |
+|---|---|---|---|---|---|---|
+| catmus baseline | 0.0397 | **0.9603** | 0.1488 | 0.8512 | 0.9722 | 0.8571 |
+| Medusa (cleaned) | 0.0495 | 0.9505 | 0.3131 | 0.6869 | 0.9556 | 0.7143 |
+
+**Paired bootstrap 95 % CI (10k iters, seed=42, full 299 lines):**
+
+| model | char_acc [95% CI] | word_acc [95% CI] |
+|---|---|---|
+| catmus | 96.04% [95.50, 96.54] | 85.15% [83.30, 86.90] |
+| Medusa | 95.04% [94.53, 95.54] | 68.66% [65.65, 71.65] |
+| **catmus − Medusa** | **+0.98% [+0.33, +1.62] ✓** | **+16.42% [+13.09, +19.76] ✓** |
+
+catmus beats Medusa on both char and word accuracy, significantly (0 outside
+both CIs). The word-accuracy gap (+16.4 pp) is far larger than the char gap
+(+1.0 pp): Medusa makes more whole-word errors (paraphrase-style edits typical
+of a generative VLM) while staying close at the character level.
+
+**Ink-bleed p90 stratification** (`__with_bleed.csv`, 270 clean / 29 bleed):
+
+| model | char_acc clean (p90=F) | char_acc bleed (p90=T) | Δ (bleed − clean) |
+|---|---|---|---|
+| catmus | 96.33% | 93.29% | **−3.04 pp** |
+| Medusa | 95.09% | 94.72% | **−0.37 pp** |
+
+**Medusa is the single most ink-bleed-robust model in the whole program**
+(Δ−0.37 pp vs catmus −3.04 pp and the TrOCR tracks' −2 to −5 pp, §6.5.8) —
+the VLM's language prior lets it recover bled glyphs from context. Note the
+ordering *flips* on the bleed subset: Medusa (94.72%) edges catmus (93.29%)
+on the 29 heavy-bleed lines, though with wide overlapping CIs on n=29.
+
+**Leaderboard impact:** catmus 0.9603 is now the **top corrected number**
+overall, ahead of the best TrOCR (ViT+RoBERTa medical-4000 = 0.9487). The
+old historical kraken 0.9620 is the only remaining ⚠ (old GT + old pool;
+collapses to 0.90 leak-fixed, §6.3.10) and is excluded from the ranked rows.
 
 ## 7. Infrastructure
 
