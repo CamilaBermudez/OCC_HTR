@@ -1905,19 +1905,19 @@ covers, on **corrected GT**. Each single-stage cell = char_acc on 300-val.
 
 | Arch \ scenario | 600 only | 600+3000 | +COMETA A″ (3:1) | +medical B″ (3:1) |
 |---|---|---|---|---|
-| Swin+BERT | ⚠0.2293 | ⚠0.1447 | ✓0.1953 | ✓0.1238 |
-| ViT+RoBERTa (pretrained) | ⚠0.9371 | ⚠0.9161 | ✓0.9345 | ✓0.9389 |
-| Swin+xlm-RoBERTa | ✗ | ✗ | ✓0.2810 | ✓0.2736 |
-| ViT+BERT | ✗ | ✗ | ✓0.2058 | ✓0.1985 |
-| Swin+GPT2 | ✗ | ✗ | ✓0.2586 | ✓0.2029 |
-| ViT+GPT2 | ✗ | ✗ | ✓0.2054 | ✓0.1813 |
+| ViT+RoBERTa (pretrained) | ✓**0.9422** | ✓0.9207 | ✓0.9345 | ✓0.9389 |
+| Swin+xlm-RoBERTa | ✓0.0003 | ✓0.2332 | ✓0.2810 | ✓0.2736 |
+| Swin+GPT2 | ✓0.2581 | ✓0.2019 | ✓0.2586 | ✓0.2029 |
+| ViT+GPT2 | ✓0.2561 | ✓0.2289 | ✓0.2054 | ✓0.1813 |
+| ViT+BERT | ✓0.1672 | ✓0.2173 | ✓0.2058 | ✓0.1985 |
+| Swin+BERT | ✓0.1348 | ✓0.1540 | ✓0.1952 | ✓0.1238 |
 
-✓ = done on corrected GT; ⚠ = only the **pre-correction** grid value exists
-(§6.3.5 Datasets C/D — old GT, needs corrected rerun); ✗ = not run.
-The A″/B″ columns are additionally the **1000-point** of the {500, 1000,
-2000, 4000} external-corpus ratio sweep, but the sweep was only run for
-**Swin+BERT and ViT+RoBERTa** (§6.5.3) — the 4 decoder-swap archs have only
-the single 1000-point.
+**GRID COMPLETE (2026-07-26): all 24 cells ✓ on corrected GT** — the 12
+fill runs finished + were transcribed/eval'd (§6.5.15). char_acc on 300-val.
+Only ViT+RoBERTa is functional (0.92–0.94); the 5 from-scratch archs are
+near-random (≤0.28). The A″/B″ columns are additionally the **1000-point** of
+the {500, 1000, 2000, 4000} external-corpus ratio sweep, run for Swin+BERT and
+ViT+RoBERTa (§6.5.3/§6.5.13); the 4 decoder-swap archs have only the 1000-point.
 
 **Planned fill runs (scripts prepared 2026-07-25; awaiting VM restart):**
 - **Grid fill — 12 runs** (`scratchpad/queue_coverage_fill.sh`): 600-only
@@ -2159,6 +2159,87 @@ errors than reference words.)
   For the near-random archs several Δ are *positive* — the model isn't reading
   glyphs, so bleed can't hurt what was never decoded; do not read robustness
   into it.
+
+### 6.5.15 6-arch grid 600-only + 600+3000 — grid COMPLETE (2026-07-26)
+
+The final two scenarios of the 6×4 grid (the §6.5.10 fill runs): **600 real
+only** and **600 real + 3000 anno re-renders** (no external corpus), all six
+archs, corrected GT. Trained on the VM 2026-07-25 (all 12 rc=0), transcribed +
+pulled + sha-verified 2026-07-26. Full stats (corpus + median + bootstrap CI +
+ink-bleed p90) in
+`tests/ocr/evaluations/grid_{600only,600_3000}_6arch_20260726/`
+(`grid_6arch_realonly_stats_report.md`). **This closes all 24 grid cells on
+corrected GT** (§6.5.10). Headline char_acc + CIs + bleed Δ:
+
+**600-only:**
+
+| arch | char_acc | char median | word median | char_acc [95% CI] | word_acc [95% CI] | bleed Δ char |
+|---|---|---|---|---|---|---|
+| ViT+RoBERTa | **0.9422** | 0.9524 | 0.7500 | 94.22 [93.55, 94.86] | 72.82 [70.13, 75.44] | −3.71 |
+| Swin+GPT2 | 0.2581 | 0.2571 | 0.0000 | 25.82 [25.06, 26.53] | −0.68 [−2.20, 0.75] | +0.87 |
+| ViT+GPT2 | 0.2561 | 0.2571 | 0.0000 | 25.62 [24.91, 26.29] | 0.44 [−0.84, 1.65] | −0.37 |
+| ViT+BERT | 0.1672 | 0.2308 | 0.0000 | 16.72 [14.30, 19.08] | −19.58 [−24.23, −15.05] | +4.90 |
+| Swin+BERT | 0.1348 | 0.2308 | −0.1667 | 13.47 [7.28, 18.36] | −49.02 [−60.03, −39.39] | −10.72 |
+| Swin+xlm-RoBERTa | 0.0003 | 0.0000 | 0.0000 | 0.03 [0.00, 0.08] | 0.00 [0.00, 0.00] | −0.03 |
+
+**600+3000 (re-renders, no external):**
+
+| arch | char_acc | char median | word median | char_acc [95% CI] | word_acc [95% CI] | bleed Δ char |
+|---|---|---|---|---|---|---|
+| ViT+RoBERTa | **0.9207** | 0.9333 | 0.7143 | 92.08 [91.30, 92.82] | 67.78 [65.09, 70.38] | −1.77 |
+| Swin+xlm-RoBERTa | 0.2332 | 0.2286 | 0.0000 | 23.32 [22.39, 24.24] | −8.35 [−10.72, −6.12] | +2.36 |
+| ViT+GPT2 | 0.2289 | 0.2353 | 0.0000 | 22.89 [21.95, 23.82] | −1.16 [−2.24, −0.15] | −1.97 |
+| ViT+BERT | 0.2173 | 0.2188 | 0.0000 | 21.73 [20.81, 22.53] | −0.73 [−1.96, 0.39] | −0.26 |
+| Swin+GPT2 | 0.2019 | 0.2000 | 0.0000 | 20.19 [19.34, 21.05] | −6.27 [−8.01, −4.62] | +3.00 |
+| Swin+BERT | 0.1540 | 0.1538 | −0.2857 | 15.40 [14.31, 16.47] | −22.71 [−25.61, −19.82] | −1.00 |
+
+**KEY FINDING — synthetic re-renders hurt; text diversity is what pays.**
+ViT+RoBERTa across all 4 scenarios: **600-only 0.9422 ≈ +medical(1000) 0.9389
+> +COMETA(1000) 0.9345 > 600+3000 0.9207**. Paired bootstrap:
+- 600-only vs 600+3000 = **+2.14 % [+1.54, +2.74] (P=1.000 ✓)** — adding 3000
+  *synthetic* re-renders **significantly hurts** the pretrained arch.
+- +medical(1000) vs 600+3000 = **+1.82 % [+1.09, +2.47] (P=1.000 ✓)** — external
+  real-text corpus **significantly recovers** the loss.
+- 600-only vs +medical(1000) = +0.33 % [−0.35, +1.07] (ns) — corpus recovers
+  *back to*, not above, real-only; only 4000-external finally exceeds it
+  (0.9438/0.9487, §6.5.13).
+
+Synthetic re-renders alone dilute the real-manuscript signal; it takes external
+**text** diversity to justify the extra images. Practical guidance for the
+thesis: **plain 600-real is a strong single-stage baseline; augment with corpus
+text, not just more renders of the same 600 lines.**
+
+**Cross-arch:** only ViT+RoBERTa functional in every scenario (0.92–0.94); the
+5 from-scratch archs ≤0.28. Two floors worth noting: **Swin+xlm-RoBERTa
+600-only = 0.0003** (total collapse — 600 lines can't train a 250k-vocab decoder
+from scratch; near-empty output), and **Swin+BERT 600-only word_acc = −0.49**
+(WER 1.49, worst word output in the program — from-scratch cross-attention
+over-generates on the smallest data). Ink-bleed Δ interpretable only for
+ViT+RoBERTa (−3.71 / −1.77); near-random archs show noisy/positive Δ.
+
+### 6.5.16 Medical-18k Stage-1 (the missing 2-stage scenario, 2026-07-26)
+
+§6.5.4 experiment: Swin+BERT Stage-1 pretrain on the **full medical-18k bank**
+(`aug_20260626_105610`), then Stage-2a (A″ COMETA 3:1) / 2b (B″ medical 3:1).
+Corrected 300-val char_acc (eval `med18_stage1_3runs_20260726`):
+
+| run | CER | char_acc | word_acc | char_acc median |
+|---|---|---|---|---|
+| Stage-1a medical-18k pretrain | 0.6250 | 0.3750 | 0.1283 | 0.3429 |
+| Stage-2a → A″ (COMETA 3:1) | 0.6095 | 0.3905 | 0.1181 | 0.3750 |
+| Stage-2b → B″ (medical 3:1) | 0.6098 | 0.3902 | 0.1274 | 0.3750 |
+
+**Placement on the Stage-1 scaling curve (§6.5.2, Swin+BERT staged):**
+single-stage ≈0.20 → **medical-18k 0.375–0.39** → COMETA-30k 0.6172 →
+90k 0.7581 → 120k 0.7868. Medical-18k sits where its data volume predicts —
+below COMETA-30k, since the medical bank has only **6 001 distinct texts** (×3
+augs = 18k renders) vs COMETA's 30k+ distinct. Stage-2 fine-tuning adds a small
+lift over the bare pretrain (+1.5 pp) and A″/B″ are indistinguishable (0.3905
+vs 0.3902) — corpus choice doesn't matter at this scale, consistent with the
+COMETA staged runs. **Conclusion: Stage-1 volume, not corpus identity, drives
+the staged Swin+BERT curve; medical's small text universe caps it well below
+the COMETA ceiling.** (Still far below pretrained ViT+RoBERTa 0.94 — staging a
+from-scratch arch never closes the cross-attention-pretraining gap, §6.3.6.)
 
 ## 7. Infrastructure
 
