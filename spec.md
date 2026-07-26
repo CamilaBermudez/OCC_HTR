@@ -1295,16 +1295,38 @@ against the corrected GT, and the validated-285 manifest (§6.3.8) predates
 the 10 val corrections — both are follow-ups before a fully consistent
 leaderboard.
 
-**Kraken baseline-drop investigation (aug-pool hypothesis REFUTED).**
+**Kraken baseline-drop investigation (updated 2026-07-26 — earlier
+"byte-identical / aug-pool refuted" claim CORRECTED).**
 The leak-fixed kraken runs land at ~0.90 on 300-val — ~6 pp below the
-historical canonical 0.9620 and now below catmus (0.9613) and the best
+historical canonical 0.9620 and now below catmus (0.9603) and the best
 TrOCR (0.9389). Root-cause investigation:
-- **Aug pool is not the cause.** The new pool `aug_20260721_121550`
-  (601 stems) is a filename-superset of the historical
-  `aug_20260701_232640` (501 stems); shared base renders are **byte-for-byte
-  md5-identical**. The 18 corrected-annotation stems were **re-rendered
-  consistently** (image matches new label; 0 stale image/label mismatches).
-  `⁊` / normalisation consistent across both. Renders + labels are clean.
+- **⚠ CORRECTION — the two pools are NOT byte-identical.** An earlier draft
+  claimed the historical `aug_20260701_232640` (500 stems) and the new
+  `aug_20260721_121550` (600 stems) shared "byte-for-byte md5-identical"
+  base renders and used that to refute the aug pool. **That md5 check was
+  wrong.** A full re-comparison of all 2,500 shared filenames (2026-07-26):
+  **2,484 / 2,500 renders differ (99.4%)** — same stems, same aug indices,
+  different pixels — and renders are modestly wider on average (sampled mean
+  width 999→1035 px). So the pool the historical kraken trained on and the
+  pool the leak-fixed kraken trained on are almost entirely different images.
+- **BUT the augmentation *distribution* is unchanged — it's a reseeded
+  regeneration, not a pipeline change.** Both pools' generation logs
+  (`logs/medieval_text/…`, `logs/augmentation/…`) show the **same single
+  font** `merged_font_code_cmpl2.ttf` (301 glyphs; "font pool (1)" — the
+  multi-font code from `e5b8c03` existed but was **not** used), **identical**
+  rendering parameters (font_size 60, margin 20, p_long_s 0.95/0.8,
+  p_rotunda_r 0.7, p_tironian_et 0.3, p_abbrev 0.1, …) and **the same
+  `base_seed=42`** and parchment source. What differs is the **input
+  seed-set** (`from_real_20260701_…` 500 lines vs `from_real_20260721_…`
+  600 lines) and the git version (`099a61f`→`f42d0ed`, corrections + a
+  benchmark reorg — no render-logic change). Because the stochastic glyph
+  substitutions (long-s, rotunda-r, abbreviations, capitals, end-decor),
+  the random parchment pick (of 172), and the degradation all draw from one
+  seeded RNG stream, changing the input set/order shifts every line's random
+  draw → nearly all renders differ even though the *distribution* is
+  identical. **So: same synthetic distribution, different random samples +
+  100 extra stems.** Whether that difference alone moves kraken is now
+  testable, not assumed (see §6.5.1 ablation, running 2026-07-26).
 - **Not undertraining — the model converged.** Internal val_accuracy
   plateaued at ~0.953–0.958 over the final ~15 epochs of `_200641`
   (best 0.958 @ ep 51, early-stopped @ 56). The low 300-val is therefore
@@ -1323,11 +1345,17 @@ TrOCR (0.9389). Root-cause investigation:
   the (now stem-grouped, leak-free) split. The §6.3.9 leak fix is verified
   (0 val stems leaked). So the ~4 pp kraken-below-TrOCR and ~6 pp
   kraken-below-history are **real generalisation results, not a bug**.
-- **Open — which change flipped the synth→real transfer.** Candidates: the
-  500→600-stem pool growth, `val_fraction` 0.1, or an interaction with the
-  fixed split. Needs a one-variable ablation to isolate — e.g. re-run
-  leak-fixed kraken on the historical 500-stem `aug_20260701_232640`, or
-  bump `val_fraction` to 0.2 to match TrOCR.
+- **Open — which change flipped the synth→real transfer (ablation RUNNING
+  2026-07-26).** Candidates, now that the pool is known to be a
+  same-distribution-but-different-samples regeneration (+100 stems):
+  (a) the specific regenerated pool / 500→600-stem growth, (b) the leak-fixed
+  split changing training dynamics, (c) the corrected 300-val GT (10 val
+  lines changed), (d) `val_fraction` 0.1 vs 0.2. **Isolation run (§6.5.1):**
+  retrain the leak-fixed kraken on the **old `aug_20260701_232640` pool**,
+  everything else matching `_200641`, scored on the corrected 300-val. If it
+  climbs back toward 0.96 → the pool regeneration is the cause; if it stays
+  ~0.90 → the pool is exonerated and the driver is the split/benchmark. See
+  §6.5.1 for the result.
 
 Artefacts: `tests/ocr/evaluations/refresh_trocr_vs_val300_20260722/`,
 `tests/ocr/evaluations/kraken_leakfixed_vs_val300_20260722/` (both CSV+MD,
