@@ -1521,6 +1521,49 @@ permanent 300-val:
 
 Both ~1 h on the L4. Feed each eval CSV to `bootstrap_ocr_ci.py` for CIs.
 
+**ABLATION A RESULT (2026-07-26, run locally — VM had no ketos).** Retrained
+leak-fixed kraken on the historical `aug_20260701_232640` pool, everything else
+matching `_200641` (600 real, val_fraction 0.1, seed 42, corrected GT).
+`finetune_20260726_172202`, best epoch 55, **internal val_accuracy 0.9682**
+(the *highest* of all three kraken runs). Transcribed on the corrected 300-val
+(`kraken_oldpool_ablation_val300_20260726`):
+
+| run | pool | internal val | **300-val char_acc** | WER | pred length |
+|---|---|---|---|---|---|
+| historical `_070741` | old 500-stem (leaked) | 0.889 | 0.9620 | — | — |
+| new-pool leak-fixed `_200641` | new 600-stem | 0.958 | **0.9018** | 0.44 | 1.03× GT |
+| **old-pool leak-fixed (Ablation A)** | old 500-stem | **0.9682** | **0.2029** | **1.91** | **1.39× GT** |
+
+**Outcome: neither "recover to 0.96" nor "stay at 0.90" — it CRATERED to 0.20.**
+The old-pool model fits its synthetic val perfectly (0.968) but on real lines
+**over-generates by ~40 %** (1.39× GT length, WER 1.91) and emits ~2× the
+abbreviation marks of the GT — a catastrophic synth→real failure with an
+anomalous 0.77 internal↔real gap. Transcription path validated (catmus base
+scored 0.9554 through the *same* local pipeline, so the coremltools
+`predict()` warning is benign and 0.20 is a real transcription, not an
+artefact).
+
+**Caveats — this is confounded and needs a confirmation run before citing:**
+1. **Label-orthography confound.** The old pool ships with the **old labels**
+   (`labels_20260701_232640`), whose abbreviation/normalisation codec differs
+   from the corrected GT — so swapping the pool *also* swapped the output
+   orthography the model learns. The abbreviation-mark excess (71 vs GT's 34)
+   is partly that. (But the dominant failure is over-generation/hallucination,
+   which a codec mismatch alone doesn't explain.)
+2. **Single unstable run.** kraken CTC can diverge; a 0.77 internal↔real gap is
+   extreme enough to warrant a repeat before treating 0.20 as the pool's true
+   effect.
+
+**What it does tell us (tentatively):** the historical **0.9620 was
+leak-propped** — remove the leak and the *same* old pool collapses on real
+transfer. kraken's real performance is dominated by highly pool-sensitive
+synth→real transfer. The **cleaner, more promising lever is the multi-font
+re-render (§6.5.17)**, not the old single-font pool. Recommend: (a) one
+confirmation re-run of Ablation A, and (b) prioritise §6.5.17. Ablation B
+(`--val-fraction 0.2`) still pending. Artefacts:
+`tests/ocr/evaluations/kraken_oldpool_ablation_eval_20260726/`,
+`models/ocr/finetuned/finetune_20260726_172202/`.
+
 ### 6.5.2 Stage-1 COMETA scale-up: 30k → 90k / 120k (2-stage Swin+BERT)
 
 Goal: test whether more task-domain pretraining data improves Stage 1
