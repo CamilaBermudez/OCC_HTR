@@ -1327,6 +1327,10 @@ TrOCR (0.9389). Root-cause investigation:
   identical. **So: same synthetic distribution, different random samples +
   100 extra stems.** Whether that difference alone moves kraken is now
   testable, not assumed (see §6.5.1 ablation, running 2026-07-26).
+- **Both kraken pools use a SINGLE print-like font** (`merged_font_code_cmpl2`,
+  not the 13-font Gothic-textura pool) — a likely deeper driver of the
+  synth→real gap than the reseed. This is the augmentation lever tracked in
+  **§6.5.17** (re-render annotated pools multi-font; separate ablation).
 - **Not undertraining — the model converged.** Internal val_accuracy
   plateaued at ~0.953–0.958 over the final ~15 epochs of `_200641`
   (best 0.958 @ ep 51, early-stopped @ 56). The low 300-val is therefore
@@ -2308,6 +2312,52 @@ single-stage from-scratch Swin+BERT (§6.5.15), which floors out on bleed. The
 Stage-1 exposure to 18k rendered lines builds bleed tolerance in the image
 encoder; the word-level drop (Δw −5 to −6) is larger, as usual. Report:
 `tests/ocr/evaluations/med18_stage1_3runs_20260726/`.
+
+### 6.5.17 Font-pipeline inconsistency — the augmentation lever for kraken + ViT+RoBERTa (flagged 2026-07-26, TODO)
+
+**Finding (from the render logs `logs/medieval_text/*`).** The synthetic
+renderer's **font pool flip-flopped**, and the switch left the models that most
+need synth→real transfer training on the *wrong* pipeline:
+
+| period | font pool | pools produced (examples) |
+|---|---|---|
+| ≤ 2026-06-25 | (unlogged — single merged font) | early COMETA / medical renders |
+| **2026-06-26 → 06-28** | **13 fonts** (multi-font, Gothic/textura) | **medical-18k Stage-1 bank `aug_20260626_105610`**; June-27/28 seeds_from_real |
+| **2026-06-29 → 07-21+** | **1 font** (`merged_font_code_cmpl2.ttf`) | **every annotated re-render pool** — `aug_20260629_…`, `aug_20260701_232640` (historical kraken), `aug_20260712_124729`, **`aug_20260721_121550`** (the 600+3000 base used by BOTH kraken and ViT+RoBERTa), the medical-1000 B″ slot |
+
+The 13-font pool (Brokenscript, Cretino, Jena1330, Missaali, oldenglishtextmt,
+TychRc2U, xibern2U, … + the merged font) was added by commit `e5b8c03`
+**specifically because** the single `merged_font_code_cmpl2.ttf` "produced
+print-typeface strokes with no thick-thin variation, while real manuscripts
+have broad-pen Gothic textura." **But it was then reverted to single-font for
+all the real-manuscript re-render pools.**
+
+**Why this matters for kraken + ViT+RoBERTa.**
+- Both are fine-tuned on the **annotated re-render pools**, which are **single,
+  print-like font** — so they train on synthetic lines that *don't* look like
+  the manuscript's broad-pen Gothic hand. This is a prime suspect for the
+  synth→real generalisation gap behind the **kraken 0.96→0.90 baseline shift**
+  (§6.3.10) and caps ViT+RoBERTa's headroom.
+- The **medical Stage-1 bank alone** got the 13-font (textura-varied)
+  treatment — a pipeline mismatch that also confounds any medical-vs-COMETA
+  comparison at the render level.
+
+**TODO — augmentation pipeline work (planned lever to improve kraken +
+ViT+RoBERTa):**
+1. **Re-render the annotated pools (`aug_2026…121550` family) with the 13-font
+   multi-font pipeline** (`--fonts-dir` not `--font-path`) so manuscript
+   fine-tuning sees Gothic-textura stroke variation. Retrain kraken +
+   ViT+RoBERTa; compare 300-val + the §6.5.9 rare-word recall.
+2. **Curate the font pool to the manuscript's actual hand** — the goal is not
+   *maximum* font variety (that could dilute the match, cf. the multi-font
+   dilution hypothesis in §6.3.10) but Gothic textura fonts close to *this*
+   scribe. A/B a "textura-only" subset vs the full 13.
+3. **Standardise one font pipeline across all pools** so render font is no
+   longer a silent confound between COMETA / medical / annotated tracks.
+4. Fold this into the kraken baseline-shift ablation (§6.5.1 / §6.3.10): the
+   old-pool run isolates *sample reseed*; a multi-font re-render isolates the
+   *font distribution* — together they close out the "why did kraken drop"
+   question.
 
 ## 7. Infrastructure
 
