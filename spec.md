@@ -1888,36 +1888,50 @@ lines (899 lines, 2055 word types, 6150 tokens); scored bag-of-words
 recall on the 299 val lines (2057 tokens), stratified into **top-30
 (very frequent) / freq 2–30 (mid) / hapax (freq = 1)** bands.
 
-**Recall bands per model:**
+**Recall bands per model (ALL models, corrected GT, full 299 val, no
+filter — 2026-07-26):** top-30 = 762 tokens, mid = 563, hapax = 732.
 
 | Model | top-30 | mid (2–30) | hapax | overall |
 |---|---|---|---|---|
+| **catmus** | **91.3 %** | 87.9 % | **77.9 %** | **85.6 %** |
+| ViT+RoBERTa **medical-4000** | 90.3 % | **89.0 %** | 61.3 % | 79.6 % |
+| Medusa (VLM) | 89.6 % | 82.8 % | 64.6 % | 78.9 % |
+| ViT+RoBERTa 600-only | 89.0 % | 83.5 % | 59.2 % | 76.9 % |
 | kraken no-medical | 83.3 % | 63.9 % | 47.7 % | 65.3 % |
 | kraken medical | 81.9 % | 63.8 % | 46.3 % | 64.3 % |
-| Medusa (VLM) | 89.6 % | 82.8 % | **64.6 %** | 78.9 % |
-| ViT+RoBERTa **medical-4000** | 90.3 % | **89.0 %** | 61.3 % | **79.6 %** |
-| ViT+RoBERTa cometa-4000 | 90.7 % | 86.9 % | 59.8 % | 78.7 % |
-| ViT+RoBERTa medical (3:1) | 90.9 % | 85.3 % | 58.5 % | 77.8 % |
-| Swin staged-120k | 84.1 % | 63.2 % | 25.3 % | 57.5 % |
-| Swin from-scratch | 11.2 % | 3.4 % | 0.4 % | 5.2 % |
+| Swin+BERT staged-120k | 84.1 % | 63.2 % | 25.3 % | 57.5 % |
+| Swin+BERT medical-18k (2a) | 48.2 % | 13.7 % | 1.9 % | 22.3 % |
+| Swin+GPT2 A″ | 20.1 % | 0.0 % | 0.1 % | 7.5 % |
+| ViT+GPT2 A″ | 17.3 % | 1.8 % | 0.0 % | 6.9 % |
+| Swin+xlm-RoBERTa A″ | 17.1 % | 1.2 % | 0.0 % | 6.7 % |
+| ViT+BERT A″ | 15.0 % | 3.7 % | 0.1 % | 6.6 % |
+| Swin+BERT single-stage | 11.2 % | 3.4 % | 0.4 % | 5.2 % |
 
 **Findings:**
-- **kraken's weakness is mid- and rare-frequency words** (63.9 % / 47.7 %),
-  even though its *character* accuracy is high (≈0.90). It recognises the
-  top-30 function words well (83 %) but misses rare vocabulary — this is
-  the mechanism behind kraken's high WER despite good CER (§6.1): correct
-  glyphs, wrong whole (rare) words.
-- **ViT+RoBERTa is the most balanced and has the best overall recall
-  (79.6 %)** and by far the best **mid-frequency** recall (89.0 % vs
-  kraken 63.9 %) — the pretrained decoder's language prior fills in
-  medium-frequency words the CTC model drops.
-- **Medusa (the VLM) has the best hapax / rare-word recall (64.6 %)**,
-  edging even ViT+RoBERTa — its large LM prior helps most exactly where
-  vocabulary is unseen.
-- **Every model degrades monotonically with rarity** (top-30 > mid >
-  hapax); the staged Swin collapses on hapaxes (25.3 %) and the
-  from-scratch Swin is ~0 throughout. Artefacts:
-  `tests/ocr/evaluations/word_frequency_recall_refresh_20260725/`
+- **catmus wins every band and is uniquely flat across frequency**
+  (91.3 → 77.9, only −13.4 pp top-30→hapax). As a frozen CTC model with
+  **no language prior**, a rare word is no harder to read than a common one
+  — so it **owns the hapax band (77.9 %)**, far above every LM-based model.
+  *(This corrects the earlier refresh, which — lacking catmus — wrongly
+  credited Medusa with best hapax recall.)*
+- **The language-model models are top-heavy: strong on frequent/mid,
+  steep fall-off on rare.** ViT+RoBERTa medical-4000 **beats catmus on the
+  mid band (89.0 vs 87.9)** and ties on top-30, but slopes −29 pp to hapax
+  (61.3). Medusa similar (−25 pp). The pretrained-decoder / VLM language
+  prior fills in medium-frequency words the CTC model drops, but
+  "autocorrects" rare manuscript-specific vocabulary toward frequent forms.
+- **kraken:** high top-30 (83 %) but poor mid/rare (64 %/48 %) — the
+  mechanism behind its high WER despite good CER (§6.1): correct glyphs,
+  wrong whole (rare) words.
+- **Staged Swin-120k** learned frequent words from COMETA pretraining
+  (84 % top-30) but **cliffs on hapaxes (25 %)**; the from-scratch archs are
+  ~0 on rare words throughout.
+- **Thesis read:** for **rare / domain-specific vocabulary** (medical
+  manuscript technical terms) **catmus is the model to beat** — the only
+  one above ~65 % on hapaxes. For fluent frequent-word transcription,
+  ViT+RoBERTa medical-4000 matches it (and leads on mid-frequency).
+  Artefacts:
+  `tests/ocr/evaluations/word_frequency_recall_allmodels_20260726/`
   (`word_recall_per_model.csv` + `word_recall_summary.md`).
 
 **Still pending for a fully consistent leaderboard:** catmus + Medusa are
