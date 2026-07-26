@@ -2241,6 +2241,32 @@ the staged Swin+BERT curve; medical's small text universe caps it well below
 the COMETA ceiling.** (Still far below pretrained ViT+RoBERTa 0.94 — staging a
 from-scratch arch never closes the cross-attention-pretraining gap, §6.3.6.)
 
+**Full stats for the two Stage-2 runs (bootstrap + ink-bleed, 2026-07-26):**
+
+Bootstrap 95 % CI (10k, seed=42, full 299):
+
+| run | char_acc [95% CI] | word_acc [95% CI] |
+|---|---|---|
+| Med18 → COMETA(1k) (2a) | 39.04 [37.48, 40.59] | 11.80 [9.39, 14.14] |
+| Med18 → medical(1k) (2b) | 39.02 [37.54, 40.61] | 12.73 [10.39, 15.11] |
+| **Δ (COMETA − medical)** | **+0.02 [−1.50, +1.53] ns** | **−0.92 [−3.05, +1.21] ns** |
+
+P(COMETA>medical)=0.512 — **statistically indistinguishable**; Stage-2 corpus
+choice makes no difference on top of the medical-18k Stage-1.
+
+Ink-bleed p90 (clean n=270 / bleed n=29):
+
+| run | char clean [95% CI] | char bleed [95% CI] | Δc | word clean | word bleed | Δw |
+|---|---|---|---|---|---|---|
+| Med18 → COMETA(1k) | 39.02 [37.39, 40.67] | 39.24 [35.29, 43.85] | **+0.22** | 12.25 | 7.59 | −4.66 |
+| Med18 → medical(1k) | 39.15 [37.51, 40.80] | 37.92 [33.27, 42.69] | −1.23 | 13.35 | 7.07 | −6.28 |
+
+**Notably ink-bleed-robust on char** (Δc +0.22 / −1.23) — far better than the
+single-stage from-scratch Swin+BERT (§6.5.15), which floors out on bleed. The
+Stage-1 exposure to 18k rendered lines builds bleed tolerance in the image
+encoder; the word-level drop (Δw −5 to −6) is larger, as usual. Report:
+`tests/ocr/evaluations/med18_stage1_3runs_20260726/`.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
