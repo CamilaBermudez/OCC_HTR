@@ -888,18 +888,35 @@ Other medieval abbreviations in the corpus (`ꝓ`, `ẽ`, `ĩ`, `ā`, etc.)
 survive mBERT's WordPiece intact — they are recoverable as
 combinations of existing tokens or via byte fallback.
 
-**Secondary finding — WordPiece whitespace normalisation adds noise.**
-Some of mBERT's worst round-trip cases are not `[UNK]` losses but
-WordPiece adding / removing spaces around periods:
+**Breakdown of the 47 imperfect round-trips (mBERT, categorised
+2026-07-27).** Of the 299 non-empty lines, **252 round-trip perfectly**;
+the **47 imperfect** ones split cleanly into two causes — and only the first
+is real information loss:
+
+| category | count | information lost? |
+|---|---|---|
+| perfect round-trip | 252 | — |
+| contains a `[UNK]` (OOV char lost) | **16** | **yes** — char gone (`⁊`, `ꝑ`) |
+| **whitespace-only diff** | **31** | no — every char preserved |
+| other (non-whitespace, non-UNK) | 0 | — |
+
+**The 31 non-`[UNK]` lines are all the same artefact: WordPiece inserts a
+space around punctuation on decode** (a *tokenizer invertibility* failure, not
+an OOV loss). WordPiece pre-tokenises `.` / `'` as standalone tokens and
+re-joins with conventional spacing, but the manuscript glues chapter numbers
+and abbreviations to punctuation with no space:
 
 ```
-REF: da.esia ⁊ gran.so es aygua cauda
-HYP: da. esia   gran. so es aygua cauda    (periods gained spaces; ⁊ vanished)
+REF: Capitol.xxii.        HYP: Capitol. xxii.     (space after period)
+REF: cerraraql'.          HYP: cerraraql '.       (space before apostrophe)
+REF: de nerui.o de arceria  HYP: de nerui. o de arceria
 ```
 
-This is another small structural CER contribution independent of
-`[UNK]` handling — but still small enough to be inside the 0.74 pp
-overall floor.
+Every character is preserved — only spacing around punctuation shifts — so it
+still costs a small CER (a moved space = 1 edit) but is *cosmetic*, not lost
+vocabulary. **RoBERTa's byte-level BPE avoids it entirely** (0 imperfect lines,
+100 % round-trip). So mBERT's 0.0074 floor CER ≈ **~75 % genuine `[UNK]` loss
+(mostly `⁊`) + ~25 % punctuation-spacing** — both inside the 0.74 pp bound.
 
 **Reproducing.**
 
