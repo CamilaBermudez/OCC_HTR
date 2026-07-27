@@ -2356,7 +2356,16 @@ Stage-1 exposure to 18k rendered lines builds bleed tolerance in the image
 encoder; the word-level drop (Δw −5 to −6) is larger, as usual. Report:
 `tests/ocr/evaluations/med18_stage1_3runs_20260726/`.
 
-### 6.5.17 Font-pipeline inconsistency — the augmentation lever for kraken + ViT+RoBERTa (flagged 2026-07-26, TODO)
+### 6.5.17 Font-pipeline inconsistency — the augmentation lever for kraken + ViT+RoBERTa (flagged 2026-07-26, TODO — NOT YET RUN)
+
+> **Read this first (used vs proposed):** every experiment run to date — the
+> 3000 re-render base `aug_20260721_121550` and **all** annotated pools kraken +
+> ViT+RoBERTa were fine-tuned on — used a **SINGLE font**
+> (`merged_font_code_cmpl2.ttf`). The **multi-font re-render described in this
+> section is a PROPOSED FUTURE experiment**, a *lever* to try — it has **not**
+> been run. Wherever this doc calls multi-font "the more promising lever," it
+> means *the recommended next experiment*, not something already done. (The only
+> pool that incidentally used multi-font is the medical-18k Stage-1 bank.)
 
 **Finding (from the render logs `logs/medieval_text/*`).** The synthetic
 renderer's **font pool flip-flopped**, and the switch left the models that most
