@@ -2617,6 +2617,52 @@ days**: **0.9620** = historical `finetune_20260705_070741` on
 (3 000 renders, 600 stems, git f42d0ed, 2026-07-21). Both single-font
 (`merged_font_code_cmpl2`) and ~1000×115 (pre-downscale). See §6.3.10 / §6.5.1.
 
+### 6.5.19 Multi-font pipeline mechanics + font-coverage analysis (2026-07-30)
+
+Reference for the (still-unused, §6.5.17) multi-font lever.
+
+**How font selection works** (`medieval_text_generation._build_font_pool`,
+per-line `rng.choice(font_pool)`):
+- With `--fonts-dir fonts/`, the renderer loads **all 13 `.ttf`/`.otf`** and
+  **picks one font uniformly at random per line**. With `--font-path` only, the
+  pool is a single font (the original behaviour). **`merged_font_code_cmpl2.ttf`
+  IS one of the 13** — the designed font is a candidate, not special-cased.
+- **Glyph stamps are overlaid regardless of the chosen font.** The 28 stamp
+  types in `glyphs/` (`et, e_tilde, l/m/n/o/p/q/r_tilde, am, an, au, cum, em,
+  um, un, ma, me, mi, mu, nu, q_circle, q_i, C_capitol, E_capitol, O_,
+  end_decor, x`) are composited as images at render time; the label stores the
+  Unicode form. So multi-font does **not** change abbreviation coverage.
+- **Only long-s→s and rotunda-r→r** fall back when a font lacks the glyph, and
+  the fallback is written to *both* the image and the label so they stay matched.
+
+**Font coverage of the catmus character set** (13,746 lines, **88 distinct
+chars**; a font "covers" a char if its cmap has the codepoint). Report:
+`tests/ocr/font_coverage_20260730/` (`char_coverage_matrix.csv` +
+`font_coverage_summary.md`).
+
+| font | char *types* covered | *token* coverage |
+|---|---|---|
+| Missaali-Regular | **81.6 %** | 99.76 % |
+| Tych/_aeiou/lovlab/xenipp/xibern (2U family) | 72.4 % | 99.60 % |
+| Brokenscript / **merged_font_code_cmpl2** | 71.3 % | 99.63 % |
+| Cretino | 70.1 % | 99.45 % |
+| oldenglishtextmt | 67.8 % | 99.55 % |
+| Jena1330 | 65.5 % | 99.36 % |
+
+**Every font covers ~99.5 % of *tokens*** — the ~15–30 chars they miss are all
+rare medieval abbreviation glyphs, which the **stamps** handle. Notable:
+- **`⁊` Tironian et (freq 656) — in 0/13 fonts**; rendered *only* by the `et`
+  stamp.
+- **`ẽ` e-tilde (freq 676) — only in `Missaali-Regular`** (1/13); the other 12
+  rely on the `e_tilde` stamp.
+- **Genuine gap: `℥` ounce sign (freq 24)** — in **no font and no stamp**. A
+  medical symbol worth adding a stamp for.
+
+**Take-away:** font choice barely changes *character* coverage (stamps carry the
+hard glyphs) — multi-font is about **stroke-style variety** (Gothic textura vs
+the print-like merged font), not coverage. Real coverage gains come from the
+**stamp inventory**, not the font pool.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
