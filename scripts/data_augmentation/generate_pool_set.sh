@@ -26,6 +26,12 @@ set -uo pipefail
 cd "$(cd "$(dirname "$0")/../.." && pwd)"
 RUN(){ env PROJECT_ROOT=. PYTHONPATH=. uv run python "$@"; }
 
+# SCOPE=full (default) runs all 18 pools — use this on a dedicated VM.
+# SCOPE=small runs only the 12 cheaper pools (medical 4k/12k/36k + anno
+# 3k/9k/27k, both 1font+mf), deferring the 3 giant pairs (cometa-266k,
+# medical-120k, anno-90k) to a VM. See spec 6.5.20.
+SCOPE="${SCOPE:-full}"; big(){ [ "$SCOPE" = full ]; }
+
 # ---- source assets (edit these if paths differ on the replication host) ----
 COMETA_CORPUS=data/processed/synthetic_seeds/categorize_20260613_214958/cometa_categorized.json
 MEDICAL_CORPUS=data/processed/synthetic_seeds/categorize_20260625_143327/medical_texts_categorized.json
@@ -96,20 +102,22 @@ PY
 for MODE in 1font mf; do
   if [ "$MODE" = "1font" ]; then FONT="--font-path $MERGED"; else FONT="--fonts-dir $FONTS_DIR"; fi
   say "===== $MODE ====="
-  # COMETA x3 -> 266,478
-  render "cometa_${MODE}" "$COMETA_CORPUS" $FONT
-  augment "cometa_${MODE}" "aug_cometa_266k_${MODE}" 3; label "cometa_${MODE}" "aug_cometa_266k_${MODE}"
-  # MEDICAL x1/x3/x10 + 4k filter
+  # COMETA x3 -> 266,478  (GIANT — full scope only)
+  if big; then
+    render "cometa_${MODE}" "$COMETA_CORPUS" $FONT
+    augment "cometa_${MODE}" "aug_cometa_266k_${MODE}" 3; label "cometa_${MODE}" "aug_cometa_266k_${MODE}"
+  fi
+  # MEDICAL x1/x3(/x10 giant) + 4k filter
   render "medical_${MODE}" "$MEDICAL_CORPUS" $FONT
   augment "medical_${MODE}" "aug_medical_12k_${MODE}" 1;  label "medical_${MODE}" "aug_medical_12k_${MODE}"
   filter4k "aug_medical_12k_${MODE}" "aug_medical_4k_${MODE}"; label "medical_${MODE}" "aug_medical_4k_${MODE}"
   augment "medical_${MODE}" "aug_medical_36k_${MODE}" 3;  label "medical_${MODE}" "aug_medical_36k_${MODE}"
-  augment "medical_${MODE}" "aug_medical_120k_${MODE}" 10; label "medical_${MODE}" "aug_medical_120k_${MODE}"
-  # ANNOTATED x5/x15/x45/x150 (3:4 ratio to medical)
+  if big; then augment "medical_${MODE}" "aug_medical_120k_${MODE}" 10; label "medical_${MODE}" "aug_medical_120k_${MODE}"; fi
+  # ANNOTATED x5/x15/x45(/x150 giant)  (3:4 ratio to medical)
   render "anno_${MODE}" "$ANNO_SEEDS" $FONT
   augment "anno_${MODE}" "aug_anno_3k_${MODE}" 5;    label "anno_${MODE}" "aug_anno_3k_${MODE}"
   augment "anno_${MODE}" "aug_anno_9k_${MODE}" 15;   label "anno_${MODE}" "aug_anno_9k_${MODE}"
   augment "anno_${MODE}" "aug_anno_27k_${MODE}" 45;  label "anno_${MODE}" "aug_anno_27k_${MODE}"
-  augment "anno_${MODE}" "aug_anno_90k_${MODE}" 150; label "anno_${MODE}" "aug_anno_90k_${MODE}"
+  if big; then augment "anno_${MODE}" "aug_anno_90k_${MODE}" 150; label "anno_${MODE}" "aug_anno_90k_${MODE}"; fi
 done
-say "ALL_18_POOLS_DONE"
+say "ALL_POOLS_DONE (scope=$SCOPE)"
