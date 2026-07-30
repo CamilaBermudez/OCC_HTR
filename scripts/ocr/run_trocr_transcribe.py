@@ -67,6 +67,14 @@ def main():
         default=4,
         help="Beam-search width. Default: 4.",
     )
+    parser.add_argument(
+        "--resize-mode",
+        choices=("auto", "pad", "stretch"),
+        default="auto",
+        help="Line-resize mode. 'auto' (default) reads resize_mode.txt from the "
+        "model; models without it (trained before this flag) fall back to "
+        "'stretch'. Override only to force a mode. See spec §6.5.18.",
+    )
     parser.add_argument("--logs-dir", required=False)
     parser.add_argument(
         "--no-config-log",
@@ -91,6 +99,7 @@ def main():
         batch_size=args.batch_size,
         max_new_tokens=args.max_new_tokens,
         num_beams=args.num_beams,
+        resize_mode=args.resize_mode,
         logs_dir=logs_dir,
         log_config=not args.no_config_log,
     )

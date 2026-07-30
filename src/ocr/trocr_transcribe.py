@@ -22,6 +22,8 @@ import torch
 from PIL import Image
 from tqdm import tqdm
 
+from src.ocr.image_prep import prepare_image
+
 
 def setup_simple_logging(
     logs_dir: str | Path, task_name: str = "trocr_transcribe", run_name: str | None = None
@@ -89,6 +91,7 @@ def transcribe_trocr(
     batch_size: int = 8,
     max_new_tokens: int = 128,
     num_beams: int = 4,
+    resize_mode: str = "auto",
     logs_dir: str | Path | None = None,
     task_name: str = "trocr_transcribe",
     log_config: bool = True,
@@ -175,6 +178,19 @@ def transcribe_trocr(
     model.eval()
     logger.info("Model + processor + tokenizer loaded in %.1fs", time.time() - t0)
 
+    # Resolve the line-resize mode. It MUST match what the model was trained
+    # with. 'auto' reads the persisted resize_mode.txt; models trained before
+    # this flag existed have no file and used the old stretch behaviour, so we
+    # fall back to 'stretch' for them (never silently pad a stretch-trained model).
+    if resize_mode == "auto":
+        mode_file = Path(model_dir) / "resize_mode.txt"
+        resolved_resize = (
+            mode_file.read_text(encoding="utf-8").strip() if mode_file.exists() else "stretch"
+        )
+    else:
+        resolved_resize = resize_mode
+    logger.info("Line-resize mode: %s", resolved_resize)
+
     n_written = 0
     n_skipped = 0
     t_start = time.time()
@@ -182,7 +198,10 @@ def transcribe_trocr(
     for batch_start in progress:
         batch_pairs = pairs[batch_start : batch_start + batch_size]
         try:
-            images = [Image.open(p).convert("RGB") for _, p in batch_pairs]
+            images = [
+                prepare_image(Image.open(p).convert("RGB"), image_processor, resolved_resize)
+                for _, p in batch_pairs
+            ]
         except Exception as exc:
             logger.error("Batch load failed at %s: %s", batch_pairs[0][1], exc)
             n_skipped += len(batch_pairs)

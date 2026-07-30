@@ -2428,6 +2428,65 @@ ViT+RoBERTa):**
    *font distribution* — together they close out the "why did kraken drop"
    question.
 
+### 6.5.18 Line-image resize: stretch → **pad** (default changed 2026-07-30) + ablation
+
+**How the models resize line strips (verified from code + a real line).** Line
+crops are thin (~400×39 px, aspect ~10:1). The encoders need a fixed input, and
+the two families handle it *oppositely*:
+
+- **TrOCR (ViT+RoBERTa, Swin+BERT, all decoder-swaps)** — `ViTImageProcessor`
+  with `do_resize=True, size=384×384` (224×224 for Swin), **`do_pad=None`,
+  `do_center_crop=None`**. It does a **non-uniform stretch to the square**:
+  aspect ratio destroyed, **nothing padded, nothing cropped**. On a real
+  426×32 line → 384×384 the vertical stretch is **~12×** (horizontal ~0.9×), so
+  glyphs become tall and thin. The definition lives in the pretrained model's
+  `preprocessor_config.json`, loaded via `AutoImageProcessor.from_pretrained`
+  at `src/ocr/trocr_finetune.py` (`_build_model`/dataset) and
+  `src/ocr/trocr_transcribe.py`; applied in `TrOCRLineDataset.__getitem__` and
+  the transcribe loop. It's **not** hardcoded in our scripts — inherited from HF.
+- **kraken (catmus)** — CTC line recogniser: normalises to a **fixed line
+  height, width scales proportionally** → **aspect ratio preserved**, variable
+  width. The opposite of TrOCR's square stretch.
+
+The stretch is applied identically at train+inference, so a model *can* learn
+it — but it (a) distorts glyph proportions and (b) applies a *different* stretch
+factor to synthetic renders (~1000×115, aspect ~8.7:1) than to real crops
+(~400×39, aspect ~10:1), a subtle synth↔real mismatch.
+
+**Change made (2026-07-30): `pad` is now the DEFAULT for TrOCR.** New shared
+module `src/ocr/image_prep.py` (`prepare_image`) supports two modes behind a
+`--resize-mode` flag:
+- **`pad` (new default)** — scale preserving aspect ratio to fit the encoder's
+  square, centre-pad the rest with white. Because the padded canvas already
+  equals the target size, the processor's own resize no-ops. Glyph proportions
+  kept; synthetic + real lines land at the same shape regardless of native px.
+- **`stretch`** — the old behaviour (kept for the ablation).
+
+Wired through `run_trocr_finetune.py --resize-mode {pad,stretch}` (default
+`pad`) and `run_trocr_transcribe.py --resize-mode {auto,pad,stretch}` (default
+`auto`). The mode is **persisted to `best_model/resize_mode.txt`**; transcription
+`auto`-reads it so train/inference always match. **Backward-compat:** every
+existing model was trained with stretch and has no `resize_mode.txt`, so `auto`
+falls back to **stretch** for them — pre-2026-07-30 results are unaffected.
+Verified: pad centres a 426×32 line into rows 177–204 of the 384 canvas (aspect
+preserved); stretch passes through unchanged. Lint clean.
+
+**PLANNED ABLATION (stretch vs pad).** Re-run the ViT+RoBERTa medical-4000 (and
+the leak-fixed kraken analogue) with `--resize-mode stretch` vs `pad`, score on
+the corrected 300-val + bootstrap. Hypothesis is open: pad keeps glyph shape but
+wastes most of the square on background (a ~37 px line in a 384 canvas), while
+stretch fills the frame but distorts — either could win. This is the "really
+interesting feature" flagged by the user; `stretch` is retained specifically so
+the A/B is one flag apart.
+
+**RELATED TODO (synthetic render size).** Make synthetic renders ~**400×39** to
+match the real crops (currently ~1000×115) — controlled by the renderer's
+`font_size` (currently 60; ~20 would approach 39 px tall) in
+`medieval_text_generation`. Goal: synthetic and real lines share native
+resolution so the model sees consistent input. Note **`pad` already aligns them
+by aspect** in the encoder's view, so this is secondary once pad is the default;
+it mainly matters if we revert to `stretch`. Requires re-rendering the pools.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop

@@ -46,6 +46,8 @@ from PIL import Image
 from rapidfuzz.distance import Levenshtein
 from torch.utils.data import Dataset
 
+from src.ocr.image_prep import DEFAULT_RESIZE_MODE, prepare_image
+
 DEFAULT_ENCODER_ID = "microsoft/swin-base-patch4-window7-224"
 DEFAULT_DECODER_ID = "bert-base-multilingual-cased"
 
@@ -260,11 +262,13 @@ class TrOCRLineDataset(Dataset):
         image_processor,
         tokenizer,
         max_target_length: int,
+        resize_mode: str = DEFAULT_RESIZE_MODE,
     ) -> None:
         self.pairs = pairs
         self.image_processor = image_processor
         self.tokenizer = tokenizer
         self.max_target_length = max_target_length
+        self.resize_mode = resize_mode
         self._pad_id = tokenizer.pad_token_id
         # Every label sequence must end with eos so the decoder learns to
         # stop. BERT/RoBERTa tokenizers append [SEP]/</s> on their own; GPT-2
@@ -281,6 +285,7 @@ class TrOCRLineDataset(Dataset):
     def __getitem__(self, idx: int) -> dict:
         img_path, text = self.pairs[idx]
         image = Image.open(img_path).convert("RGB")
+        image = prepare_image(image, self.image_processor, self.resize_mode)
         pixel_values = self.image_processor(images=image, return_tensors="pt").pixel_values[0]
         max_len = self.max_target_length
         # Reserve a slot for the manually-appended eos when the tokenizer
@@ -503,6 +508,7 @@ def finetune_trocr(
     early_stopping_patience: int = 5,
     dataloader_num_workers: int = 0,
     device: str = "auto",
+    resize_mode: str = DEFAULT_RESIZE_MODE,
     logs_dir: str | Path | None = None,
     task_name: str = "trocr_finetune",
     log_config: bool = True,
@@ -680,8 +686,12 @@ def finetune_trocr(
             tokenizer.add_special_tokens({"pad_token": "[PAD]"})
             logger.info("Decoder tokenizer had no pad token; added a distinct [PAD] token")
 
-    train_ds = TrOCRLineDataset(train_pairs, image_processor, tokenizer, max_target_length)
-    val_ds = TrOCRLineDataset(val_pairs, image_processor, tokenizer, max_target_length)
+    train_ds = TrOCRLineDataset(
+        train_pairs, image_processor, tokenizer, max_target_length, resize_mode=resize_mode
+    )
+    val_ds = TrOCRLineDataset(
+        val_pairs, image_processor, tokenizer, max_target_length, resize_mode=resize_mode
+    )
 
     if pretrained_model_id is not None:
         logger.info("Building VisionEncoderDecoderModel (pretrained: %s)", pretrained_model_id)
@@ -754,6 +764,10 @@ def finetune_trocr(
     trainer.save_model(str(best_model_dir))
     image_processor.save_pretrained(str(best_model_dir))
     tokenizer.save_pretrained(str(best_model_dir))
+    # Persist the line-resize mode (pad/stretch) so transcription reproduces
+    # the exact preprocessing this model was trained with (train/inference
+    # MUST match, or accuracy silently collapses).
+    (best_model_dir / "resize_mode.txt").write_text(resize_mode, encoding="utf-8")
 
     logger.info("Running final eval on val set...")
     eval_metrics = trainer.evaluate()

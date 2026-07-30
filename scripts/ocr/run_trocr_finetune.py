@@ -157,6 +157,15 @@ def main():
         default="auto",
         help="auto | mps | cuda | cpu. Default auto picks mps > cuda > cpu.",
     )
+    parser.add_argument(
+        "--resize-mode",
+        choices=("pad", "stretch"),
+        default="pad",
+        help="Line-image resize before the encoder. 'pad' (default) preserves "
+        "aspect ratio and centre-pads to the encoder's square input; 'stretch' "
+        "is the old behaviour that distorts the line to fill the square. "
+        "Transcription auto-reads this from the saved model. See spec §6.5.18.",
+    )
     parser.add_argument("--logs-dir", required=False)
     parser.add_argument(
         "--no-config-log",
@@ -203,6 +212,7 @@ def main():
         early_stopping_patience=args.early_stopping_patience,
         dataloader_num_workers=args.dataloader_num_workers,
         device=args.device,
+        resize_mode=args.resize_mode,
         logs_dir=logs_dir,
         log_config=not args.no_config_log,
     )
