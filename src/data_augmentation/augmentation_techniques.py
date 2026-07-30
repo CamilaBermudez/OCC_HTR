@@ -283,7 +283,7 @@ def composite_on_parchment(image, parchment_files, **kwargs):
     bleed = np.zeros_like(ink)
     if random.random() < 0.6:
         ghost = cv2.flip(ink, 1)
-        ghost = cv2.GaussianBlur(ghost, (0, 0), sigmaX=4.0)
+        ghost = cv2.GaussianBlur(ghost, (0, 0), sigmaX=1.5)  # was 4.0 at ~115px (§6.5.18)
         bleed = ghost * 0.22
 
     ink = ink[..., None]
@@ -419,7 +419,7 @@ def apply_aged_parchment_effects(image, **kwargs):
         for _ in range(n_spots):
             cx = random.uniform(0, w)
             cy = random.uniform(0, h)
-            radius = random.uniform(2.5, 10.0)
+            radius = random.uniform(1.0, 3.5)  # was (2.5, 10.0) at ~115px (§6.5.18)
             spot_color = np.array(
                 [
                     random.uniform(120, 170),
@@ -879,8 +879,10 @@ def apply_augmentation_techniques(input_image, parchment_files, bleed_source_fil
             #    while real quill strokes have hairline thins, especially
             #    on upstrokes. Erosion brings the synthetic glyphs closer
             #    to the delicate quill character of the reference scans.
-            A.Morphological(scale=(1, 2), operation="dilation", p=0.25),
-            A.Morphological(scale=(1, 3), operation="erosion", p=0.85),
+            # Kernel sizes scaled down for the ~38 px render (2026-07-30, §6.5.18):
+            # at the old ~115 px scale these were dilation (1,2) / erosion (1,3).
+            A.Morphological(scale=(1, 1), operation="dilation", p=0.25),
+            A.Morphological(scale=(1, 2), operation="erosion", p=0.85),
             A.PixelDropout(dropout_prob=0.02, drop_value=255, p=0.5),
             # 2. Substrate swap with translucent ink + bleed-through (custom).
             A.Lambda(image=bound_composite, name="composite_on_parchment", p=1.0),
@@ -912,15 +914,17 @@ def apply_augmentation_techniques(input_image, parchment_files, bleed_source_fil
             # 4. Page warp
             A.OneOf(
                 [
+                    # alpha = displacement magnitude in px — scaled for the
+                    # ~38 px render (was 50/5 and 120/12 at ~115 px). §6.5.18.
                     A.ElasticTransform(
-                        alpha=50,
-                        sigma=5,
+                        alpha=15,
+                        sigma=2,
                         border_mode=cv2.BORDER_REPLICATE,
                         p=1.0,
                     ),
                     A.ElasticTransform(
-                        alpha=120,
-                        sigma=12,
+                        alpha=40,
+                        sigma=4,
                         border_mode=cv2.BORDER_REPLICATE,
                         p=1.0,
                     ),
@@ -938,7 +942,7 @@ def apply_augmentation_techniques(input_image, parchment_files, bleed_source_fil
             #    every real scan exhibits at least slight rotation, defocus,
             #    and sensor noise. These three guarantee an "unlucky" seed
             #    still produces output that looks like a real scanned page.
-            A.GaussianBlur(blur_limit=(3, 7), p=1.0),
+            A.GaussianBlur(blur_limit=(3, 3), p=1.0),  # was (3,7) at ~115px (§6.5.18)
             A.GaussNoise(std_range=(0.012, 0.028), p=1.0),
             A.PlasmaBrightnessContrast(
                 brightness_range=(-0.15, 0.05),

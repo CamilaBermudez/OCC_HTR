@@ -2519,6 +2519,30 @@ such black borders**, so this was a synth-only artefact absent from the target
 distribution. Set to **p=0.0** (kept in code, reversible). Verified: post-change
 augmented samples have light border rows (mean ~190–214), no black bands.
 
+**Degradation kernels rescaled for the ~38 px render (2026-07-30, reviewed on a
+preview batch).** Several effects used *absolute-pixel* sizes tuned for the old
+~115 px render; at ~38 px they were proportionally ~3× too strong. Rescaled by
+~⅓ (values eyeballed on a render→augment montage of 9 samples vs 4 real crops
+and confirmed legible / not over-degraded):
+
+| effect | param | old (~115 px) | new (~38 px) |
+|---|---|---|---|
+| GaussianBlur (scan defocus, always-on) | `blur_limit` | (3, 7) | **(3, 3)** |
+| ElasticTransform (mild) | `alpha, sigma` | 50, 5 | **15, 2** |
+| ElasticTransform (strong) | `alpha, sigma` | 120, 12 | **40, 4** |
+| Morphological erosion (p=0.85) | `scale` | (1, 3) | **(1, 2)** |
+| Morphological dilation (p=0.25) | `scale` | (1, 2) | **(1, 1)** |
+| composite ghost blur | `sigmaX` | 4.0 | **1.5** |
+| foxing spot | `radius` | (2.5, 10.0) | **(1.0, 3.5)** |
+
+Left unchanged (already fraction/relative, scale-independent): `PixelDropout`
+0.02, `GaussNoise` 0.012–0.028, `Affine` rotate ±2.5° / translate ±2%, Hue/Plasma
+jitter, verso/pre-blur (computed as `h//3`, `h//18`). NB: this manual rescale is
+the cost of sizing at render time; render-big-then-downsample would have scaled
+all effects automatically — but render-time sizing keeps the degradation at the
+real line scale (user decision). Preview artefacts:
+`tests/ocr/augmentation_preview_20260730/`.
+
 **Pool provenance for the kraken 0.96 vs 0.90 baseline (for the record).** The
 two kraken numbers everyone keeps comparing come from pools built on **different
 days**: **0.9620** = historical `finetune_20260705_070741` on
