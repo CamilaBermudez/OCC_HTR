@@ -2663,6 +2663,22 @@ hard glyphs) — multi-font is about **stroke-style variety** (Gothic textura vs
 the print-like merged font), not coverage. Real coverage gains come from the
 **stamp inventory**, not the font pool.
 
+**Curated font pool (decided 2026-07-30, by visual match to the manuscript's
+rounded Southern-Gothic *rotunda* hand).** Samples of all 13 fonts rendering a
+real line vs the manuscript crop:
+`tests/ocr/font_samples_20260730/fonts_vs_real__*.png`. Kept **6 fonts in
+`fonts/`** (the active multi-font pool when `--fonts-dir fonts/` is used):
+- **Missaali-Regular** (primary — closest to the hand *and* best coverage 81.6 %),
+  **Jena1330, _aeiou2U, xenipp3U, xibern2U** (upright Gothic textura variety),
+  and **merged_font_code_cmpl2** (the current print-like font, kept for continuity).
+The other 7 were moved to **`fonts/fonts_not_to_use/`** (skipped by
+`_build_font_pool`, which is non-recursive): the cursive/chancery scripts
+(Cretino, TychRc2U, lovlab2U), English blackletter (oldenglishtextmt), the too-bold
+Brokenscript ×2, and a duplicate Jena1330. Verified: the renderer now loads
+exactly these 6. **Still to do (the §6.5.17 lever):** A/B single-font vs this
+curated 6-font pool on the overfit probe + a small kraken/ViT+RoBERTa run before
+re-rendering the training pools.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
