@@ -1447,6 +1447,47 @@ Pending experimental runs:
 - **TrOCR ViT+RoBERTa** starting from `microsoft/trocr-base-handwritten`
   — planned next, gives cross-attention a pretrained starting point.
 
+#### 6.3.11 Overfit test — cross-attention is the bottleneck, and its quality scales with Stage-1 (2026-07-30)
+
+**Design.** The classic can-it-memorize sanity check, run to isolate *why*
+from-scratch Swin+BERT fails. Take **10 real annotated lines** (8 train / 2 val,
+seed 42), try to overfit them (120–150 epochs, lr 1e-4, bs 4, stretch), then
+**transcribe the training images** and measure per-sample char_acc. If a model
+can't even memorise its own training images, the fault is architectural, not
+data/regularisation. Three starting points, everything else identical:
+
+| start point | cross-attention | exact reproductions | median char_acc | reads the image? |
+|---|---|---|---|---|
+| Swin+BERT **from-scratch** | random | **0 / 10** | ~37 %* | ❌ *image-independent* |
+| Swin+BERT + COMETA-**90k** Stage-1 | pretrained | 3 / 10 | 77 % | ✅ |
+| Swin+BERT + COMETA-**120k** Stage-1 | pretrained (more) | **5 / 10** | **96.8 %** (mean 90.4 %) | ✅✅ |
+
+*from-scratch median is meaningless — see below.
+
+**The from-scratch model cannot memorise 8 images.** Train loss drops (9 → 0.68,
+so LR/gradients/labels are healthy — *not* a pipeline bug), but free generation
+is garbage: **repetition loops** *and* **the same output for different input
+images** (e.g. three different lines all decode to `de. e e e fort leu en en
+en`). It generates from the BERT decoder's language prior and **ignores the
+image** — the random cross-attention never learns to route visual features into
+the decoder. Its train-set char_acc (~20 %) equals its 300-val char_acc
+(§6.5.15) → **zero effective image→text learning**, which rules out data-size
+and regularisation.
+
+**Pretrained cross-attention flips it, and more Stage-1 = better.** Swapping in
+the COMETA Stage-1 checkpoint (only the cross-attention differs) makes the model
+actually read the images — 90k gives 3 exact reproductions, **120k gives 5**,
+and median char_acc climbs 77 % → 97 %. The overfit *capacity* tracks Stage-1
+volume, mirroring the 300-val scaling curve (§6.5.2).
+
+**Conclusion (mechanism-level, strengthens §6.3.6/§6.3.7).** The +72 pp
+from-scratch→pretrained gap is not "pretrained models score higher" — it is that
+**pretrained cross-attention is what makes image→text learnable at all**, and
+its quality **scales with the amount of Stage-1 pretraining**. Random
+cross-attention can't memorise 8 examples; COMETA-pretrained cross-attention
+can, better with more COMETA. Artefacts: overfit runs +
+`overfit10` set (10 real lines) in scratch; per-sample transcripts logged.
+
 ## 6.4 Cross-family finding: medical corpus is architecture-dependent (2026-07-20)
 
 > **⚠ SUPERSEDED by the corrected-annotation rerun (§6.3.10).** Both legs of
@@ -1581,12 +1622,23 @@ confirmation re-run of Ablation A, and (b) prioritise §6.5.17. Ablation B
 `tests/ocr/evaluations/kraken_oldpool_ablation_eval_20260726/`,
 `models/ocr/finetuned/finetune_20260726_172202/`.
 
-### 6.5.2 Stage-1 COMETA scale-up: 30k → 90k / 120k (2-stage Swin+BERT)
+### 6.5.2 Stage-1 COMETA scale-up: 30k → 90k / 120k → **full 266k** (2-stage Swin+BERT)
 
 Goal: test whether more task-domain pretraining data improves Stage 1
 (and hence the staged Swin+BERT ceiling). §6.3.4 showed 30k COMETA
 pretraining does ~34 pp of the from-scratch lift; the open question is
 whether 90–120k pushes it further and shrinks the val-fold→300-val gap.
+
+**FULL-266k run IN PROGRESS (2026-07-30).** Extending the curve to the
+**entire COMETA pool** (`aug_20260613_220436`, 266,478 renders = 88,828
+distinct texts × 3 augs — *not* a subsample, the complete corpus). The pool is
+being uploaded to the VM (53 GB, 500 MB chunks to `/tmp` (root partition) then
+stream-extracted to `/home/jupyter` (separate partition, so no space clash);
+~2.5 h). Then Stage-1a Swin+BERT pretrain with the same knobs as 30k/90k/120k,
+scored on 300-val. Tests whether the 30k→90k→120k gain (+14, +2.9 pp,
+diminishing) keeps rising or has plateaued at the corpus ceiling. The §6.3.11
+overfit test predicts a further (small) lift: more Stage-1 → better
+cross-attention → higher capacity.
 
 - **Source**: subsample from the local full COMETA pool
   `data/processed/synthetic_samples/augmented_images/aug_20260613_220436`
