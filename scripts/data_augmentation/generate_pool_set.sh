@@ -71,7 +71,8 @@ render(){ local name=$1 inp=$2; shift 2
 }
 # augment <render-name> <aug-name> <n-aug>
 augment(){ local rname=$1 aname=$2 n=$3
-  [ "$(ls "$AUGB/$aname"/*.png 2>/dev/null | wc -l)" -gt 0 ] && { say "SKIP aug $aname (exists)"; return; }
+  # find (not ls-glob) — a glob over 10k+ files blows the arg limit and misfires
+  [ -n "$(find "$AUGB/$aname" -name '*.png' -print -quit 2>/dev/null)" ] && { say "SKIP aug $aname (exists)"; return; }
   say "AUGMENT $aname (x$n)"
   RUN scripts/data_augmentation/run_augment_images.py --input-folder "$TXT/$rname" \
     --parchment-folder "$PARCH" --output-folder "$AUGB" --run-name "$aname" --n-augmentations "$n" --seed 42 || exit 1
@@ -86,7 +87,7 @@ label(){ local rname=$1 aname=$2
 }
 # medical 4k: random-sample 4000 renders from the x1 (12k) pool + its labels
 filter4k(){ local src=$1 dst=$2
-  [ "$(ls "$AUGB/$dst"/*.png 2>/dev/null | wc -l)" -gt 0 ] && { say "SKIP filter $dst (exists)"; return; }
+  [ -n "$(find "$AUGB/$dst" -name '*.png' -print -quit 2>/dev/null)" ] && { say "SKIP filter $dst (exists)"; return; }
   say "FILTER $dst (4000 random from $src)"
   RUN - "$AUGB/$src" "$AUGB/$dst" 4000 <<'PY'
 import os,sys,random,shutil
