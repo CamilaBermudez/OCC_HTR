@@ -1644,15 +1644,32 @@ pretraining does ~34 pp of the from-scratch lift; the open question is
 whether 90–120k pushes it further and shrinks the val-fold→300-val gap.
 
 **FULL-266k run IN PROGRESS (2026-07-30).** Extending the curve to the
-**entire COMETA pool** (`aug_20260613_220436`, 266,478 renders = 88,828
-distinct texts × 3 augs — *not* a subsample, the complete corpus). The pool is
-being uploaded to the VM (53 GB, 500 MB chunks to `/tmp` (root partition) then
-stream-extracted to `/home/jupyter` (separate partition, so no space clash);
-~2.5 h). Then Stage-1a Swin+BERT pretrain with the same knobs as 30k/90k/120k,
-scored on 300-val. Tests whether the 30k→90k→120k gain (+14, +2.9 pp,
-diminishing) keeps rising or has plateaued at the corpus ceiling. The §6.3.11
-overfit test predicts a further (small) lift: more Stage-1 → better
-cross-attention → higher capacity.
+**entire COMETA corpus** (88,828 distinct texts × 3 augs = 266,478 renders —
+the complete corpus, not a subsample). Tests whether the 30k→90k→120k gain
+(+14, +2.9 pp, diminishing) keeps rising or has plateaued.
+
+**Approach — RENDER ON THE VM, not upload (pivot 2026-07-30).** Uploading the
+53 GB pre-rendered pool proved impractical: the residential link ran at
+**~0.7 MB/s** (8× slower than assumed → ~20 h). Instead we upload only the
+**source (~26 MB): COMETA corpus JSON + 6 curated fonts + 172 parchment crops**
+(the VM already had the 28 stamps + deps) and **regenerate on the VM**, which
+is far faster and needs no big transfer:
+1. **render** — `run_medieval_text_generation` single-font
+   (`merged_font_code_cmpl2`, font_size 60, margin 20, seed 42, **stamps ON**:
+   `--et-stamp-dir glyphs/et` etc. — they default to *disabled*, easy to miss),
+   ~3 min → 88,828 base images.
+2. **augment ×3** — `run_augment_images … --n-augmentations 3 --seed 42`, ~3.5 h
+   → 266,478. (VM is on old code `947a9b6` = matches the original pipeline, so
+   consistent with the 30k/90k/120k pools.)
+3. **`correct_labels`** — `run_label_correction … --text-field original_text`
+   applies `DEFAULT_SUBSTITUTIONS` (`v→u, j→i`, case-fold the uppercase not in
+   the catmus codec) and expands base→aug-keyed `labels.json`. **This is the
+   non-obvious step that maps render labels → training labels.**
+4. **gate** (verify 266k images == 266k labels) → **Stage-1a Swin+BERT
+   pretrain**, `--val-fraction 0.02` (trimmed from 0.05 to ~halve the
+   per-epoch generation eval; ~10–12 h vs ~20 h).
+Driver: `scratchpad/vm_cometa266k_pipeline.sh`; log `/tmp/cometa266k_pipe.log`.
+The §6.3.11 overfit test predicts a further (small) lift.
 
 - **Source**: subsample from the local full COMETA pool
   `data/processed/synthetic_samples/augmented_images/aug_20260613_220436`
