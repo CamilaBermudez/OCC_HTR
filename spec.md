@@ -1488,18 +1488,19 @@ cross-attention can't memorise 8 examples; COMETA-pretrained cross-attention
 can, better with more COMETA. Artefacts: overfit runs +
 `overfit10` set (10 real lines) in scratch; per-sample transcripts logged.
 
-**Ablation dimensions to vary (menu — not all run yet).** The overfit test is a
-cheap probe (10 lines, minutes on MPS); dimensions worth sweeping on it:
+**Ablation dimensions to vary (menu — not all run yet).** Dimensions worth
+sweeping (on the cheap overfit probe or the full pipeline):
 - **Cross-attention init** — random (from-scratch) vs pretrained ✓ done.
 - **Stage-1 volume** — COMETA 90k vs 120k ✓ done; 30k / 266k pending.
-- **Decoder** (encoder held = Swin) — BERT ✓ done; **xlm-RoBERTa, GPT-2 TODO**
-  (predict: all from-scratch fail regardless of decoder → confirms the
-  bottleneck is the cross-attention, not the decoder).
-- **Encoder** — Swin vs ViT (from-scratch), and ViT+RoBERTa (`trocr-base`,
-  pretrained cross-attention) as a second pretrained point — TODO.
-- **Training length / decode** — epochs, LR, greedy vs beam, `no_repeat_ngram`
-  — affects whether it reaches 100 % memorisation (see the "why not 100 %"
-  note); a full-convergence run is in progress to demonstrate ~100 %.
+- **Decoding strategy** — greedy search vs beam search (beam width) vs sampling
+  (top-k / top-p / temperature), plus `no_repeat_ngram_size` and
+  `length_penalty`. Current default = beam search, 4 beams, deterministic
+  (§6.5.18 decode config). TODO to sweep.
+- **Training length / LR** — epochs, learning rate; governs whether the model
+  reaches 100 % memorisation on the overfit probe (see the "why not 100 %"
+  note; a full-convergence run demonstrated ~100 %).
+- (Possible later: decoder architecture — BERT/xlm-RoBERTa/GPT-2 — and encoder
+  Swin vs ViT; not prioritised.)
 
 ## 6.4 Cross-family finding: medical corpus is architecture-dependent (2026-07-20)
 
