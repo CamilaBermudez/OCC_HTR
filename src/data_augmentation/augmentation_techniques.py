@@ -896,10 +896,12 @@ def apply_augmentation_techniques(input_image, parchment_files, bleed_source_fil
             #     Fires on a minority of samples so the HTR model sees a mix
             #     of clean and severely damaged folios.
             A.Lambda(image=apply_page_creases, name="page_creases", p=0.40),
-            # 2d. Torn / ragged edge on top, bottom, or both. Small fraction
-            #     of samples so the model occasionally sees clipped-page
-            #     conditions without being overwhelmed by them.
-            A.Lambda(image=apply_torn_edges, name="torn_edges", p=0.15),
+            # 2d. Torn / ragged edge on top, bottom, or both — fills the "tear"
+            #     with a near-black void. DISABLED (p=0.0, 2026-07-30): the real
+            #     line crops have no black torn borders, so this produced a
+            #     synth-only artefact (jagged black bands) absent from the target
+            #     distribution. Kept in code (reversible) but off. See spec §6.5.18.
+            A.Lambda(image=apply_torn_edges, name="torn_edges", p=0.0),
             # 3. Tonal jitter — warm direction only (no pink/magenta).
             A.HueSaturationValue(
                 hue_shift_limit=(0, 8),
@@ -963,7 +965,6 @@ def batch_augment_directory(
     seed: int | None = None,
     logs_dir: str | Path | None = None,
     sample_size: int | None = None,
-    target_line_height: int | None = 40,
 ):
     """Apply the augmentation pipeline to every image in `input_dir`.
     Each call uses a derived per-image-per-variant seed, so the entire
@@ -975,14 +976,11 @@ def batch_augment_directory(
             When set to a positive integer, only the first `sample_size`
             images are taken — useful for quickly previewing what the
             pipeline produces without writing the whole dataset.
-        target_line_height: Final output line height in px. Each augmented
-            image is downscaled (aspect ratio preserved, INTER_AREA) to this
-            height AFTER the full pipeline runs, so the degradation effects
-            (blur/noise/warp, tuned at the ~115 px render scale) look right and
-            the final sample is then downsampled like a real scanned crop.
-            Default 40 matches the real annotated line crops (~38–39 px median,
-            ~400 px wide). Set to None to keep the native render size (the old
-            ~1000×115 behaviour). See spec §6.5.18.
+
+    Note: output samples inherit the size of the *input renders*. Real crops
+    are ~400×39 px, so the renderer (``medieval_text_generation``, font_size
+    ~24 / margin ~7) is what sets the target size — the augmentation preserves
+    it. See spec §6.5.18.
 
     Returns:
         List of output Paths actually saved.
@@ -1042,7 +1040,6 @@ def batch_augment_directory(
         "sample_size": sample_size,
         "parchment_dir": str(parchment_files[0].parent) if parchment_files else None,
         "n_parchment_files": len(parchment_files),
-        "target_line_height": target_line_height,
     }
     logger.info(f"Config: {json.dumps(config_summary)}")
 
@@ -1069,18 +1066,8 @@ def batch_augment_directory(
                 logger.error(f"Augmentation failed for {img_path.name} variant {j}: {exc}")
                 n_skipped += 1
                 continue
-            final_img = out["image"]
-            # Downsample the finished sample to the target line height (aspect
-            # ratio preserved) so it matches the real crop resolution. Done
-            # AFTER augmentation so the tuned effects render at full scale.
-            if target_line_height and final_img.shape[0] != target_line_height:
-                h0, w0 = final_img.shape[:2]
-                new_w = max(1, round(w0 * target_line_height / h0))
-                final_img = cv2.resize(
-                    final_img, (new_w, target_line_height), interpolation=cv2.INTER_AREA
-                )
             out_path = save_dir / f"{img_path.stem}_aug{j:02d}.png"
-            cv2.imwrite(str(out_path), cv2.cvtColor(final_img, cv2.COLOR_RGB2BGR))
+            cv2.imwrite(str(out_path), cv2.cvtColor(out["image"], cv2.COLOR_RGB2BGR))
             saved.append(out_path)
 
             # Record per-output augmentation details for the consolidated log.

@@ -55,14 +55,17 @@ def main():
     parser.add_argument(
         "--font-size",
         type=int,
-        default=60,
-        help="Pixel font size (default: 60).",
+        default=24,
+        help="Pixel font size. Default 24 (with margin 7) renders lines at "
+        "~38x~380 px, matching the real annotated crops (~39x~405). The old "
+        "default 60 rendered ~102x~934 — ~2.6x too tall. See spec §6.5.18.",
     )
     parser.add_argument(
         "--margin",
         type=int,
-        default=20,
-        help="Padding around the text in pixels (default: 20).",
+        default=7,
+        help="Padding around the text in pixels (default: 7, scaled with the "
+        "font-size-24 default to match real crops).",
     )
     parser.add_argument(
         "--p-long-s-begin",

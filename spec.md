@@ -2479,34 +2479,45 @@ stretch fills the frame but distorts — either could win. This is the "really
 interesting feature" flagged by the user; `stretch` is retained specifically so
 the A/B is one flag apart.
 
-**Synthetic render size — DONE 2026-07-30 (default changed).** Previously
-synthetic samples were ~**1000×115 px** while the real crops are ~**400×39**
-(median height 38–39, width 32–458). The augmentation pipeline now **downscales
-every finished sample to a target line height (aspect ratio preserved) AFTER
-the full pipeline runs**, so the degradation effects (blur/noise/warp, tuned at
-the ~115 px render scale) render correctly and the sample is *then* downsampled
-like a real scanned crop (`cv2.INTER_AREA`).
+**Synthetic render size — DONE 2026-07-30 (render defaults changed).**
+Previously synthetic samples were ~**1000×115 px** while the real crops are
+~**400×39** (median height 39, width 405). Measured: the same line rendered at
+the old `font_size=60, margin=20` is **102×934** — ~2.6× too tall; the real
+size corresponds to **`font_size≈24, margin≈7` → ~38×378**.
 
-- `src/data_augmentation/augmentation_techniques.py`
-  `batch_augment_directory(..., target_line_height=40)` — new param, **default
-  40** (matches the real ~38–39 px median). Logged in the run's
-  `Config:` JSON. `None`/`0` keeps the old native ~1000×115 size.
-- `run_augment_images.py --target-line-height` (default 40; `0` = native).
-- **Verified**: preview run produced 314–443 × **40 px** samples (vs ~1000×115),
-  squarely inside the real crop range.
-- **Rationale for downscale-after-augment (not a smaller font):** rendering at
-  the native scale keeps glyph quality and lets the physically-tuned
-  degradation fire correctly; shrinking the *font* instead would both degrade
-  glyph detail and mis-scale every absolute-px effect (a 7 px blur on a 40 px
-  image is proportionally huge). Downsampling last is exactly what a real
-  digitisation does.
-- **Interaction with `pad`:** `pad` already aligns synth/real by *aspect ratio*
-  in the encoder's view, so this native-size match is most impactful under
-  `stretch` (where absolute proportions matter) and for kraken (aspect-preserving,
-  fixed line height — it now sees synth at the same resolution as real).
-- **Still requires re-rendering the pools** to take effect on training data
-  (existing pools are still ~1000×115); fold into the multi-font re-render
-  (§6.5.17) so both changes land in one regenerated pool.
+**Approach (per user decision 2026-07-30): set the size at the RENDER step, not
+by downscaling after augmentation.** So the base rendered line is already
+~400×39 and the augmentation preserves it. (An earlier draft downscaled each
+finished sample post-augment; that was reverted — we want the target size from
+the first image that then gets augmented, so the degradation is applied at the
+real line scale, not shrunk afterward.)
+
+- `medieval_text_generation` defaults changed: `font_size 60→24`, `margin
+  20→7` (both `generate_medieval_text_dataset` and `render_text_to_image`);
+  `run_medieval_text_generation.py --font-size` default `24`, `--margin` `7`.
+- The augmentation pipeline is unchanged in size — it inherits the render size
+  (composite/effects preserve dimensions), so ~38-px renders → ~38-px samples.
+- **Verified end-to-end**: render → augment produced **295–375 × 36–38 px**
+  samples, inside the real crop range.
+- **Caveat (flagged):** the degradation params (blur 3–7, tear depth h/6, etc.)
+  were tuned at the old ~115-px scale; at ~38 px some are proportionally larger.
+  Renders look fine in the smoke test, but if degradation reads too heavy after
+  a full re-render, the per-effect kernel sizes may need a proportional review.
+- **Interaction with `pad` (§6.5.18 above):** `pad` aligns synth/real by aspect
+  ratio regardless of native px, so this most affects `stretch` and kraken
+  (fixed line height — now sees synth at the same resolution as real).
+- **Requires re-rendering the pools** to reach training data (existing pools are
+  still ~1000×115); fold into the multi-font re-render (§6.5.17).
+
+**Black torn-border artefact removed — `apply_torn_edges` DISABLED (2026-07-30).**
+Evaluation (user-flagged sample): the jagged **black bands** on the top/bottom
+of some synthetic crops come from `apply_torn_edges`
+(`src/data_augmentation/augmentation_techniques.py`), which cuts a random zigzag
+polygon along the edge and fills the "tear" with a near-black void
+(`dark_void=[15,10,8]`); it fired at **p=0.15**. **The real line crops have no
+such black borders**, so this was a synth-only artefact absent from the target
+distribution. Set to **p=0.0** (kept in code, reversible). Verified: post-change
+augmented samples have light border rows (mean ~190–214), no black bands.
 
 **Pool provenance for the kraken 0.96 vs 0.90 baseline (for the record).** The
 two kraken numbers everyone keeps comparing come from pools built on **different
