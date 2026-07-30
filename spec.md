@@ -2696,6 +2696,47 @@ exactly these 6. **Still to do (the §6.5.17 lever):** A/B single-font vs this
 curated 6-font pool on the overfit probe + a small kraken/ViT+RoBERTa run before
 re-rendering the training pools.
 
+### 6.5.20 The 18-pool experiment set — regenerated at the new size (2026-07-31)
+
+Regenerating **all** synthetic pools at the **new render size** (font_size 24 /
+margin 7 ≈ 40–44 px lines, matching the real crops — §6.5.18), with the curated
+6-font pool (§6.5.19), torn-edges off + rescaled degradation kernels, stamps ON.
+**3 corpora × {1-font, multi-font} × sizes = 18 pools:**
+
+| track | corpus | sizes (renders) | how |
+|---|---|---|---|
+| COMETA | 88,828 texts | 266,478 | ×3 |
+| Medical | 12,012 texts | 4,000 / 12,012 / 36,036 / 120,120 | ×1→filter-4k / ×1 / ×3 / ×10 |
+| Annotated | 600 lines | 3,000 / 9,000 / 27,000 / 90,000 | ×5 / ×15 / ×45 / ×150 (3:4 ratio to medical) |
+
+Each in **1-font** (merged) and **multi-font** (`--fonts-dir fonts/`, random
+font per line). **Driver (replicable):
+`scripts/data_augmentation/generate_pool_set.sh`** — idempotent/resumable, runs
+render → augment → `correct_labels` per pool; parameterised source-asset paths
+at the top so it re-runs on a fresh VM (rebuilds the annotated `seeds_from_real`
+from `full_annotated`; needs the corpus JSONs + fonts/ + glyphs/ + a parchment
+run). **Generated locally 2026-07-31** (laptop, ~8–15 h CPU, ~20–40 GB).
+
+**Pipeline notes (things that bite):**
+- Stamps default to **disabled** — must pass `--et-stamp-dir` etc. (else ⁊ /
+  capitals / abbreviations are missing and won't match the labels).
+- The render always writes an **`original_text`** field regardless of the input
+  field name, so `correct_labels --text-field original_text` for *all* tracks.
+- Annotated input is a `seeds_from_real.json` built from the 600 GT (field
+  `text`, but the render still emits `original_text`).
+
+**LABEL CASING DECISION (user, 2026-07-31): NO case-folding.** Substitutions are
+**`v:u,V:U,j:i,J:I`** only (u/v + i/j medieval orthography, *case-preserving*) —
+dropping the catmus default's `{I,U,T,A,E,S,O,H,M,D,Q,F}→lowercase` fold.
+**⚠ Consequence:** the real GT (300-val + full_annotated) is **~99.5 %
+lowercase** (val: 21 uppercase / 8,975 letters). Cased synthetic labels will
+therefore **mismatch the eval GT** (a capital in a render scored as an error) —
+so either the **GT must be re-cased**, or accept a small eval penalty, or these
+pools are used where case matters. **Labels are cheap + independent of the
+images** (`correct_labels` only, seconds/pool), so the substitution set can be
+flipped after generation without re-rendering — the decision does not block
+image generation.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
