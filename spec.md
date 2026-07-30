@@ -2711,11 +2711,21 @@ margin 7 ≈ 40–44 px lines, matching the real crops — §6.5.18), with the c
 
 Each in **1-font** (merged) and **multi-font** (`--fonts-dir fonts/`, random
 font per line). **Driver (replicable):
-`scripts/data_augmentation/generate_pool_set.sh`** — idempotent/resumable, runs
+`scripts/data_augmentation/generate_pool_set.sh`** — idempotent/resumable (SKIP
+via `find`, not `ls`-glob — the glob blows the arg limit over ~10k files), runs
 render → augment → `correct_labels` per pool; parameterised source-asset paths
 at the top so it re-runs on a fresh VM (rebuilds the annotated `seeds_from_real`
 from `full_annotated`; needs the corpus JSONs + fonts/ + glyphs/ + a parchment
-run). **Generated locally 2026-07-31** (laptop, ~8–15 h CPU, ~20–40 GB).
+run). **`SCOPE` switch:** `SCOPE=full` (default) = all 18 pools (use on a VM);
+`SCOPE=small` = the 12 cheaper pools only (medical 4k/12k/36k + anno 3k/9k/27k,
+both 1font+mf), deferring the 3 giant pairs.
+
+**Status:** the **12 small pools were generated locally 2026-07-31** in **~28
+min** (all image==label counts verified). Surprise: at the **new small render
+size** augment runs at **~114 src/s** — ~40× faster than the old large size
+(~8 img/s on the L4 VM), so the whole set is far cheaper than first estimated;
+the 3 **giant pairs** (cometa-266k, medical-120k, anno-90k) are deferred to a
+VM via `SCOPE=full` but would also be only ~1–2 h locally if needed.
 
 **Pipeline notes (things that bite):**
 - Stamps default to **disabled** — must pass `--et-stamp-dir` etc. (else ⁊ /
