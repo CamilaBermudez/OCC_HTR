@@ -2479,13 +2479,42 @@ stretch fills the frame but distorts — either could win. This is the "really
 interesting feature" flagged by the user; `stretch` is retained specifically so
 the A/B is one flag apart.
 
-**RELATED TODO (synthetic render size).** Make synthetic renders ~**400×39** to
-match the real crops (currently ~1000×115) — controlled by the renderer's
-`font_size` (currently 60; ~20 would approach 39 px tall) in
-`medieval_text_generation`. Goal: synthetic and real lines share native
-resolution so the model sees consistent input. Note **`pad` already aligns them
-by aspect** in the encoder's view, so this is secondary once pad is the default;
-it mainly matters if we revert to `stretch`. Requires re-rendering the pools.
+**Synthetic render size — DONE 2026-07-30 (default changed).** Previously
+synthetic samples were ~**1000×115 px** while the real crops are ~**400×39**
+(median height 38–39, width 32–458). The augmentation pipeline now **downscales
+every finished sample to a target line height (aspect ratio preserved) AFTER
+the full pipeline runs**, so the degradation effects (blur/noise/warp, tuned at
+the ~115 px render scale) render correctly and the sample is *then* downsampled
+like a real scanned crop (`cv2.INTER_AREA`).
+
+- `src/data_augmentation/augmentation_techniques.py`
+  `batch_augment_directory(..., target_line_height=40)` — new param, **default
+  40** (matches the real ~38–39 px median). Logged in the run's
+  `Config:` JSON. `None`/`0` keeps the old native ~1000×115 size.
+- `run_augment_images.py --target-line-height` (default 40; `0` = native).
+- **Verified**: preview run produced 314–443 × **40 px** samples (vs ~1000×115),
+  squarely inside the real crop range.
+- **Rationale for downscale-after-augment (not a smaller font):** rendering at
+  the native scale keeps glyph quality and lets the physically-tuned
+  degradation fire correctly; shrinking the *font* instead would both degrade
+  glyph detail and mis-scale every absolute-px effect (a 7 px blur on a 40 px
+  image is proportionally huge). Downsampling last is exactly what a real
+  digitisation does.
+- **Interaction with `pad`:** `pad` already aligns synth/real by *aspect ratio*
+  in the encoder's view, so this native-size match is most impactful under
+  `stretch` (where absolute proportions matter) and for kraken (aspect-preserving,
+  fixed line height — it now sees synth at the same resolution as real).
+- **Still requires re-rendering the pools** to take effect on training data
+  (existing pools are still ~1000×115); fold into the multi-font re-render
+  (§6.5.17) so both changes land in one regenerated pool.
+
+**Pool provenance for the kraken 0.96 vs 0.90 baseline (for the record).** The
+two kraken numbers everyone keeps comparing come from pools built on **different
+days**: **0.9620** = historical `finetune_20260705_070741` on
+**`aug_20260701_232640`** (2 500 renders, 500 stems, git 099a61f, 2026-07-01);
+**0.9018** = leak-fixed `finetune_20260721_200641` on **`aug_20260721_121550`**
+(3 000 renders, 600 stems, git f42d0ed, 2026-07-21). Both single-font
+(`merged_font_code_cmpl2`) and ~1000×115 (pre-downscale). See §6.3.10 / §6.5.1.
 
 ## 7. Infrastructure
 

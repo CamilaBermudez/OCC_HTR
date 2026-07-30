@@ -73,6 +73,15 @@ def main():
         help="When --sample is set, how many source images to process. "
         "Ignored when --sample is not set. Default: 5.",
     )
+    parser.add_argument(
+        "--target-line-height",
+        type=int,
+        default=40,
+        help="Final output line height in px (aspect ratio preserved), applied "
+        "AFTER augmentation so effects render at full scale then downsample like "
+        "a real scan. Default 40 matches the real crops (~38-39 px, ~400 wide). "
+        "Pass 0 to keep the native ~115 px render size. See spec §6.5.18.",
+    )
 
     args = parser.parse_args()
 
@@ -117,6 +126,7 @@ def main():
         seed=args.seed,
         logs_dir=str(logs_dir),
         sample_size=args.sample_size if args.sample else None,
+        target_line_height=args.target_line_height if args.target_line_height else None,
     )
 
 
