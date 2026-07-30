@@ -1488,6 +1488,19 @@ cross-attention can't memorise 8 examples; COMETA-pretrained cross-attention
 can, better with more COMETA. Artefacts: overfit runs +
 `overfit10` set (10 real lines) in scratch; per-sample transcripts logged.
 
+**Ablation dimensions to vary (menu — not all run yet).** The overfit test is a
+cheap probe (10 lines, minutes on MPS); dimensions worth sweeping on it:
+- **Cross-attention init** — random (from-scratch) vs pretrained ✓ done.
+- **Stage-1 volume** — COMETA 90k vs 120k ✓ done; 30k / 266k pending.
+- **Decoder** (encoder held = Swin) — BERT ✓ done; **xlm-RoBERTa, GPT-2 TODO**
+  (predict: all from-scratch fail regardless of decoder → confirms the
+  bottleneck is the cross-attention, not the decoder).
+- **Encoder** — Swin vs ViT (from-scratch), and ViT+RoBERTa (`trocr-base`,
+  pretrained cross-attention) as a second pretrained point — TODO.
+- **Training length / decode** — epochs, LR, greedy vs beam, `no_repeat_ngram`
+  — affects whether it reaches 100 % memorisation (see the "why not 100 %"
+  note); a full-convergence run is in progress to demonstrate ~100 %.
+
 ## 6.4 Cross-family finding: medical corpus is architecture-dependent (2026-07-20)
 
 > **⚠ SUPERSEDED by the corrected-annotation rerun (§6.3.10).** Both legs of
