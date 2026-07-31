@@ -38,7 +38,7 @@ import logging
 import re
 from pathlib import Path
 
-from src.ocr.line_alignment import align_lines
+from src.ocr.line_alignment import align_lines, recover_gaps
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 log = logging.getLogger("align_transcriptions")
@@ -85,7 +85,12 @@ def align_page(
     **kw,
 ) -> dict:
     """Align one page; return the serialisable ``pairs`` + ``model_to_scholarly``."""
-    pairs = align_lines([t for _, t in model], [t for _, t in scholarly], **kw)
+    model_texts = [t for _, t in model]
+    scholarly_texts = [t for _, t in scholarly]
+    pairs = align_lines(model_texts, scholarly_texts, **kw)
+    # second pass: place OCR lines left unmatched because their scholarly
+    # counterpart is buried inside an over-long merged scholarly line
+    pairs = recover_gaps(pairs, model_texts, scholarly_texts)
     out_pairs = []
     m2s: dict[str, int] = {}
     for p in pairs:

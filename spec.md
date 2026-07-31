@@ -2822,7 +2822,15 @@ scholarly↔manuscript page alignment, which is untouched):**
 - **`src/ocr/line_alignment.py`** — reusable `align_lines(source, target)`:
   Needleman-Wunsch monotonic DP scored by folded string similarity (rapidfuzz;
   folds u/v, i/j, long-s, rotunda-r, combining marks, punctuation for *matching
-  only*), gaps for inserted/dropped lines. Transcription-agnostic.
+  only*), gaps for inserted/dropped lines. Transcription-agnostic. Plus
+  **`recover_gaps`** — a conservative second pass: an OCR line left unmatched
+  because its scholarly counterpart is buried inside an **over-long merged
+  scholarly line** (an edition error — e.g. `18_f_013v_014` line 63 is 352 chars
+  vs ~30 for its neighbours, ~8 manuscript lines merged into one entry) is
+  re-attached by *containment* (`partial_ratio` ≥ 0.85) to a **longer** target
+  within its neighbour-bracket. Only clean containments recover; structurally
+  broken cases (merged block + 2-column reading order) stay unaligned rather
+  than mis-aligned.
 - **`scripts/ocr/align_transcriptions.py`** — runner over any
   `<page>/<page>_line_<N>.txt` model tree + the scholarly aligned txt → per-page
   `line_alignment.json` (`pairs` + `model_to_scholarly`). Re-run per model as the
@@ -2840,6 +2848,9 @@ scholarly↔manuscript page alignment, which is untouched):**
   scholarly text per segmentation line — that hid unmatched scholarly lines as
   "no transcription"; both transcriptions must always be visible.)* Re-run the
   aligner + restart the viewer whenever `VIEWER_MODEL_TRANSCRIPTION` changes.
+  A transcribed model line still unaligned after recovery is **flagged** in the
+  3-way tab (amber left-border + ⚠ + tooltip) so the hard cases surface for
+  review rather than failing silently.
 
 ## 6.7 OCR-vs-scholarly difference classification (2026-07-31)
 

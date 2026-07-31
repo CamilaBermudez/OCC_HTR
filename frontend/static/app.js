@@ -145,8 +145,18 @@ function renderLineList(container, page, textField, showDiffs = false) {
         }
         row.appendChild(textCell);
 
-        if (showDiffs && line.diffs && line.diffs.length) {
-            row.appendChild(renderDiffChips(line));
+        if (showDiffs) {
+            // Flag a transcribed model line that got no confident scholarly
+            // alignment even after gap recovery — usually a scholarly-edition
+            // error (e.g. several manuscript lines merged into one entry).
+            const aligned = page.align && String(line.idx) in page.align;
+            if (line.our_text && !aligned) {
+                row.classList.add("unaligned");
+                row.title = "no confident scholarly alignment (likely a scholarly-transcription merge)";
+            }
+            if (line.diffs && line.diffs.length) {
+                row.appendChild(renderDiffChips(line));
+            }
         }
 
         row.addEventListener("click", () => setSelectedSeg(line.idx));

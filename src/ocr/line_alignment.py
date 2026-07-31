@@ -161,3 +161,67 @@ def align_lines(
 def source_to_target_map(pairs: list[AlignPair]) -> dict[int, int]:
     """Convenience: ``{source_idx: target_idx}`` for matched pairs only."""
     return {p.source_idx: p.target_idx for p in pairs if p.is_match}
+
+
+def recover_gaps(
+    pairs: list[AlignPair],
+    source: list[str],
+    target: list[str],
+    *,
+    min_score: float = 0.85,
+    min_len: int = 8,
+) -> list[AlignPair]:
+    """Second pass: place unmatched ``source`` lines by *containment* in a target.
+
+    The primary alignment leaves a source line unmatched when no single target
+    line is similar enough — which happens when several source lines all
+    correspond to fragments of ONE over-long target line (a scholarly-edition
+    error where many manuscript lines were merged into one numbered entry). Here
+    each such gap is re-checked against only the target lines **bracketed by its
+    aligned neighbours** (so we never reach across the page): if the gap's folded
+    text is contained in a candidate (rapidfuzz ``partial_ratio`` ≥ ``min_score``),
+    it is attached to that target. Conservative — short lines (< ``min_len``
+    folded chars) are skipped to avoid spurious substring hits.
+
+    Returns a new list; the recovered pairs carry their containment score (useful
+    to flag them as lower-confidence).
+    """
+    out = list(pairs)
+    n = len(out)
+    # nearest matched target index scanning left / right of each path position
+    prev_t = [-1] * n
+    last = -1
+    for k in range(n):
+        if out[k].is_match:
+            last = out[k].target_idx
+        prev_t[k] = last
+    next_t = [len(target)] * n
+    nxt = len(target)
+    for k in range(n - 1, -1, -1):
+        if out[k].is_match:
+            nxt = out[k].target_idx
+        next_t[k] = nxt
+
+    for k in range(n):
+        p = out[k]
+        if p.source_idx is None or p.target_idx is not None:
+            continue  # only source-only gaps
+        folded = normalize_for_match(source[p.source_idx])
+        if len(folded) < min_len:
+            continue
+        lo = max(0, prev_t[k])
+        hi = min(len(target) - 1, next_t[k])
+        best_t, best_sc = None, 0.0
+        for t in range(lo, hi + 1):
+            ft = normalize_for_match(target[t])
+            # only recover *into a longer* target — the merged-block signature
+            # (source line contained in an over-long scholarly line). Guards
+            # against a long OCR line spuriously matching a short scholarly one.
+            if len(ft) < len(folded):
+                continue
+            sc = fuzz.partial_ratio(folded, ft) / 100.0
+            if sc > best_sc:
+                best_sc, best_t = sc, t
+        if best_t is not None and best_sc >= min_score:
+            out[k] = AlignPair(p.source_idx, best_t, round(best_sc, 3))
+    return out
