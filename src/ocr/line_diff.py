@@ -198,28 +198,14 @@ def _expand(s: str, a: int, b: int) -> tuple[int, int]:
     return a, b
 
 
-def diff_page(scholarly_lines: list[str], ocr_lines: list[tuple[int, str]]) -> list[Diff]:
-    """Diff a page: ``scholarly_lines`` (ordered) vs ``ocr_lines`` (``(seg_idx, text)``).
+def _diff_core(base: str, ocr: str, owner: list[int]) -> list[Diff]:
+    """Character-level diff of one ``base`` string vs one ``ocr`` string.
 
-    **Character-level** alignment (``difflib`` on the concatenated page text on
-    each side) — robust to spacing, contractions and repeated words where a
-    token-level diff mis-anchors (``de ambulacio`` vs ``deambulacio``,
-    ``en lu`` vs ``eulu``). Each non-equal char range is grown to whole-word
-    boundaries and overlapping ranges merged into one region, then classified.
-    Page-level so a word broken across manuscript lines resolves cleanly; each
-    diff is attributed to the OCR line its span starts in.
+    ``owner[k]`` = segmentation-line index of ``ocr[k]`` (for per-line attribution).
+    Non-equal char ranges are grown to whole words (only if they touch a word
+    char), merged within a word, a pure spacing-shift absorbed, then classified;
+    spacing + orthographic are suppressed.
     """
-    base = " ".join(scholarly_lines)
-    # OCR page string + per-char owner (segmentation line index)
-    ocr_parts: list[str] = []
-    owner: list[int] = []
-    for seg_idx, text in ocr_lines:
-        if ocr_parts:
-            ocr_parts.append(" ")
-            owner.append(seg_idx)
-        ocr_parts.append(text)
-        owner.extend([seg_idx] * len(text))
-    ocr = "".join(ocr_parts)
 
     def owner_at(pos: int) -> int | None:
         if not owner:
@@ -231,32 +217,87 @@ def diff_page(scholarly_lines: list[str], ocr_lines: list[tuple[int, str]]) -> l
     for tag, i1, i2, j1, j2 in sm.get_opcodes():
         if tag == "equal":
             continue
-        # grow to whole-word boundaries ONLY when the changed span actually
-        # touches word characters; a pure whitespace/punctuation change must NOT
-        # swallow its neighbouring words (else "en tot"->"entot" reads as a
-        # deletion instead of a harmless space merge).
         bs, be = _expand(base, i1, i2)
         os_, oe = _expand(ocr, j1, j2)
         regions.append([bs, be, os_, oe])
     regions.sort()
     merged: list[list[int]] = []
     for r in regions:
-        # merge only when two char-diffs land in the SAME word (their
-        # word-expanded ranges genuinely overlap on BOTH sides) — never across a
-        # gap, so scattered diffs stay separate and punctuation isn't absorbed.
         if merged and r[0] < merged[-1][1] and r[2] < merged[-1][3]:
             merged[-1][1] = max(merged[-1][1], r[1])
             merged[-1][3] = max(merged[-1][3], r[3])
         else:
             merged.append(r)
+    # absorb an adjacent region only when the combined span is a pure spacing
+    # shift ("un apostema" vs "una postema") — never merges into a visible diff
+    absorbed: list[list[int]] = []
+    for r in merged:
+        if absorbed:
+            cb = base[absorbed[-1][0] : r[1]]
+            co = ocr[absorbed[-1][2] : r[3]]
+            if len(cb) <= 40 and _despace(cb) == _despace(co):
+                absorbed[-1][1], absorbed[-1][3] = r[1], r[3]
+                continue
+        absorbed.append(list(r))
 
     diffs: list[Diff] = []
-    for bs, be, os_, oe in merged:
+    for bs, be, os_, oe in absorbed:
         b, o = base[bs:be].strip(), ocr[os_:oe].strip()
         if not b and not o:
-            continue  # nothing left after stripping (a pure whitespace change)
+            continue
         dtype = classify_region(b, o)
-        if dtype == "spacing":
-            continue  # a line-wrap / pure spacing change is not an edit
+        if dtype in ("spacing", "orthographic"):
+            # spacing = wrap/segmentation; orthographic (u/v, i/j) suppressed for
+            # now (user decision 2026-07-31) — re-enable by dropping it here.
+            continue
         diffs.append(Diff(dtype, b, o, owner_at(os_), _tei(dtype, b, o)))
+    return diffs
+
+
+def _concat_ocr(ocr_lines: list[tuple[int, str]]) -> tuple[str, list[int]]:
+    """Join OCR lines with single spaces; return (text, per-char owner seg idx)."""
+    parts: list[str] = []
+    owner: list[int] = []
+    for seg_idx, text in ocr_lines:
+        if parts:
+            parts.append(" ")
+            owner.append(seg_idx)
+        parts.append(text)
+        owner.extend([seg_idx] * len(text))
+    return "".join(parts), owner
+
+
+def diff_page(scholarly_lines: list[str], ocr_lines: list[tuple[int, str]]) -> list[Diff]:
+    """Free page-level char diff (both sides concatenated). Reusable, alignment-free."""
+    ocr, owner = _concat_ocr(ocr_lines)
+    return _diff_core(" ".join(scholarly_lines), ocr, owner)
+
+
+def diff_aligned(
+    scholarly_lines: list[tuple[int, str]],
+    ocr_lines: list[tuple[int, str]],
+    align: dict[int, int],
+) -> list[Diff]:
+    """Alignment-constrained diff: each scholarly line vs the OCR line(s) aligned to it.
+
+    ``scholarly_lines`` = ``(scholarly_no, text)``; ``ocr_lines`` =
+    ``(seg_idx, text)``; ``align`` = ``{seg_idx: scholarly_no}`` (from
+    ``line_alignment.json``). Diffing per aligned group — not free over the whole
+    page — avoids the global mis-alignment on 2-column pages, and makes an
+    unmatched (e.g. merged) scholarly line show up as a clean **deletion**
+    against its one aligned OCR line ("all this text is empty in the OCR"). OCR
+    lines with no alignment are skipped (already flagged in the viewer).
+    """
+    groups: dict[int, list[tuple[int, str]]] = {}
+    for seg_idx, text in ocr_lines:
+        no = align.get(seg_idx)
+        if no is not None:
+            groups.setdefault(no, []).append((seg_idx, text))
+    diffs: list[Diff] = []
+    for no, text in scholarly_lines:
+        group = groups.get(no)
+        if not group:
+            continue  # scholarly line with no aligned OCR line -> nothing to attach
+        ocr, owner = _concat_ocr(group)
+        diffs.extend(_diff_core(text, ocr, owner))
     return diffs

@@ -2884,14 +2884,25 @@ was wrongly a deletion, `en lu`↔`eulu` was split in two):
 - **scribal contractions**: an OCR span that is a *subsequence* of the scholarly
   span keeping ≥60 % of the letters → one **abbreviation** (`del`=`de lo`,
   `dels`=`de los`, `al`=`a lo`); the guard rejects truncations (`la` vs `lahoras`).
+The **`orthographic`** category (u/v, i/j, long-s) is **suppressed from output**
+(user decision 2026-07-31 — low value now; re-enable by dropping it in the
+`("spacing", "orthographic")` skip). `diff_page` also absorbs a space shifted
+across a word boundary (`un apostema`↔`una postema`).
 **`scripts/ocr/diff_transcriptions.py`** → per-page `line_diff.json` (`counts` +
 `by_line[seg_idx] = [diffs]`), re-run per model. Corpus totals on
-`finetune_400_full_corpus`: punctuation 9.0k, substitution 8.7k, orthographic
-5.5k, deletion 3.4k, addition 1.9k, abbreviation 1.1k. Verified on a 30-line
-random sample + the reported cases (`eulu→en lu` now one substitution
-everywhere). **Remaining tail:** on the 2-column pages (e.g. `18_f_013v_014`)
-`difflib`'s global char alignment can still scramble a line — a genuine
-scholarly-lineation/reading-order problem, flagged not forced.
+`finetune_400_full_corpus`: punctuation 9.0k, substitution 8.7k, deletion 3.4k,
+addition 1.9k, abbreviation 1.1k (no orthographic). Verified on a 30-line random
+sample (`eulu→en lu` one substitution everywhere).
+**Known limitations (difflib is greedy-LCS, not min-edit):** (a) on 2-column /
+merged-block pages (e.g. `18_f_013v_014`) the global char alignment can scramble
+a line — a scholarly-lineation problem, flagged via the unaligned markers, not
+forced; (b) a residual boundary-shift can still surface as an add+del pair.
+An **alignment-constrained** variant (`diff_aligned`, diffing each scholarly line
+against only its aligned OCR line — shows a merged block as one clean deletion)
+exists in `line_diff.py` but is **not wired in**: it amplifies alignment errors
+and difflib's non-minimal alignments into worse per-line diffs. The real fix for
+both is a true Needleman-Wunsch **character** aligner (min edit distance) — the
+next lever if these pages matter.
 
 **Wired into the viewer** (`frontend/`): `Config.line_diff_json`
 (`VIEWER_LINE_DIFF`, default next to the transcription) → `ManuscriptRepo` loads
