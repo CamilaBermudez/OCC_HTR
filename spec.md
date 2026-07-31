@@ -2828,8 +2828,13 @@ scholarly↔manuscript page alignment, which is untouched):**
   `line_alignment.json` (`pairs` + `model_to_scholarly`). Re-run per model as the
   34-model grid produces new transcriptions.
 - Validated on `32_f_027v_028`: recovers the +1/+2 drift and the "no
-  transcription" gap exactly. Viewer wiring (consume `model_to_scholarly` in
-  `get_page` instead of positional lookup) is the pending follow-up.
+  transcription" gap exactly.
+- **Wired into the viewer** (`frontend/`): `Config.line_alignment_json`
+  (`VIEWER_LINE_ALIGNMENT`, default next to the transcription) → `ManuscriptRepo`
+  loads it and `get_page` attaches each segmentation line's *aligned* scholarly
+  text (positional fallback per-page if absent). No JS change — the existing
+  same-idx highlight now lands on the right line. Re-run the aligner + restart
+  the viewer whenever `VIEWER_MODEL_TRANSCRIPTION` changes.
 
 ## 7. Infrastructure
 

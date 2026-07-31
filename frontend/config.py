@@ -35,8 +35,21 @@ class Config:
     filtered_kept_dir: Path
     """Filtered kept line crops (the folder the annotators saw)."""
 
+    line_alignment_json: Path
+    """Per-page content-based line alignment (model line -> scholarly line),
+    produced by ``scripts/ocr/align_transcriptions.py``. Used to pair each
+    segmentation line with the *correct* scholarly line instead of the
+    positional guess (spec §6.6). Default sits next to the model transcription;
+    override via ``VIEWER_LINE_ALIGNMENT``. Missing file => positional fallback."""
+
     @classmethod
     def from_env(cls) -> "Config":
+        model_transcription_dir = Path(
+            os.environ.get(
+                "VIEWER_MODEL_TRANSCRIPTION",
+                REPO_ROOT / "data/processed/transcription/finetune_400_full_corpus",
+            )
+        )
         return cls(
             raw_pages_dir=Path(
                 os.environ.get(
@@ -50,10 +63,11 @@ class Config:
                     REPO_ROOT / "data/processed/segmented_images/segmentation_20260618_111517",
                 )
             ),
-            model_transcription_dir=Path(
+            model_transcription_dir=model_transcription_dir,
+            line_alignment_json=Path(
                 os.environ.get(
-                    "VIEWER_MODEL_TRANSCRIPTION",
-                    REPO_ROOT / "data/processed/transcription/finetune_400_full_corpus",
+                    "VIEWER_LINE_ALIGNMENT",
+                    model_transcription_dir / "line_alignment.json",
                 )
             ),
             scholarly_txt=Path(

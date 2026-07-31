@@ -123,6 +123,35 @@ def _load_our_transcription(model_dir: Path, page_key: str, line_idx: int) -> st
     return text or None
 
 
+def _load_line_alignment(path: Path) -> dict[str, dict[int, str]]:
+    """Parse ``line_alignment.json`` into ``{page_key: {seg_idx: scholarly_text}}``.
+
+    Built by ``scripts/ocr/align_transcriptions.py`` — pairs each model
+    (segmentation) line with the *content-matched* scholarly line, so the viewer
+    highlights the right one instead of the positional guess (spec §6.6). A
+    missing/unreadable file is not an error: returns ``{}`` and the caller falls
+    back to positional pairing.
+    """
+    if not path.is_file():
+        logger.info("No line-alignment file at %s — using positional scholarly pairing", path)
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.warning("Could not read line alignment %s (%s) — positional fallback", path, exc)
+        return {}
+    out: dict[str, dict[int, str]] = {}
+    for page_key, page in raw.items():
+        mapping: dict[int, str] = {}
+        for pair in page.get("pairs", []):
+            mi, text = pair.get("model_idx"), pair.get("scholarly_text")
+            if mi is not None and text is not None:
+                mapping[int(mi)] = text
+        if mapping:
+            out[page_key] = mapping
+    return out
+
+
 @dataclass(frozen=True)
 class PageMeta:
     """Everything about one page that the frontend needs at render time."""
@@ -149,6 +178,9 @@ class ManuscriptRepo:
         self._raw_map: dict[str, Path] = {}
         self._image_size: dict[str, tuple[int, int]] = {}
         self._scholarly: dict[str, dict[int, str]] = {}
+        # {page_key: {segmentation_line_idx: aligned scholarly text}} from the
+        # content-based aligner (spec §6.6). Empty => positional fallback.
+        self._alignment: dict[str, dict[int, str]] = {}
         self._segmentation_pages: set[str] = set()
         self._load()
 
@@ -180,10 +212,14 @@ class ManuscriptRepo:
         # 4. Scholarly transcription (optional).
         self._scholarly = _parse_scholarly(self.config.scholarly_txt)
 
+        # 5. Content-based line alignment (optional; positional fallback if absent).
+        self._alignment = _load_line_alignment(self.config.line_alignment_json)
+
         logger.info(
-            "ManuscriptRepo loaded: %d usable pages, %d with scholarly txn",
+            "ManuscriptRepo loaded: %d usable pages, %d with scholarly txn, %d with line alignment",
             len(self._page_keys),
             sum(1 for k in self._page_keys if k in self._scholarly),
+            sum(1 for k in self._page_keys if k in self._alignment),
         )
 
     def list_pages(self) -> list[str]:
@@ -211,9 +247,17 @@ class ManuscriptRepo:
         )
         width, height = self._get_image_size(page_key)
         scholarly_lines = self._scholarly.get(page_key, {})
+        # Content-based alignment maps each segmentation line to its true
+        # scholarly counterpart (spec §6.6). Fall back to positional pairing
+        # per-page only when this page has no alignment entry.
+        aligned = self._alignment.get(page_key)
 
         lines: list[dict] = []
         for idx, seg_line in enumerate(seg.get("lines", [])):
+            if aligned is not None:
+                scholarly_text = aligned.get(idx)
+            else:
+                scholarly_text = scholarly_lines.get(idx)
             lines.append(
                 {
                     "idx": idx,
@@ -222,7 +266,7 @@ class ManuscriptRepo:
                     "our_text": _load_our_transcription(
                         self.config.model_transcription_dir, page_key, idx
                     ),
-                    "scholarly_text": scholarly_lines.get(idx),
+                    "scholarly_text": scholarly_text,
                 }
             )
 
