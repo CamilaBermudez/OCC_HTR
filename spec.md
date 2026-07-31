@@ -2773,9 +2773,9 @@ in §6.5.13ff).
 pretrain (decoder differs: BERT vs RoBERTa) → **2 Stage-1 checkpoints**, each
 reused as the init for that architecture's every Stage-2 run. Rationale: gives
 the fresh cross-attention a strong init — without it the from-scratch models
-collapse (§6.3.6/§6.3.11, the "issues we already documented"). *(Open detail:
-which font-mode — 1font or mf — for the single 266k Stage-1; does not change the
-count.)*
+collapse (§6.3.6/§6.3.11, the "issues we already documented"). **Stage-1 font
+mode = 1font** (`cometa_266k_1font`, user decision 2026-07-31) for both Swin
+checkpoints.
 
 **Stage-2 / single-stage training sets** — the 4 (Medical + Annotated) tiers at
 the fixed **3:4 annotated:medical ratio**, each in **{1font, mf}** → **8
