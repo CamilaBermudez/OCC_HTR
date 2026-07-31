@@ -2754,6 +2754,50 @@ images** (`correct_labels` only, seconds/pool), so the substitution set can be
 flipped after generation without re-rendering — the decision does not block
 image generation.
 
+### 6.5.21 Planned experiment grid — 34 models (2026-07-31)
+
+The upcoming program trains **4 architectures** and evaluates **all of them on
+the 300 annotated samples** (corpus + median + bootstrap CI + ink-bleed-p90, as
+in §6.5.13ff).
+
+**Architectures & staging:**
+
+| # | architecture | staging |
+|---|---|---|
+| 1 | kraken (fine-tune Catmus) | single-stage |
+| 2 | Swin + BERT | **2-stage** (Stage-1 COMETA-266k → Stage-2) |
+| 3 | Swin + RoBERTa | **2-stage** (Stage-1 COMETA-266k → Stage-2) |
+| 4 | ViT + RoBERTa | single-stage |
+
+**Stage-1 (COMETA-266k):** only the two Swin models. Each needs its **own**
+pretrain (decoder differs: BERT vs RoBERTa) → **2 Stage-1 checkpoints**, each
+reused as the init for that architecture's every Stage-2 run. Rationale: gives
+the fresh cross-attention a strong init — without it the from-scratch models
+collapse (§6.3.6/§6.3.11, the "issues we already documented"). *(Open detail:
+which font-mode — 1font or mf — for the single 266k Stage-1; does not change the
+count.)*
+
+**Stage-2 / single-stage training sets** — the 4 (Medical + Annotated) tiers at
+the fixed **3:4 annotated:medical ratio**, each in **{1font, mf}** → **8
+dataset variants:**
+
+| tier | medical | annotated |
+|---|---|---|
+| T1 | 4k | 3k |
+| T2 | 12k | 9k |
+| T3 | 36k | 27k |
+| T4 | 120k | 90k |
+
+**Model count:**
+- every architecture trains on all 8 Stage-2 variants → **4 × 8 = 32** fine-tuned models
+- **+ 2** Stage-1 COMETA-266k checkpoints (Swin+BERT, Swin+RoBERTa)
+- = **34 models total**, all evaluated on the 300 annotated samples.
+
+**Prerequisite:** T4 and Stage-1 require the **giant pools** (medical-120k,
+anno-90k, cometa-266k — the 3 pairs deferred to a VM in §6.5.20); the 12 small
+pools (T1–T3) already exist locally (`_20260731`). All at the new render size,
+in both font modes.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
