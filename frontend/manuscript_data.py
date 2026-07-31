@@ -152,6 +152,28 @@ def _load_line_alignment(path: Path) -> dict[str, dict[int, str]]:
     return out
 
 
+def _load_line_diff(path: Path) -> dict[str, dict[int, list[dict]]]:
+    """Parse ``line_diff.json`` into ``{page_key: {seg_idx: [diff dicts]}}``.
+
+    Built by ``scripts/ocr/diff_transcriptions.py`` (spec §6.7). Missing /
+    unreadable file returns ``{}`` (no chips shown).
+    """
+    if not path.is_file():
+        logger.info("No line-diff file at %s — no per-line diff chips", path)
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        logger.warning("Could not read line diff %s (%s) — skipping", path, exc)
+        return {}
+    out: dict[str, dict[int, list[dict]]] = {}
+    for page_key, page in raw.items():
+        by_line = {int(k): v for k, v in page.get("by_line", {}).items()}
+        if by_line:
+            out[page_key] = by_line
+    return out
+
+
 @dataclass(frozen=True)
 class PageMeta:
     """Everything about one page that the frontend needs at render time."""
@@ -181,6 +203,9 @@ class ManuscriptRepo:
         # {page_key: {segmentation_line_idx: aligned scholarly text}} from the
         # content-based aligner (spec §6.6). Empty => positional fallback.
         self._alignment: dict[str, dict[int, str]] = {}
+        # {page_key: {segmentation_line_idx: [diff dicts]}} from the diff
+        # classifier (spec §6.7). Empty => no diff chips.
+        self._diffs: dict[str, dict[int, list[dict]]] = {}
         self._segmentation_pages: set[str] = set()
         self._load()
 
@@ -215,11 +240,15 @@ class ManuscriptRepo:
         # 5. Content-based line alignment (optional; positional fallback if absent).
         self._alignment = _load_line_alignment(self.config.line_alignment_json)
 
+        # 6. Per-line difference classification (optional).
+        self._diffs = _load_line_diff(self.config.line_diff_json)
+
         logger.info(
-            "ManuscriptRepo loaded: %d usable pages, %d with scholarly txn, %d with line alignment",
+            "ManuscriptRepo loaded: %d usable pages, %d scholarly, %d aligned, %d with diffs",
             len(self._page_keys),
             sum(1 for k in self._page_keys if k in self._scholarly),
             sum(1 for k in self._page_keys if k in self._alignment),
+            sum(1 for k in self._page_keys if k in self._diffs),
         )
 
     def list_pages(self) -> list[str]:
@@ -251,6 +280,7 @@ class ManuscriptRepo:
         # scholarly counterpart (spec §6.6). Fall back to positional pairing
         # per-page only when this page has no alignment entry.
         aligned = self._alignment.get(page_key)
+        page_diffs = self._diffs.get(page_key, {})
 
         lines: list[dict] = []
         for idx, seg_line in enumerate(seg.get("lines", [])):
@@ -267,6 +297,7 @@ class ManuscriptRepo:
                         self.config.model_transcription_dir, page_key, idx
                     ),
                     "scholarly_text": scholarly_text,
+                    "diffs": page_diffs.get(idx, []),
                 }
             )
 

@@ -42,6 +42,12 @@ class Config:
     positional guess (spec §6.6). Default sits next to the model transcription;
     override via ``VIEWER_LINE_ALIGNMENT``. Missing file => positional fallback."""
 
+    line_diff_json: Path
+    """Per-line OCR-vs-scholarly difference classification (spec §6.7), produced
+    by ``scripts/ocr/diff_transcriptions.py``. Drives the per-line diff chips.
+    Default next to the model transcription; override ``VIEWER_LINE_DIFF``.
+    Missing file => no diff chips shown."""
+
     @classmethod
     def from_env(cls) -> "Config":
         model_transcription_dir = Path(
@@ -68,6 +74,12 @@ class Config:
                 os.environ.get(
                     "VIEWER_LINE_ALIGNMENT",
                     model_transcription_dir / "line_alignment.json",
+                )
+            ),
+            line_diff_json=Path(
+                os.environ.get(
+                    "VIEWER_LINE_DIFF",
+                    model_transcription_dir / "line_diff.json",
                 )
             ),
             scholarly_txt=Path(

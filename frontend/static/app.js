@@ -102,7 +102,25 @@ function renderImageInto(container, page, target) {
     container.appendChild(svg);
 }
 
-function renderLineList(container, page, textField) {
+// Compact colored chips for one OCR line's differences vs the scholarly base
+// (spec §6.7): each chip is "OCR span → scholarly span", colored by category,
+// with the TEI encoding on hover.
+function renderDiffChips(line) {
+    const box = document.createElement("div");
+    box.className = "diff-chips";
+    for (const d of line.diffs || []) {
+        const chip = document.createElement("span");
+        chip.className = `diff-chip diff-${d.type}`;
+        const ocr = d.ocr_text || "∅";
+        const base = d.base_text || "∅";
+        chip.textContent = `${ocr}→${base}`;
+        chip.title = `${d.type}: ${d.tei}`;
+        box.appendChild(chip);
+    }
+    return box;
+}
+
+function renderLineList(container, page, textField, showDiffs = false) {
     container.innerHTML = "";
     for (const line of page.lines) {
         const row = document.createElement("div");
@@ -125,6 +143,10 @@ function renderLineList(container, page, textField) {
         }
         row.appendChild(textCell);
 
+        if (showDiffs && line.diffs && line.diffs.length) {
+            row.appendChild(renderDiffChips(line));
+        }
+
         row.addEventListener("click", () => setSelected(line.idx));
         container.appendChild(row);
     }
@@ -137,7 +159,7 @@ function renderAll() {
     renderImageInto($("#image-wrap-2"), p, "2");
     renderLineList($("#lines-ours-1"), p, "our_text");
     renderLineList($("#lines-scholarly"), p, "scholarly_text");
-    renderLineList($("#lines-ours-2"), p, "our_text");
+    renderLineList($("#lines-ours-2"), p, "our_text", true); // 3-way tab: show diff chips
     applySelection();
 }
 

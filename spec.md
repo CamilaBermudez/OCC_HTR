@@ -2864,8 +2864,15 @@ substitution 16.4k, deletion 7.9k, addition 5.7k, punctuation 4.9k,
 abbreviation 0.7k. **Known limitation:** abbreviation/orthographic/punctuation
 are reliable; a real OCR error *inside* a spacing difference (`devisada`→`de
 uesida`) fragments into substitution+addition (inflates those two buckets) —
-char-level refinement is the next lever if needed. Viewer wiring is the pending
-follow-up.
+char-level refinement is the next lever if needed (deferred by decision
+2026-07-31; current granularity kept).
+
+**Wired into the viewer** (`frontend/`): `Config.line_diff_json`
+(`VIEWER_LINE_DIFF`, default next to the transcription) → `ManuscriptRepo` loads
+it and `get_page` attaches each line's `diffs`; the 3-way tab renders compact
+**color-coded chips** under each OCR line (`OCR→scholarly`, one colour per
+category, TEI on hover) with a legend. Re-run `diff_transcriptions.py` + restart
+the viewer per model.
 
 ## 7. Infrastructure
 
