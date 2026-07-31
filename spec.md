@@ -2870,18 +2870,24 @@ categories, each with editorial **TEI**:
 
 **`src/ocr/line_diff.py`** — reusable `diff_page(scholarly_lines, ocr_lines)`.
 Key design: **page-level** (concatenate the page, diff continuously) so a word
-broken across manuscript lines resolves to *orthographic* not a false error;
-combining-mark-aware tokenizer (NFC); abbreviation signalled by any non-ASCII
-letter/mark (the edition is ASCII); a greedy word-refiner absorbs spacing
-splits/merges (`dispo`+`sicios`==`disposicios`). **`scripts/ocr/diff_transcriptions.py`**
-→ per-page `line_diff.json` (`counts` + `by_line[seg_idx] = [diffs]`), re-run
-per model. Corpus totals on `finetune_400_full_corpus`: orthographic 17.4k,
-substitution 16.4k, deletion 7.9k, addition 5.7k, punctuation 4.9k,
-abbreviation 0.7k. **Known limitation:** abbreviation/orthographic/punctuation
-are reliable; a real OCR error *inside* a spacing difference (`devisada`→`de
-uesida`) fragments into substitution+addition (inflates those two buckets) —
-char-level refinement is the next lever if needed (deferred by decision
-2026-07-31; current granularity kept).
+broken across manuscript lines resolves cleanly; combining-mark-aware tokenizer
+(NFC); abbreviation signalled by any non-ASCII letter/mark (the edition is
+ASCII). A greedy word-refiner (a small variation on the Needleman-Wunsch idea,
+per-region) then:
+- **absorbs pure line-break word splits** (`stren`+`gut`==`strengut`,
+  `dispo`+`sicios`) — identical modulo whitespace → **emitted as nothing**, not a
+  difference (a wrap is not an edit);
+- detects **scribal contractions across a token boundary** — an OCR word that is
+  a *subsequence* of ≥2 base words keeping ≥60 % of the letters and not crossing
+  punctuation → one **abbreviation** (`del`=`de lo` ×816, `dels`=`de los`,
+  `al`=`a lo`, `als`=`a los`, `alqual`=`a lo qual`). The ratio/subsequence guard
+  rejects truncations/errors (`la` vs `, lahoras`).
+**`scripts/ocr/diff_transcriptions.py`** → per-page `line_diff.json` (`counts` +
+`by_line[seg_idx] = [diffs]`), re-run per model. Corpus totals on
+`finetune_400_full_corpus`: substitution 14.1k, orthographic 9.1k, addition
+5.9k, deletion 6.2k, punctuation 4.9k, abbreviation 2.5k. **Remaining tail:** a
+real OCR error *inside* a spacing difference can still fragment into
+substitution+addition; full char-level alignment is the next lever if needed.
 
 **Wired into the viewer** (`frontend/`): `Config.line_diff_json`
 (`VIEWER_LINE_DIFF`, default next to the transcription) → `ManuscriptRepo` loads

@@ -42,6 +42,21 @@ def _fold(text: str) -> str:
     return "".join(c for c in text if c.isascii() and c.isalnum())
 
 
+def _despace(text: str) -> str:
+    """The span with all whitespace removed (case preserved)."""
+    return "".join(text.split())
+
+
+def _is_subseq(short: str, long: str) -> bool:
+    """True if ``short`` is a subsequence of ``long`` (letters dropped in order).
+
+    Signals a scribal *contraction*: ``del`` ⊂ ``delo`` (``de lo``); a random OCR
+    error like ``marors`` vs ``majors`` is NOT a subsequence.
+    """
+    it = iter(long)
+    return all(ch in it for ch in short)
+
+
 def tokenize(text: str) -> list[str]:
     """Split into word tokens (combining marks kept attached) + standalone punctuation.
 
@@ -161,22 +176,44 @@ def _refine_replace(
                     out.append(("orthographic", b, o, j0 + j))
                 i, j = i + 1, j + 1
                 continue
-            # spacing/word-break: one word on one side == several on the other
-            # (split: base == concat of OCR tokens; merge: OCR == concat of base)
-            grew = False
-            for k in range(j + 1, min(j + 4, len(ocr_toks)) + 1):  # split
-                if _fold(b) and _fold(b) == _fold("".join(ocr_toks[j:k])):
-                    out.append(("orthographic", b, " ".join(ocr_toks[j:k]), j0 + j))
-                    i, j, grew = i + 1, k, True
+            handled = False
+            # (a) one BASE word spans several OCR tokens (fold-equal). If the
+            #     letters are identical modulo whitespace it's a pure line-break
+            #     word split — NOT a difference, so emit nothing; else it's a
+            #     spelling variant (u/v) spanning the split -> orthographic.
+            for k in range(j + 1, min(j + 4, len(ocr_toks)) + 1):
+                span = " ".join(ocr_toks[j:k])
+                if _fold(b) and _fold(b) == _fold(span):
+                    if _despace(b) != _despace(span):
+                        out.append(("orthographic", b, span, j0 + j))
+                    i, j, handled = i + 1, k, True
                     break
-            if grew:
+            if handled:
                 continue
-            for k in range(i + 1, min(i + 4, len(base_toks)) + 1):  # merge
-                if _fold(o) and _fold(o) == _fold("".join(base_toks[i:k])):
-                    out.append(("orthographic", " ".join(base_toks[i:k]), o, j0 + j))
-                    i, j, grew = k, j + 1, True
+            # (b) one OCR word spans several BASE tokens (fold-equal): merge.
+            for k in range(i + 1, min(i + 4, len(base_toks)) + 1):
+                span = " ".join(base_toks[i:k])
+                if _fold(o) and _fold(o) == _fold(span):
+                    if _despace(span) != _despace(o):
+                        out.append(("orthographic", span, o, j0 + j))
+                    i, j, handled = k, j + 1, True
                     break
-            if grew:
+            if handled:
+                continue
+            # (c) CONTRACTION: one OCR word is a subsequence of several BASE
+            #     words (letters dropped) -> abbreviation, e.g. "de lo" -> "del".
+            #     Guarded: never cross punctuation, and keep >=60% of the letters
+            #     so a truncation/error ("la" vs ", lahoras") isn't mistaken for one.
+            for k in range(i + 2, min(i + 4, len(base_toks)) + 1):
+                span_toks = base_toks[i:k]
+                if any(_is_punct(t) for t in span_toks):
+                    break
+                fb, fo = _fold(" ".join(span_toks)), _fold(o)
+                if fo and 0.6 * len(fb) <= len(fo) < len(fb) and _is_subseq(fo, fb):
+                    out.append(("abbreviation", " ".join(span_toks), o, j0 + j))
+                    i, j, handled = k, j + 1, True
+                    break
+            if handled:
                 continue
             out.append((classify_region(b, o), b, o, j0 + j))  # single divergent pair
             i, j = i + 1, j + 1
