@@ -2720,6 +2720,13 @@ run). **`SCOPE` switch:** `SCOPE=full` (default) = all 18 pools (use on a VM);
 `SCOPE=small` = the 12 cheaper pools only (medical 4k/12k/36k + anno 3k/9k/27k,
 both 1font+mf), deferring the 3 giant pairs.
 
+**Folder naming (self-documenting):** each pool folder carries its **creation
+date** — `aug_<corpus>_<size>_<font>_<YYYYMMDD>` and matching
+`labels_<corpus>_<size>_<font>_<YYYYMMDD>`. The driver's `DATE` var defaults to
+today (`date +%Y%m%d`); override `DATE=YYYYMMDD` to resume/extend an earlier
+run's folders. The 12 local pools are stamped **`_20260731`**, e.g.
+`aug_medical_12k_mf_20260731` ↔ `labels_medical_12k_mf_20260731`.
+
 **Status:** the **12 small pools were generated locally 2026-07-31** in **~28
 min** (all image==label counts verified). Surprise: at the **new small render
 size** augment runs at **~114 src/s** — ~40× faster than the old large size
