@@ -2869,25 +2869,29 @@ categories, each with editorial **TEI**:
 | substitution | genuine divergence (OCR misread / variant) | `<sic>/<corr>` |
 
 **`src/ocr/line_diff.py`** — reusable `diff_page(scholarly_lines, ocr_lines)`.
-Key design: **page-level** (concatenate the page, diff continuously) so a word
-broken across manuscript lines resolves cleanly; combining-mark-aware tokenizer
-(NFC); abbreviation signalled by any non-ASCII letter/mark (the edition is
-ASCII). A greedy word-refiner (a small variation on the Needleman-Wunsch idea,
-per-region) then:
-- **absorbs pure line-break word splits** (`stren`+`gut`==`strengut`,
-  `dispo`+`sicios`) — identical modulo whitespace → **emitted as nothing**, not a
-  difference (a wrap is not an edit);
-- detects **scribal contractions across a token boundary** — an OCR word that is
-  a *subsequence* of ≥2 base words keeping ≥60 % of the letters and not crossing
-  punctuation → one **abbreviation** (`del`=`de lo` ×816, `dels`=`de los`,
-  `al`=`a lo`, `als`=`a los`, `alqual`=`a lo qual`). The ratio/subsequence guard
-  rejects truncations/errors (`la` vs `, lahoras`).
+Key design (rewritten 2026-07-31 to **character-level** after token-level was
+found to mis-anchor on spacing + repeated words — `de ambulacio`↔`deambulacio`
+was wrongly a deletion, `en lu`↔`eulu` was split in two):
+- **page-level char alignment** (`difflib` on the concatenated page text of each
+  side) so a word broken across manuscript lines resolves cleanly and repeated
+  words don't mis-anchor;
+- each non-equal char range is grown to whole-word bounds **only if it contains a
+  word char** (so a deleted space doesn't swallow its neighbours), overlapping
+  ranges merged **only when they hit the same word** (else punctuation gets
+  absorbed), then classified;
+- a difference that is **identical modulo whitespace** (`en tot`↔`entot`,
+  `stren gut`↔`strengut`) is dropped — a wrap/segmentation change is not an edit;
+- **scribal contractions**: an OCR span that is a *subsequence* of the scholarly
+  span keeping ≥60 % of the letters → one **abbreviation** (`del`=`de lo`,
+  `dels`=`de los`, `al`=`a lo`); the guard rejects truncations (`la` vs `lahoras`).
 **`scripts/ocr/diff_transcriptions.py`** → per-page `line_diff.json` (`counts` +
 `by_line[seg_idx] = [diffs]`), re-run per model. Corpus totals on
-`finetune_400_full_corpus`: substitution 14.1k, orthographic 9.1k, addition
-5.9k, deletion 6.2k, punctuation 4.9k, abbreviation 2.5k. **Remaining tail:** a
-real OCR error *inside* a spacing difference can still fragment into
-substitution+addition; full char-level alignment is the next lever if needed.
+`finetune_400_full_corpus`: punctuation 9.0k, substitution 8.7k, orthographic
+5.5k, deletion 3.4k, addition 1.9k, abbreviation 1.1k. Verified on a 30-line
+random sample + the reported cases (`eulu→en lu` now one substitution
+everywhere). **Remaining tail:** on the 2-column pages (e.g. `18_f_013v_014`)
+`difflib`'s global char alignment can still scramble a line — a genuine
+scholarly-lineation/reading-order problem, flagged not forced.
 
 **Wired into the viewer** (`frontend/`): `Config.line_diff_json`
 (`VIEWER_LINE_DIFF`, default next to the transcription) → `ManuscriptRepo` loads

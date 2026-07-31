@@ -105,17 +105,35 @@ DiffType = str  # one of the six category names
 
 
 def classify_region(base: str, ocr: str) -> DiffType:
-    """Classify one non-equal region. ``base`` = scholarly span, ``ocr`` = OCR span."""
-    if _fold(base) and _fold(base) == _fold(ocr):
-        # same letters after folding: u/v, i/j, spacing, or a line-break word split
-        return "orthographic"
-    if ocr and not base:
-        return "punctuation" if _is_punct(ocr) else "addition"
-    if base and not ocr:
+    """Classify one aligned difference region. ``base`` = scholarly, ``ocr`` = OCR.
+
+    Returns one of the six category names, or ``"spacing"`` for a pure
+    whitespace/word-break difference (identical modulo whitespace) — the caller
+    drops those, since a line-wrap is not an edit.
+    """
+    if not ocr:
         return "punctuation" if _is_punct(base) else "deletion"
-    # both sides non-empty (a true replace)
+    if not base:
+        return "punctuation" if _is_punct(ocr) else "addition"
+    if _despace(base) == _despace(ocr):
+        return "spacing"  # only whitespace differs -> not a real difference
     if _has_abbrev_mark(ocr):
         return "abbreviation"
+    fb, fo = _fold(base), _fold(ocr)
+    # scribal contraction: OCR word(s) are a subsequence of the scholarly form,
+    # keeping >=60% of the letters (del=de lo). Distinguishes a contraction from
+    # a random OCR error (which is not a subsequence).
+    if (
+        fo
+        and fb
+        and fo != fb
+        and len(fo) < len(fb)
+        and 0.6 * len(fb) <= len(fo)
+        and _is_subseq(fo, fb)
+    ):
+        return "abbreviation"
+    if fb and fb == fo:
+        return "orthographic"  # u/v, i/j, long-s
     if _is_punct(base) and _is_punct(ocr):
         return "punctuation"
     return "substitution"
@@ -156,110 +174,89 @@ class Diff:
         }
 
 
-def _refine_replace(
-    base_toks: list[str], ocr_toks: list[str], j0: int
-) -> list[tuple[DiffType, str, str, int]]:
-    """Word-level refine of one replace region -> ``(type, base_span, ocr_span, j)``.
+def _wordchar(c: str) -> bool:
+    """True for letters/digits/combining marks — i.e. not whitespace or punctuation."""
+    return not c.isspace() and unicodedata.category(c)[0] != "P"
 
-    ``j`` is the global OCR-token index used for line attribution. Greedy: pairs
-    tokens by fold-equality, grows the OCR side to absorb line-break word splits
-    (``dispo`` + ``sicios`` == ``disposicios``), and only leaves genuinely
-    divergent tokens as abbreviation / substitution.
-    """
-    out: list[tuple[DiffType, str, str, int]] = []
-    i = j = 0
-    while i < len(base_toks) or j < len(ocr_toks):
-        if i < len(base_toks) and j < len(ocr_toks):
-            b, o = base_toks[i], ocr_toks[j]
-            if _fold(b) == _fold(o):
-                if b != o:  # same letters, cosmetic diff (u/v, case): orthographic
-                    out.append(("orthographic", b, o, j0 + j))
-                i, j = i + 1, j + 1
-                continue
-            handled = False
-            # (a) one BASE word spans several OCR tokens (fold-equal). If the
-            #     letters are identical modulo whitespace it's a pure line-break
-            #     word split — NOT a difference, so emit nothing; else it's a
-            #     spelling variant (u/v) spanning the split -> orthographic.
-            for k in range(j + 1, min(j + 4, len(ocr_toks)) + 1):
-                span = " ".join(ocr_toks[j:k])
-                if _fold(b) and _fold(b) == _fold(span):
-                    if _despace(b) != _despace(span):
-                        out.append(("orthographic", b, span, j0 + j))
-                    i, j, handled = i + 1, k, True
-                    break
-            if handled:
-                continue
-            # (b) one OCR word spans several BASE tokens (fold-equal): merge.
-            for k in range(i + 1, min(i + 4, len(base_toks)) + 1):
-                span = " ".join(base_toks[i:k])
-                if _fold(o) and _fold(o) == _fold(span):
-                    if _despace(span) != _despace(o):
-                        out.append(("orthographic", span, o, j0 + j))
-                    i, j, handled = k, j + 1, True
-                    break
-            if handled:
-                continue
-            # (c) CONTRACTION: one OCR word is a subsequence of several BASE
-            #     words (letters dropped) -> abbreviation, e.g. "de lo" -> "del".
-            #     Guarded: never cross punctuation, and keep >=60% of the letters
-            #     so a truncation/error ("la" vs ", lahoras") isn't mistaken for one.
-            for k in range(i + 2, min(i + 4, len(base_toks)) + 1):
-                span_toks = base_toks[i:k]
-                if any(_is_punct(t) for t in span_toks):
-                    break
-                fb, fo = _fold(" ".join(span_toks)), _fold(o)
-                if fo and 0.6 * len(fb) <= len(fo) < len(fb) and _is_subseq(fo, fb):
-                    out.append(("abbreviation", " ".join(span_toks), o, j0 + j))
-                    i, j, handled = k, j + 1, True
-                    break
-            if handled:
-                continue
-            out.append((classify_region(b, o), b, o, j0 + j))  # single divergent pair
-            i, j = i + 1, j + 1
-        elif i < len(base_toks):  # base leftover -> OCR omitted it
-            b = base_toks[i]
-            out.append(("punctuation" if _is_punct(b) else "deletion", b, "", j0 + j))
-            i += 1
-        else:  # OCR leftover -> not in the edition
-            o = ocr_toks[j]
-            out.append(("punctuation" if _is_punct(o) else "addition", "", o, j0 + j))
-            j += 1
-    return out
+
+def _word_start(s: str, p: int) -> int:
+    while p > 0 and _wordchar(s[p - 1]):
+        p -= 1
+    return p
+
+
+def _word_end(s: str, p: int) -> int:
+    while p < len(s) and _wordchar(s[p]):
+        p += 1
+    return p
+
+
+def _expand(s: str, a: int, b: int) -> tuple[int, int]:
+    """Grow ``[a, b)`` to whole-word bounds, but only if it contains a word char."""
+    if a < b and any(_wordchar(c) for c in s[a:b]):
+        return _word_start(s, a), _word_end(s, b)
+    return a, b
 
 
 def diff_page(scholarly_lines: list[str], ocr_lines: list[tuple[int, str]]) -> list[Diff]:
-    """Diff a page: ``scholarly_lines`` (ordered text) vs ``ocr_lines`` (``(seg_idx, text)``).
+    """Diff a page: ``scholarly_lines`` (ordered) vs ``ocr_lines`` (``(seg_idx, text)``).
 
-    Returns every classified :class:`Diff`, each tagged with the OCR line it
-    belongs to. Page-level so word-wrap resolves; attribution via per-token line
-    provenance.
+    **Character-level** alignment (``difflib`` on the concatenated page text on
+    each side) — robust to spacing, contractions and repeated words where a
+    token-level diff mis-anchors (``de ambulacio`` vs ``deambulacio``,
+    ``en lu`` vs ``eulu``). Each non-equal char range is grown to whole-word
+    boundaries and overlapping ranges merged into one region, then classified.
+    Page-level so a word broken across manuscript lines resolves cleanly; each
+    diff is attributed to the OCR line its span starts in.
     """
-    base_tokens: list[str] = []
-    for line in scholarly_lines:
-        base_tokens.extend(tokenize(line))
-
-    ocr_tokens: list[str] = []
-    ocr_owner: list[int] = []  # ocr_tokens[k] came from segmentation line ocr_owner[k]
+    base = " ".join(scholarly_lines)
+    # OCR page string + per-char owner (segmentation line index)
+    ocr_parts: list[str] = []
+    owner: list[int] = []
     for seg_idx, text in ocr_lines:
-        toks = tokenize(text)
-        ocr_tokens.extend(toks)
-        ocr_owner.extend([seg_idx] * len(toks))
+        if ocr_parts:
+            ocr_parts.append(" ")
+            owner.append(seg_idx)
+        ocr_parts.append(text)
+        owner.extend([seg_idx] * len(text))
+    ocr = "".join(ocr_parts)
 
-    def owner(jg: int) -> int | None:
-        if not ocr_owner:
+    def owner_at(pos: int) -> int | None:
+        if not owner:
             return None
-        return ocr_owner[min(jg, len(ocr_owner) - 1)]
+        return owner[min(pos, len(owner) - 1)]
 
-    sm = difflib.SequenceMatcher(a=base_tokens, b=ocr_tokens, autojunk=False)
-    diffs: list[Diff] = []
+    sm = difflib.SequenceMatcher(a=base, b=ocr, autojunk=False)
+    regions: list[list[int]] = []  # [base_start, base_end, ocr_start, ocr_end]
     for tag, i1, i2, j1, j2 in sm.get_opcodes():
         if tag == "equal":
             continue
-        for dtype, base_span, ocr_span, jg in _refine_replace(
-            base_tokens[i1:i2], ocr_tokens[j1:j2], j1
-        ):
-            diffs.append(
-                Diff(dtype, base_span, ocr_span, owner(jg), _tei(dtype, base_span, ocr_span))
-            )
+        # grow to whole-word boundaries ONLY when the changed span actually
+        # touches word characters; a pure whitespace/punctuation change must NOT
+        # swallow its neighbouring words (else "en tot"->"entot" reads as a
+        # deletion instead of a harmless space merge).
+        bs, be = _expand(base, i1, i2)
+        os_, oe = _expand(ocr, j1, j2)
+        regions.append([bs, be, os_, oe])
+    regions.sort()
+    merged: list[list[int]] = []
+    for r in regions:
+        # merge only when two char-diffs land in the SAME word (their
+        # word-expanded ranges genuinely overlap on BOTH sides) — never across a
+        # gap, so scattered diffs stay separate and punctuation isn't absorbed.
+        if merged and r[0] < merged[-1][1] and r[2] < merged[-1][3]:
+            merged[-1][1] = max(merged[-1][1], r[1])
+            merged[-1][3] = max(merged[-1][3], r[3])
+        else:
+            merged.append(r)
+
+    diffs: list[Diff] = []
+    for bs, be, os_, oe in merged:
+        b, o = base[bs:be].strip(), ocr[os_:oe].strip()
+        if not b and not o:
+            continue  # nothing left after stripping (a pure whitespace change)
+        dtype = classify_region(b, o)
+        if dtype == "spacing":
+            continue  # a line-wrap / pure spacing change is not an edit
+        diffs.append(Diff(dtype, b, o, owner_at(os_), _tei(dtype, b, o)))
     return diffs
