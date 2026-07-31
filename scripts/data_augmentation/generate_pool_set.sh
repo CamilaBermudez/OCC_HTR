@@ -52,13 +52,18 @@ TXT=data/processed/synthetic_text
 AUGB=data/processed/synthetic_samples/augmented_images
 LBLB=data/processed/synthetic_samples/img_labels
 
-# Label substitutions. NO case-folding (user decision 2026-07-31): keep only
-# the u/v and i/j medieval orthography, case-preserving. The catmus default
-# additionally folds uppercase {I,U,T,A,E,S,O,H,M,D,Q,F}->lowercase; we drop
-# that. NB: the real GT is ~99.5% lowercase, so cased labels will mismatch it
-# at eval unless the GT is re-cased — see spec 6.5.20. Labels are cheap to
-# regenerate (correct_labels only), independent of the images.
-SUBS="v:u,V:U,j:i,J:I"
+# Label = DIPLOMATIC transcription matching the real annotated GT (user decision
+# 2026-07-31): source the labels from the render's `medieval_text` field (the
+# text actually drawn, WITH abbreviation marks) and normalize ONLY the two pure
+# letterform variants — long-s ſ→s and rotunda-r ꝛ→r — plus u/v and i/j. This
+# KEEPS the tironian-et ⁊, combining tildes (r̃, ẽ, ñ, õ), superscripts, ¶, ꝑ, ł
+# etc., because the real GT contains them and we want the model to predict them.
+# Verified: real GT has ⁊/tildes/ẽ but NO ſ and NO ꝛ, and uses all-u/all-i
+# (v=2, j=0 in 600 lines). NO case-folding (labels stay case-preserving; real GT
+# is ~99.5% lowercase — see spec 6.5.20). Labels are cheap to regenerate,
+# independent of the images. NB residual: medieval_text also emits a rare °
+# (degree sign, superscript stand-in) the GT lacks — see spec 6.5.20.
+SUBS="ſ:s,ꝛ:r,v:u,V:U,j:i,J:I"
 STAMPS="--et-stamp-dir glyphs/et --c-stamp-dir glyphs/C_capitol --e-stamp-dir glyphs/E_capitol --abbrev-base-dir glyphs --enable-pattern-stamps"
 RCOMMON="--font-size 24 --margin 7 --base-seed 42 --p-long-s-begin 0.95 --p-long-s-middle 0.8 --p-rotunda-r 0.7 --p-tironian-et 0.3 --p-capital-e 0.4 --p-abbreviation 0.1 --p-end-decor 0.3 --max-abbreviation-per-line 3 --max-abbreviation-per-word 1"
 say(){ echo "[$(date '+%F %T')] $*"; }
@@ -86,12 +91,13 @@ augment(){ local rname=$1 aname=$2 n=$3
   RUN scripts/data_augmentation/run_augment_images.py --input-folder "$TXT/$rname" \
     --parchment-folder "$PARCH" --output-folder "$AUGB" --run-name "$aname" --n-augmentations "$n" --seed 42 || exit 1
 }
-# label <render-name> <aug-name>  (aug filename -> corrected text; original_text field)
+# label <render-name> <aug-name>  (aug filename -> diplomatic label from
+# medieval_text with ONLY ſ→s, ꝛ→r, u/v, i/j applied — keeps ⁊/tildes/etc.)
 label(){ local rname=$1 aname=$2
   [ -f "$LBLB/labels_${aname#aug_}/labels.json" ] && { say "SKIP labels $aname (exists)"; return; }
   say "LABELS $aname"
   RUN scripts/data_augmentation/run_label_correction.py --input-json "$TXT/$rname/labels.json" \
-    --augmented-folder "$AUGB/$aname" --output-base-dir "$LBLB" --text-field original_text \
+    --augmented-folder "$AUGB/$aname" --output-base-dir "$LBLB" --text-field medieval_text \
     --substitutions "$SUBS" || exit 1
 }
 # medical 4k: random-sample 4000 renders from the x1 (12k) pool + its labels
