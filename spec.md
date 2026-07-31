@@ -2836,6 +2836,37 @@ scholarly↔manuscript page alignment, which is untouched):**
   same-idx highlight now lands on the right line. Re-run the aligner + restart
   the viewer whenever `VIEWER_MODEL_TRANSCRIPTION` changes.
 
+## 6.7 OCR-vs-scholarly difference classification (2026-07-31)
+
+Once lines are aligned, classify *how* the diplomatic OCR differs from the
+scholarly edition (**base = scholarly**, which is fully expanded + pure ASCII;
+the OCR keeps abbreviations `⁊`/`ꝑ`/tildes, u/v, manuscript lineation). Six
+categories, each with editorial **TEI**:
+
+| category | meaning | TEI |
+|---|---|---|
+| abbreviation | OCR brevigraph the edition expands (`⁊`→et, `qͥ`→qui) | `<choice><abbr>/<expan>` |
+| orthographic | same word — u/v, i/j, long-s, spacing, line-break split | `<choice><orig>/<reg>` |
+| punctuation | editorial `, . : ; ¶` on one side only | `<add>`/`<del>` |
+| addition | material in OCR, not the edition | `<add>` |
+| deletion | edition material the OCR omits | `<del>` |
+| substitution | genuine divergence (OCR misread / variant) | `<sic>/<corr>` |
+
+**`src/ocr/line_diff.py`** — reusable `diff_page(scholarly_lines, ocr_lines)`.
+Key design: **page-level** (concatenate the page, diff continuously) so a word
+broken across manuscript lines resolves to *orthographic* not a false error;
+combining-mark-aware tokenizer (NFC); abbreviation signalled by any non-ASCII
+letter/mark (the edition is ASCII); a greedy word-refiner absorbs spacing
+splits/merges (`dispo`+`sicios`==`disposicios`). **`scripts/ocr/diff_transcriptions.py`**
+→ per-page `line_diff.json` (`counts` + `by_line[seg_idx] = [diffs]`), re-run
+per model. Corpus totals on `finetune_400_full_corpus`: orthographic 17.4k,
+substitution 16.4k, deletion 7.9k, addition 5.7k, punctuation 4.9k,
+abbreviation 0.7k. **Known limitation:** abbreviation/orthographic/punctuation
+are reliable; a real OCR error *inside* a spacing difference (`devisada`→`de
+uesida`) fragments into substitution+addition (inflates those two buckets) —
+char-level refinement is the next lever if needed. Viewer wiring is the pending
+follow-up.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
