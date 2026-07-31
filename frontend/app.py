@@ -34,6 +34,20 @@ logging.basicConfig(
 app = FastAPI(title="AlbucE manuscript viewer")
 
 
+@app.middleware("http")
+async def _no_cache_static(request, call_next):
+    """Tell the browser to revalidate the SPA assets every load.
+
+    The static JS/CSS is edited during development; without this the browser
+    serves a stale ``app.js``/``style.css`` after a change (the chips/legend
+    silently don't appear). ``no-cache`` forces revalidation (cheap: 304s).
+    """
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.on_event("startup")
 def _warm_repo() -> None:
     """Build the in-memory index at startup so the first request is fast."""
