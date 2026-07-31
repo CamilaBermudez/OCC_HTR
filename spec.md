@@ -2893,16 +2893,56 @@ across a word boundary (`un apostema`↔`una postema`).
 `finetune_400_full_corpus`: punctuation 9.0k, substitution 8.7k, deletion 3.4k,
 addition 1.9k, abbreviation 1.1k (no orthographic). Verified on a 30-line random
 sample (`eulu→en lu` one substitution everywhere).
-**Known limitations (difflib is greedy-LCS, not min-edit):** (a) on 2-column /
-merged-block pages (e.g. `18_f_013v_014`) the global char alignment can scramble
-a line — a scholarly-lineation problem, flagged via the unaligned markers, not
-forced; (b) a residual boundary-shift can still surface as an add+del pair.
-An **alignment-constrained** variant (`diff_aligned`, diffing each scholarly line
-against only its aligned OCR line — shows a merged block as one clean deletion)
-exists in `line_diff.py` but is **not wired in**: it amplifies alignment errors
-and difflib's non-minimal alignments into worse per-line diffs. The real fix for
-both is a true Needleman-Wunsch **character** aligner (min edit distance) — the
-next lever if these pages matter.
+**Approaches evaluated (2026-07-30/31) — the full exploration.** Ordered as
+tried; the *shipped* one is #2. Kept as a record so the same ground isn't
+re-walked.
+
+1. **Token-level `difflib` (words) + greedy word-refiner.** *Fixed:* readable
+   word chips; simple. *Failed:* `difflib` matches only *exact* tokens, so it
+   **mis-anchors on repeated words** (several `de` on a line) and **can't align
+   sub-word** — `de ambulacio`↔`deambulacio` came out as a bogus
+   deletion+substitution, `en lu`↔`eulu` was split into `en→eulu` + `∅→lu`. The
+   greedy refiner papered over spacing but not these. **Rejected.**
+2. **Char-level `difflib`, free page-level (SHIPPED).** Concatenate each side,
+   diff continuously, grow non-equal char ranges to whole words, merge, classify.
+   *Fixed:* the #1 mis-anchoring (`en lu`↔`eulu` → one substitution everywhere;
+   `deambulacio` spacing hidden). *Bugs found + fixed along the way:* pure-space
+   deletes **swallowing neighbour words** (`en tot`→`entot` read as a deletion) →
+   only expand ranges that contain a word char; **punctuation absorbed** into
+   words → merge only within the same word; **empty regions** emitted → drop when
+   both sides strip to ""; word-splits shown as diffs → drop spacing-only regions.
+   *Residuals (accepted):* `difflib` is **greedy-LCS, not min-edit**, so it can
+   emit non-minimal alignments (`ge lequal` as one insert instead of matching
+   `lequal`); a **boundary-shift** (`un apostema`↔`una postema`) can still split
+   into add+del; and the free global alignment **scrambles 2-column / merged-block
+   pages**.
+3. **Char-level `difflib`, alignment-constrained (`diff_aligned`, in the code,
+   NOT wired).** Diff each scholarly line only against the OCR line(s) aligned to
+   it. *Fixed:* the giant merged block shows as one clean `deletion`; no global
+   2-column scramble. *Failed:* it **amplifies alignment errors** (an off-by-one
+   alignment → a whole wrong-line diff) and feeds `difflib` **short isolated
+   pairs**, where its non-minimal alignments bite hardest — producing
+   **duplicate deletions** (`formiguas` split by a spurious `mi` match) and
+   `ge lequal` garbage on *normal* lines (95 % of content). Net regression.
+4. **True Needleman-Wunsch character aligner (min edit distance), prototyped.**
+   Full DP + backtrace → optimal opcodes; tried scorings match/mismatch/gap ∈
+   {(2,−1,−1),(2,−2,−1),(1,−1,−1),(3,−2,−1)} and base-only / OR word-merge.
+   *Fixed:* the duplicate-deletion bug; the `ge→le` mis-substitution (with
+   gap cheaper than mismatch). *Failed:* NW has **end-gap effects** (a leading
+   `ge` prefers substitution over insertion) and — the decisive finding — the
+   remaining errors live in the **region-merging heuristics** (expand-to-word /
+   merge / absorb), which are **aligner-independent**: base-only merge left the
+   `formiguas` fragments joined via the spurious match (`mi→formiguas`), OR-merge
+   over-joined `ge`+`lequal`, and `sidera`↔`considera` collapsed to a whole-word
+   deletion. NW *moved* errors rather than removing them. **Not adopted.**
+
+**Conclusion (decision 2026-07-31): keep #2** — clean on the ~68 normal pages,
+`orthographic` suppressed. The two residuals are a **scholarly-lineation data
+problem** (2-column merged blocks), surfaced honestly by the **⚠ unaligned
+markers** (§6.6) rather than a fabricated diff, plus a rare boundary-shift. A
+genuinely clean fix needs **word-level, merge/split-aware fuzzy alignment** (a
+harder, research-grade problem, e.g. a DP over words allowing 1↔2 / 2↔1 matches
+scored by char similarity) — deferred until/if those pages matter for the thesis.
 
 **Wired into the viewer** (`frontend/`): `Config.line_diff_json`
 (`VIEWER_LINE_DIFF`, default next to the transcription) → `ManuscriptRepo` loads
