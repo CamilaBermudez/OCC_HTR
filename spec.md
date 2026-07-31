@@ -2808,6 +2808,31 @@ anno-90k, cometa-266k — the 3 pairs deferred to a VM in §6.5.20); the 12 smal
 pools (T1–T3) already exist locally (`_20260731`). All at the new render size,
 in both font modes.
 
+**Building a tier from the pools.** The pools are stored *separately*
+(`aug_medical_<N>_<font>_<DATE>`, `aug_anno_<N>_<font>_<DATE>`); a training
+**tier** = medical + annotated combined. Combine by **symlinking** both pools'
+PNGs into one `aug_T<k>_<font>_<DATE>/` dir and **merging** their `labels.json`
+(medical/anno filename prefixes never collide, so it's a plain dict merge; no
+image copy). E.g. **T1_1font** = `medical_4k_1font` + `anno_3k_1font` = 7,000
+pairs (3:4). Re-run per tier/font on the VM the same way.
+
+**Local execution notes (2026-07-31).** First grid cells started **locally on
+the Mac (MPS, 16 GB)** while the VM does Stage-1 — the two single-stage,
+no-Stage-1 cells: **ViT+RoBERTa (`--pretrained-model-id
+microsoft/trocr-base-handwritten`) on T1 1font, then T1 mf** (queued, auto-starts
+when the first finishes). Recipe: `--val-fraction 0.05 --epochs 15
+--early-stopping-patience 3 --num-beams 4`, **resize = pad** (aspect-preserving
+letterbox, the default — *not* stretch), and **batch 4 × gradient-accumulation 4
+= effective batch 16**. Rationale: on 16 GB, batch 4 already sits at ~17 % free
+RAM, so **batch 8 OOMs**; the memory-safe lever for a larger *effective* batch is
+**gradient accumulation** — added as `--gradient-accumulation-steps`
+(`trocr_finetune` → `Seq2SeqTrainingArguments`, default 1). MPS runs at
+~1.3 s/micro-batch (~9 h for 15 epochs, early-stop usually less). **These local
+runs are pipeline-validation + a quick 1font-vs-mf signal, not the definitive
+grid numbers** — the real grid should run on the GPU VMs (L4, 24 GB) at batch
+16–32 (Stage-1 uses 32). Each local model is evaluated on the 300-val (CER /
+char-acc) when it lands.
+
 ## 6.6 Line-level alignment for the viewer (2026-07-31)
 
 The manuscript viewer keys everything by **segmentation-line index** and pairs
