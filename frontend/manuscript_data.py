@@ -123,30 +123,30 @@ def _load_our_transcription(model_dir: Path, page_key: str, line_idx: int) -> st
     return text or None
 
 
-def _load_line_alignment(path: Path) -> dict[str, dict[int, str]]:
-    """Parse ``line_alignment.json`` into ``{page_key: {seg_idx: scholarly_text}}``.
+def _load_line_alignment(path: Path) -> dict[str, dict[int, int]]:
+    """Parse ``line_alignment.json`` into ``{page_key: {seg_idx: scholarly_no}}``.
 
-    Built by ``scripts/ocr/align_transcriptions.py`` — pairs each model
-    (segmentation) line with the *content-matched* scholarly line, so the viewer
-    highlights the right one instead of the positional guess (spec §6.6). A
-    missing/unreadable file is not an error: returns ``{}`` and the caller falls
-    back to positional pairing.
+    Built by ``scripts/ocr/align_transcriptions.py`` — maps each model
+    (segmentation) line to the *content-matched* scholarly line NUMBER, so the
+    viewer highlights the right scholarly line across the two full columns
+    (spec §6.6). Both transcriptions are shown in full; this only drives the
+    cross-highlight. Missing/unreadable file => ``{}`` (no cross-highlight).
     """
     if not path.is_file():
-        logger.info("No line-alignment file at %s — using positional scholarly pairing", path)
+        logger.info("No line-alignment file at %s — no cross-highlight", path)
         return {}
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        logger.warning("Could not read line alignment %s (%s) — positional fallback", path, exc)
+        logger.warning("Could not read line alignment %s (%s)", path, exc)
         return {}
-    out: dict[str, dict[int, str]] = {}
+    out: dict[str, dict[int, int]] = {}
     for page_key, page in raw.items():
-        mapping: dict[int, str] = {}
+        mapping: dict[int, int] = {}
         for pair in page.get("pairs", []):
-            mi, text = pair.get("model_idx"), pair.get("scholarly_text")
-            if mi is not None and text is not None:
-                mapping[int(mi)] = text
+            mi, no = pair.get("model_idx"), pair.get("scholarly_no")
+            if mi is not None and no is not None:
+                mapping[int(mi)] = int(no)
         if mapping:
             out[page_key] = mapping
     return out
@@ -182,7 +182,9 @@ class PageMeta:
     raw_image_path: Path
     image_width: int
     image_height: int
-    lines: list[dict]  # each: {idx, polygon:[[x,y],...], our_text, scholarly_text}
+    lines: list[dict]  # model, per segmentation line: {idx, polygon, our_text, diffs}
+    scholarly_lines: list[dict]  # full scholarly edition: {no, text} in order
+    align: dict[str, int]  # {segmentation_idx (str): scholarly_no} for cross-highlight
 
 
 class ManuscriptRepo:
@@ -200,9 +202,9 @@ class ManuscriptRepo:
         self._raw_map: dict[str, Path] = {}
         self._image_size: dict[str, tuple[int, int]] = {}
         self._scholarly: dict[str, dict[int, str]] = {}
-        # {page_key: {segmentation_line_idx: aligned scholarly text}} from the
-        # content-based aligner (spec §6.6). Empty => positional fallback.
-        self._alignment: dict[str, dict[int, str]] = {}
+        # {page_key: {segmentation_line_idx: scholarly line NO}} from the
+        # content-based aligner (spec §6.6) — drives the cross-highlight only.
+        self._alignment: dict[str, dict[int, int]] = {}
         # {page_key: {segmentation_line_idx: [diff dicts]}} from the diff
         # classifier (spec §6.7). Empty => no diff chips.
         self._diffs: dict[str, dict[int, list[dict]]] = {}
@@ -275,19 +277,11 @@ class ManuscriptRepo:
             (self.config.segmentation_dir / f"{page_key}.json").read_text(encoding="utf-8")
         )
         width, height = self._get_image_size(page_key)
-        scholarly_lines = self._scholarly.get(page_key, {})
-        # Content-based alignment maps each segmentation line to its true
-        # scholarly counterpart (spec §6.6). Fall back to positional pairing
-        # per-page only when this page has no alignment entry.
-        aligned = self._alignment.get(page_key)
         page_diffs = self._diffs.get(page_key, {})
 
+        # Model column: one entry per segmentation line (full model transcription).
         lines: list[dict] = []
         for idx, seg_line in enumerate(seg.get("lines", [])):
-            if aligned is not None:
-                scholarly_text = aligned.get(idx)
-            else:
-                scholarly_text = scholarly_lines.get(idx)
             lines.append(
                 {
                     "idx": idx,
@@ -296,10 +290,16 @@ class ManuscriptRepo:
                     "our_text": _load_our_transcription(
                         self.config.model_transcription_dir, page_key, idx
                     ),
-                    "scholarly_text": scholarly_text,
                     "diffs": page_diffs.get(idx, []),
                 }
             )
+
+        # Scholarly column: the FULL scholarly edition for this page, its own
+        # numbering (0-based key -> 1-based display no). Never hidden — the
+        # alignment below only decides which line highlights across.
+        scholarly = self._scholarly.get(page_key, {})
+        scholarly_lines = [{"no": k + 1, "text": scholarly[k]} for k in sorted(scholarly)]
+        align = {str(seg): no for seg, no in self._alignment.get(page_key, {}).items()}
 
         return PageMeta(
             page_key=page_key,
@@ -307,6 +307,8 @@ class ManuscriptRepo:
             image_width=width,
             image_height=height,
             lines=lines,
+            scholarly_lines=scholarly_lines,
+            align=align,
         )
 
     def stats(self) -> dict:

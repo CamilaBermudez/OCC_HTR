@@ -2831,10 +2831,15 @@ scholarly↔manuscript page alignment, which is untouched):**
   transcription" gap exactly.
 - **Wired into the viewer** (`frontend/`): `Config.line_alignment_json`
   (`VIEWER_LINE_ALIGNMENT`, default next to the transcription) → `ManuscriptRepo`
-  loads it and `get_page` attaches each segmentation line's *aligned* scholarly
-  text (positional fallback per-page if absent). No JS change — the existing
-  same-idx highlight now lands on the right line. Re-run the aligner + restart
-  the viewer whenever `VIEWER_MODEL_TRANSCRIPTION` changes.
+  loads it as `{seg_idx: scholarly_no}`. The 3-way tab renders **both full
+  transcriptions in their own numbering** — the model column (all segmentation
+  lines) and the scholarly column (all edition lines); `get_page` exposes
+  `scholarly_lines` + `align`. The alignment **only drives the cross-highlight**:
+  clicking a model line highlights its aligned scholarly line and vice-versa
+  (1→many supported). *(Superseded the initial approach of attaching aligned
+  scholarly text per segmentation line — that hid unmatched scholarly lines as
+  "no transcription"; both transcriptions must always be visible.)* Re-run the
+  aligner + restart the viewer whenever `VIEWER_MODEL_TRANSCRIPTION` changes.
 
 ## 6.7 OCR-vs-scholarly difference classification (2026-07-31)
 

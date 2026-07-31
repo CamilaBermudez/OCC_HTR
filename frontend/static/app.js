@@ -2,15 +2,17 @@
 //
 // Two tabs share one page-payload fetch: when the user picks a page
 // we hit `/api/pages/{key}` once, then render tab 1 and tab 2 from the
-// same JSON. Line selection is a shared piece of state (selectedIdx)
-// so clicking a polygon on either tab highlights the right rows on
-// whichever text panels are visible.
+// same JSON. Selection is a shared {seg, sch} pair so clicking a model line
+// (or polygon) highlights its aligned scholarly line and vice-versa. Both full
+// transcriptions are always shown; the alignment only drives the highlight.
 
 const state = {
     pages: [],
     currentPageKey: null,
     currentPage: null,       // full payload from /api/pages/{key}
-    selectedIdx: null,       // 0-based line index or null
+    // Cross-highlight selection: a segmentation-line index (model side) and the
+    // scholarly line NO it aligns to. Selecting on either side sets both.
+    sel: { seg: null, sch: null },
     // Per-image-pane zoom level (1.0 = fit-to-pane at load time).
     // Two independent images (one per tab) so users can zoom on tab 1
     // and independently zoom on tab 2 without losing their place.
@@ -57,7 +59,7 @@ async function loadPageList() {
 async function selectPage(pageKey) {
     setStatus(`Loading ${pageKey}…`);
     state.currentPageKey = pageKey;
-    state.selectedIdx = null;
+    state.sel = { seg: null, sch: null };
     // Reset zoom on page change — otherwise a previously-cranked-up
     // zoom persists silently and the new page opens at the wrong
     // magnification.
@@ -67,9 +69,9 @@ async function selectPage(pageKey) {
     renderAll();
     const nLines = state.currentPage.lines.length;
     const nOurs = state.currentPage.lines.filter(l => l.our_text).length;
-    const nScholarly = state.currentPage.lines.filter(l => l.scholarly_text).length;
+    const nScholarly = state.currentPage.scholarly_lines.length;
     setStatus(
-        `${pageKey} · ${nLines} segmented lines · ${nOurs} with model transcription · ${nScholarly} with scholarly`
+        `${pageKey} · ${nLines} segmented lines · ${nOurs} with model transcription · ${nScholarly} scholarly lines`
     );
 }
 
@@ -96,7 +98,7 @@ function renderImageInto(container, page, target) {
         poly.setAttribute("points", line.polygon.map(([x, y]) => `${x},${y}`).join(" "));
         poly.dataset.idx = String(line.idx);
         poly.dataset.tab = target;
-        poly.addEventListener("click", () => setSelected(line.idx));
+        poly.addEventListener("click", () => setSelectedSeg(line.idx));
         svg.appendChild(poly);
     }
     container.appendChild(svg);
@@ -147,7 +149,32 @@ function renderLineList(container, page, textField, showDiffs = false) {
             row.appendChild(renderDiffChips(line));
         }
 
-        row.addEventListener("click", () => setSelected(line.idx));
+        row.addEventListener("click", () => setSelectedSeg(line.idx));
+        container.appendChild(row);
+    }
+}
+
+// The FULL scholarly edition for the page, its own line numbering. Never
+// filtered by the alignment — clicking a scholarly line cross-highlights the
+// model line(s) it aligns to (spec §6.6).
+function renderScholarlyList(container, page) {
+    container.innerHTML = "";
+    for (const line of page.scholarly_lines) {
+        const row = document.createElement("div");
+        row.className = "line-row";
+        row.dataset.schno = String(line.no);
+
+        const idxCell = document.createElement("span");
+        idxCell.className = "line-idx";
+        idxCell.textContent = line.no;
+        row.appendChild(idxCell);
+
+        const textCell = document.createElement("span");
+        textCell.className = "line-text";
+        textCell.textContent = line.text;
+        row.appendChild(textCell);
+
+        row.addEventListener("click", () => setSelectedSch(line.no));
         container.appendChild(row);
     }
 }
@@ -158,32 +185,63 @@ function renderAll() {
     renderImageInto($("#image-wrap-1"), p, "1");
     renderImageInto($("#image-wrap-2"), p, "2");
     renderLineList($("#lines-ours-1"), p, "our_text");
-    renderLineList($("#lines-scholarly"), p, "scholarly_text");
-    renderLineList($("#lines-ours-2"), p, "our_text", true); // 3-way tab: show diff chips
+    renderScholarlyList($("#lines-scholarly"), p);          // 3-way tab: FULL scholarly edition
+    renderLineList($("#lines-ours-2"), p, "our_text", true); // 3-way tab: model + diff chips
     applySelection();
 }
 
-// ---------- Selection ----------
-function setSelected(idx) {
-    state.selectedIdx = state.selectedIdx === idx ? null : idx;
+// ---------- Selection (cross-highlight between the two columns) ----------
+// Selecting a model (segmentation) line highlights it + its aligned scholarly
+// line; selecting a scholarly line highlights it + every model line aligned to
+// it. Clicking the same thing again clears.
+function setSelectedSeg(seg) {
+    if (state.sel.seg === seg) {
+        state.sel = { seg: null, sch: null };
+    } else {
+        const align = (state.currentPage && state.currentPage.align) || {};
+        const sch = align[String(seg)];
+        state.sel = { seg, sch: sch === undefined ? null : sch };
+    }
+    applySelection();
+}
+
+function setSelectedSch(no) {
+    if (state.sel.sch === no) {
+        state.sel = { seg: null, sch: null };
+    } else {
+        const align = (state.currentPage && state.currentPage.align) || {};
+        // reverse map: first model line that aligns to this scholarly line
+        let seg = null;
+        for (const [s, n] of Object.entries(align)) {
+            if (n === no) { seg = Number(s); break; }
+        }
+        state.sel = { seg, sch: no };
+    }
     applySelection();
 }
 
 function applySelection() {
-    const idx = state.selectedIdx;
-    // Polygons
+    const { seg, sch } = state.sel;
+    const align = (state.currentPage && state.currentPage.align) || {};
+    // Polygons + model rows highlight on the segmentation index.
     $$(".image-wrap polygon").forEach((poly) => {
-        poly.classList.toggle("selected", idx !== null && Number(poly.dataset.idx) === idx);
+        poly.classList.toggle("selected", seg !== null && Number(poly.dataset.idx) === seg);
     });
-    // Line rows
-    $$(".line-row").forEach((row) => {
-        const isSel = idx !== null && Number(row.dataset.idx) === idx;
+    $$(".line-row[data-idx]").forEach((row) => {
+        // a model row is selected if it's the chosen seg, OR (when a scholarly
+        // line is selected) if it aligns to that scholarly line — so 1:many
+        // scholarly→model highlights all matching model lines.
+        const idx = Number(row.dataset.idx);
+        const isSel =
+            (seg !== null && idx === seg) ||
+            (sch !== null && align[String(idx)] === sch);
         row.classList.toggle("selected", isSel);
     });
-    if (idx !== null) {
-        // Each line-list scrolls independently — Tab 2 has TWO line-lists
-        // (scholarly + ours). Scroll EVERY selected row inside the active
-        // tab into its container's view, not just the first match.
+    // Scholarly rows highlight on their line number.
+    $$(".line-row[data-schno]").forEach((row) => {
+        row.classList.toggle("selected", sch !== null && Number(row.dataset.schno) === sch);
+    });
+    if (seg !== null || sch !== null) {
         const activeTab = $(".tab-panel.active");
         if (activeTab) {
             activeTab.querySelectorAll(".line-row.selected").forEach((row) => {
