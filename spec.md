@@ -2742,17 +2742,27 @@ VM via `SCOPE=full` but would also be only ~1–2 h locally if needed.
 - Annotated input is a `seeds_from_real.json` built from the 600 GT (field
   `text`, but the render still emits `original_text`).
 
-**LABEL CASING DECISION (user, 2026-07-31): NO case-folding.** Substitutions are
-**`v:u,V:U,j:i,J:I`** only (u/v + i/j medieval orthography, *case-preserving*) —
-dropping the catmus default's `{I,U,T,A,E,S,O,H,M,D,Q,F}→lowercase` fold.
-**⚠ Consequence:** the real GT (300-val + full_annotated) is **~99.5 %
-lowercase** (val: 21 uppercase / 8,975 letters). Cased synthetic labels will
-therefore **mismatch the eval GT** (a capital in a render scored as an error) —
-so either the **GT must be re-cased**, or accept a small eval penalty, or these
-pools are used where case matters. **Labels are cheap + independent of the
-images** (`correct_labels` only, seconds/pool), so the substitution set can be
-flipped after generation without re-rendering — the decision does not block
-image generation.
+**LABEL CONVENTION = DIPLOMATIC (user, 2026-07-31).** Labels are sourced from
+the render's **`medieval_text`** field (the text actually drawn, *with* the
+abbreviation glyphs) and only these substitutions are applied:
+**`ſ:s,ꝛ:r,v:u,V:U,j:i,J:I`**. So the label **keeps** the marks we want the model
+to predict — tironian-et `⁊`, combining tildes (`r̃`, `ẽ`, `ñ`, `õ`),
+superscripts (`ͥ`,`ͦ`), `¶`, `ꝑ`, `ł` — and **normalizes only** the two pure
+letterform variants long-s→s and rotunda-r→r, plus u/v and i/j.
+*Rationale — verified against the 600-line real GT (`full_annotated`):* it
+contains `⁊` (×25), combining tilde (×30), `ẽ`/`ã`/`ñ`, `ͥ`/`ͦ`, `¶`, `ꝑ`, `ł`
+but **zero** long-s and **zero** rotunda-r, and is all-u/all-i (v=2, j=0). The
+earlier `--text-field original_text` labels were **wrong** — they stripped the
+abbreviation marks — and were regenerated (VM cometa pool + the 12 local pools,
+2026-07-31). **Residual mismatch:** `medieval_text` emits a rare `°` (degree
+sign, a superscript stand-in, ~1 per 90 lines) the GT lacks — left as-is for
+image↔label consistency; revisit if it hurts eval.
+**No case-folding:** labels stay case-preserving (dropping the catmus
+`{I,U,T,A,E,…}→lowercase` fold). ⚠ The real GT is **~99.5 % lowercase** (val: 21
+uppercase / 8,975 letters), so cased synthetic labels can mismatch it at eval —
+re-case the GT or accept a small penalty. **Labels are cheap + independent of
+the images** (`correct_labels` only, seconds/pool), so both the substitution set
+and casing can be changed after generation without re-rendering.
 
 ### 6.5.21 Planned experiment grid — 34 models (2026-07-31)
 
