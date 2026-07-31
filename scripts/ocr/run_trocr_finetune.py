@@ -117,6 +117,14 @@ def main():
         help="Per-device eval batch size. Default: 8.",
     )
     parser.add_argument(
+        "--gradient-accumulation-steps",
+        type=int,
+        default=1,
+        help="Accumulate grads over N steps -> effective batch = batch-size * N. "
+        "Use to get a larger effective batch when memory caps the real batch "
+        "(e.g. batch 4 x 4 = 16 on a 16GB MPS box). Default: 1.",
+    )
+    parser.add_argument(
         "--max-target-length",
         type=int,
         default=128,
@@ -205,6 +213,7 @@ def main():
         learning_rate=args.learning_rate,
         batch_size=args.batch_size,
         eval_batch_size=args.eval_batch_size,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
         max_target_length=args.max_target_length,
         no_repeat_ngram_size=args.no_repeat_ngram_size,
         num_beams=args.num_beams,
