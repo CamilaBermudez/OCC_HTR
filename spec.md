@@ -2808,6 +2808,29 @@ anno-90k, cometa-266k — the 3 pairs deferred to a VM in §6.5.20); the 12 smal
 pools (T1–T3) already exist locally (`_20260731`). All at the new render size,
 in both font modes.
 
+## 6.6 Line-level alignment for the viewer (2026-07-31)
+
+The manuscript viewer keys everything by **segmentation-line index** and pairs
+the scholarly text positionally (`scholarly[i]` with model line `i`). But the
+scholarly edition's line breaks ≠ the page's segmentation, so one split / merge
+/ omitted line shifts every pairing after it → clicking a model line highlights
+the wrong scholarly line. Measured on `finetune_400_full_corpus`: **7,020 of
+13,582 matched line-pairs (51.7 %) are mis-highlighted**, drifting 1–6 rows.
+
+**Fix — content-based per-page alignment (independent of the authoritative
+scholarly↔manuscript page alignment, which is untouched):**
+- **`src/ocr/line_alignment.py`** — reusable `align_lines(source, target)`:
+  Needleman-Wunsch monotonic DP scored by folded string similarity (rapidfuzz;
+  folds u/v, i/j, long-s, rotunda-r, combining marks, punctuation for *matching
+  only*), gaps for inserted/dropped lines. Transcription-agnostic.
+- **`scripts/ocr/align_transcriptions.py`** — runner over any
+  `<page>/<page>_line_<N>.txt` model tree + the scholarly aligned txt → per-page
+  `line_alignment.json` (`pairs` + `model_to_scholarly`). Re-run per model as the
+  34-model grid produces new transcriptions.
+- Validated on `32_f_027v_028`: recovers the +1/+2 drift and the "no
+  transcription" gap exactly. Viewer wiring (consume `model_to_scholarly` in
+  `get_page` instead of positional lookup) is the pending follow-up.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
