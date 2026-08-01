@@ -2866,9 +2866,41 @@ time is better spent on the ViT+RoBERTa remainder (T2–T4), which is the winnin
 architecture. (Flagged to user 2026-08-01.)
 
 **Read so far:** on the real 300-val, **single-stage ViT+RoBERTa (0.913) ≫ 2-stage
-Swin+BERT (0.793)** at T1. The full remaining Swin+BERT Stage-2 grid (T2–T4) is
-running (user choice) to see whether *more* annotated data closes the gap; the
-ViT+RoBERTa remainder (T2–T4) is paused.
+Swin+BERT (0.793)** at T1, and Swin+BERT *declines* with more Stage-2 data
+(T1→T2→T3 = 0.793→0.784→0.778).
+
+---
+
+**⏸ PAUSED — VM stopped 2026-08-01 10:56 PDT (`instance-20260720-095326`,
+us-west4-c, STANDARD, status `TERMINATED`).** Disk retained (pools + code + all
+`best_model`s persist on the boot disk; note `autoDelete=True` → the disk would
+be lost only if the *instance* is deleted, not on stop). Restart with
+`gcloud compute instances start …` (owner account — the `thesisgcplmu@` login is
+read-only and got 403 on mutate). The stop killed **Swin+BERT Stage-2 T3_mf**
+mid-run (~13.2k/56.5k steps, discard — plateau already established) and the armed
+ViT orchestrator never fired.
+
+**Decision at pause (user):** *let T3_mf finish, skip Swin+BERT T4, then run
+ViT+RoBERTa T2–T4* — superseded by the stop before T3_mf completed. Swin+BERT T4
+is **cancelled** (the monotonic T1→T3 decline makes the 210k-tier giant runs a
+~37 h confirmatory-negative; not worth it).
+
+**RESUME CHECKLIST (next session, wherever we continue):**
+1. `gcloud compute instances start instance-20260720-095326 --zone us-west4-c`
+   (owner account). If continuing on a *fresh* box instead: reproduce pools via
+   `generate_pool_set.sh` (medical corpus + 600 GT + fonts already committed) and
+   re-pull the Stage-1 `best_model` (needed as `--pretrained-model-id`).
+2. **DONE — do not rerun** (all backed up local + evaluated on 300-val):
+   Stage-1 (0.787); ViT+RoBERTa T1 1font (0.913) / mf (0.914); Swin+BERT Stage-2
+   T1 1font (0.793) / mf (0.800), T2 1font (0.784) / mf (0.781), T3 1font (0.778).
+3. **PENDING — the ViT+RoBERTa remainder (winning arch): T2 1font, T2 mf, T3
+   1font, T3 mf, T4 1font, T4 mf.** Orchestrator script (armed but never fired):
+   scratchpad `vm_vit_grid_t2t4.sh` — trains each with
+   `--pretrained-model-id microsoft/trocr-base-handwritten --batch-size 16
+   --device cuda`, `build_tier` (np>100 guard) + per-cell checkpoint `cleanup()`.
+   Pull + eval each on the 300-val, log here.
+4. **NOT STARTED:** Swin+RoBERTa 2-stage track (needs its own Stage-1 pretrain
+   first) + kraken track. Cancelled: Swin+BERT T3_mf, T4 (both fonts).
 
 **300-val eval recipe (local):** `run_trocr_transcribe.py --model-dir <best_model>
 --input-dir data/processed/annotated_samples/OCR/validation --device mps` →
