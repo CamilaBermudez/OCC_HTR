@@ -2845,6 +2845,12 @@ eval is inference-only so it fits 16 GB and doesn't touch the VM GPU).
 | **ViT+RoBERTa T1 1font** | med4k+anno3k | **0.087** | **0.913** | 0.316 | single-stage, pretrained X-attn; +12.6pp over Stage-1-only. Backed up local. (MPS transcribe slow, ~12 s/batch — beam gen.) |
 | **ViT+RoBERTa T1 mf** | med4k+anno3k (mf) | 0.086 | **0.914** | 0.314 | ≈ 1font (0.913) — **multifont adds only +0.12pp at T1**; extra font diversity ~irrelevant at this tier. Backed up local. |
 | **Swin+BERT Stage-2 T1 1font** | Stage-1 → med4k+anno3k | 0.207 | **0.793** | 0.487 | 2-stage; **only +0.6pp over Stage-1** and **−12pp vs ViT+RoBERTa** — reproduces the cross-attention bottleneck (§6.3.6/§6.3.11): from-scratch X-attn (Swin+BERT) plateaus ~0.79 even staged; pretrained X-attn (ViT+RoBERTa/TrOCR) wins. Output sane, not a bug. |
+| **Swin+BERT Stage-2 T1 mf** | Stage-1 → med4k+anno3k (mf) | 0.200 | **0.800** | 0.453 | +0.7pp over 1font on the 300-val **despite a lower synthetic-val (0.814 vs 0.908)** — for Swin+BERT the multifont set fits synthetic worse but *generalizes* slightly better to the real manuscript. Still −11pp vs ViT+RoBERTa. |
+
+**T1 tier complete (both archs).** 300-val char_acc: ViT+RoBERTa 1font 0.913 / mf
+0.914 ≫ Swin+BERT Stage-2 1font 0.793 / mf 0.800 (Stage-1 baseline 0.787).
+**ViT+RoBERTa wins by ~11–12pp** on both fonts (cross-attention bottleneck).
+**Multifont** ≈ neutral for ViT (+0.1pp), small real gain for Swin+BERT (+0.7pp).
 
 **Read so far:** on the real 300-val, **single-stage ViT+RoBERTa (0.913) ≫ 2-stage
 Swin+BERT (0.793)** at T1. The full remaining Swin+BERT Stage-2 grid (T2–T4) is
