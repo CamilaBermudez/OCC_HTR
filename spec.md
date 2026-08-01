@@ -2847,10 +2847,22 @@ eval is inference-only so it fits 16 GB and doesn't touch the VM GPU).
 | **Swin+BERT Stage-2 T1 1font** | Stage-1 → med4k+anno3k | 0.207 | **0.793** | 0.487 | 2-stage; **only +0.6pp over Stage-1** and **−12pp vs ViT+RoBERTa** — reproduces the cross-attention bottleneck (§6.3.6/§6.3.11): from-scratch X-attn (Swin+BERT) plateaus ~0.79 even staged; pretrained X-attn (ViT+RoBERTa/TrOCR) wins. Output sane, not a bug. |
 | **Swin+BERT Stage-2 T1 mf** | Stage-1 → med4k+anno3k (mf) | 0.200 | **0.800** | 0.453 | +0.7pp over 1font on the 300-val **despite a lower synthetic-val (0.814 vs 0.908)** — for Swin+BERT the multifont set fits synthetic worse but *generalizes* slightly better to the real manuscript. Still −11pp vs ViT+RoBERTa. |
 
+| **Swin+BERT Stage-2 T2 1font** | Stage-1 → med12k+anno9k | 0.216 | **0.784** | 0.499 | **3× the data of T1, no gain** — flat vs T1 (0.793) / Stage-1 (0.787). Synthetic-val rose to 0.921 → pure synthetic-overfit, zero real transfer. |
+| **Swin+BERT Stage-2 T2 mf** | Stage-1 → med12k+anno9k (mf) | 0.219 | **0.781** | 0.492 | same story — flat ~0.78. |
+
 **T1 tier complete (both archs).** 300-val char_acc: ViT+RoBERTa 1font 0.913 / mf
 0.914 ≫ Swin+BERT Stage-2 1font 0.793 / mf 0.800 (Stage-1 baseline 0.787).
 **ViT+RoBERTa wins by ~11–12pp** on both fonts (cross-attention bottleneck).
 **Multifont** ≈ neutral for ViT (+0.1pp), small real gain for Swin+BERT (+0.7pp).
+
+**Swin+BERT Stage-2 T1→T2 = FLAT (~0.78–0.80).** Tripling the Stage-2 data
+(7k→21k) did not move the real 300-val (it even dipped slightly), while the
+synthetic-val kept climbing (0.908→0.921) — the model overfits more synthetic
+without any real-manuscript gain. **Strong evidence the from-scratch
+cross-attention, not data volume, is the ceiling for Swin+BERT.** Implication:
+T3/T4 (still more data) are very unlikely to help this track — the remaining GPU
+time is better spent on the ViT+RoBERTa remainder (T2–T4), which is the winning
+architecture. (Flagged to user 2026-08-01.)
 
 **Read so far:** on the real 300-val, **single-stage ViT+RoBERTa (0.913) ≫ 2-stage
 Swin+BERT (0.793)** at T1. The full remaining Swin+BERT Stage-2 grid (T2–T4) is
