@@ -2849,6 +2849,7 @@ eval is inference-only so it fits 16 GB and doesn't touch the VM GPU).
 
 | **Swin+BERT Stage-2 T2 1font** | Stage-1 → med12k+anno9k | 0.216 | **0.784** | 0.499 | **3× the data of T1, no gain** — flat vs T1 (0.793) / Stage-1 (0.787). Synthetic-val rose to 0.921 → pure synthetic-overfit, zero real transfer. |
 | **Swin+BERT Stage-2 T2 mf** | Stage-1 → med12k+anno9k (mf) | 0.219 | **0.781** | 0.492 | same story — flat ~0.78. |
+| **Swin+BERT Stage-2 T3 1font** | Stage-1 → med36k+anno27k | 0.222 | **0.778** | 0.514 | 9× T1 data → **worse than T1** (0.793). Monotonic decline T1→T2→T3 = 0.793→0.784→0.778: more synthetic augmentation actively *hurts* real accuracy for this arch. |
 
 **T1 tier complete (both archs).** 300-val char_acc: ViT+RoBERTa 1font 0.913 / mf
 0.914 ≫ Swin+BERT Stage-2 1font 0.793 / mf 0.800 (Stage-1 baseline 0.787).
