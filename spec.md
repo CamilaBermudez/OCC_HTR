@@ -2842,7 +2842,7 @@ eval is inference-only so it fits 16 GB and doesn't touch the VM GPU).
 | model | dataset | 300-val CER | **char_acc** | WER | notes |
 |---|---|---|---|---|---|
 | **Swin+BERT Stage-1** (COMETA-266k) | — pretrain — | 0.213 | **0.787** | 0.483 | Stage-1-only baseline; lands at the 120k plateau (curve 30k→90k→120k = 0.62/0.76/0.79) — diminishing returns past 120k Stage-1 volume. Backed up local. |
-| ViT+RoBERTa T1 1font | med4k+anno3k | *pending* | — | — | trained (synthetic-val 0.944); pulled local; 300-eval next |
+| **ViT+RoBERTa T1 1font** | med4k+anno3k | **0.087** | **0.913** | 0.316 | single-stage, pretrained X-attn; +12.6pp over Stage-1-only. Backed up local. (MPS transcribe slow, ~12 s/batch — beam gen.) |
 | Swin+BERT **Stage-2** T1 1font | Stage-1 → med4k+anno3k | *pending* | — | — | running (fine-tune of Stage-1 on T1; user-prioritised over ViT T2) |
 
 **300-val eval recipe (local):** `run_trocr_transcribe.py --model-dir <best_model>
