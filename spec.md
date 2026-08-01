@@ -2854,7 +2854,45 @@ ViT+RoBERTa remainder (T2–T4) is paused.
 **300-val eval recipe (local):** `run_trocr_transcribe.py --model-dir <best_model>
 --input-dir data/processed/annotated_samples/OCR/validation --device mps` →
 `run_evaluate_ocr.py --gt-dir <same> --pred name=<preds>`. Predictions land in a
-`trocr_<ts>/` subfolder; point `--pred` at that.
+`trocr_<ts>/` subfolder; point `--pred` at that. (Swin+BERT transcribes ~300
+lines in ~50 s on MPS; ViT+RoBERTa is ~7 min — slower beam generation.)
+
+**Grid orchestration (VM, autonomous).** Detached bash orchestrators on the VM
+(launched via `base64 | setsid nohup` so they survive the flaky SSH — the launch
+SSH usually times out at 2 min but the job starts; verify with a follow-up
+`pgrep`). Each orchestrator loops the tier×font cells: `build_tier` (below) →
+`run_trocr_finetune` (batch 16, CUDA, pad, val 0.05, 15 epochs / early-stop 3),
+logging to `/tmp/grid_*.log` + per-cell `/tmp/<track>_<tier>_<font>.log`.
+- **Swin+BERT Stage-2** uses `--pretrained-model-id <Stage-1 best_model path>`
+  (loads the COMETA-266k checkpoint and fine-tunes on the tier).
+- **ViT+RoBERTa** uses `--pretrained-model-id microsoft/trocr-base-handwritten`.
+- **`build_tier`**: symlink `aug_medical_<N>_<font>` + `aug_anno_<M>_<font>` PNGs
+  into `aug_T<k>_<font>_<DATE>/` and merge their `labels.json` (no copy). It
+  *waits* for the required pools' labels to exist, so a cell blocks until its
+  data (incl. the T4 giants) is ready. ⚠ known sharp edge: `build_tier` skips if
+  `labels.json` exists, so a **partial** tier (labels written, symlinks not) must
+  be deleted to force a clean rebuild.
+
+**Pool reproduction on the VM (render-on-VM).** The VM had only the COMETA pool;
+uploaded the **medical corpus** (1.6 MB) — with the 600 annotated GT + fonts +
+glyphs + parchment already present, the whole small+giant pool set regenerates
+deterministically (seed 42) via `generate_pool_set.sh` (`SCOPE=small` for
+T1–T3, then `SCOPE=full TRACKS="medical anno"` for the T4 giants; idempotent
+SKIP re-uses what exists). **Incident (2026-08-01):** deleting the
+`synthetic_text/` render intermediates to free disk *while the giant-pool
+augment was still reading them* corrupted `medical_120k_mf` (partial) and
+`anno_90k_mf` (empty). Fix: delete the two broken pools + re-run `SCOPE=full
+MODES=mf` (re-renders, SKIPs the complete pools). **Lesson: never delete the
+render dirs while any pool generation is in flight.**
+
+**Disk & backup hygiene (VM 98 GB).** Each finished run's `checkpoints/`
+(resume-state, ~6.6 GB) is deleted once `best_model` is exported — keep only
+`best_model` (~1.1 GB). The Stage-1 `best_model` is **kept on the VM** (it's the
+`--pretrained-model-id` source for every Swin Stage-2 cell). Models are pulled
+to local at `models/ocr/finetuned/<label>_20260731/best_model` (e.g.
+`stage1_swinbert_cometa266k`, `vitroberta_T1_{1font,mf}`,
+`swinbert_stage2_T1_1font`) via `gcloud scp --recurse --compress` (run in the
+background — a 1.1 GB pull exceeds the 2-min tool timeout).
 
 ## 6.6 Line-level alignment for the viewer (2026-07-31)
 
