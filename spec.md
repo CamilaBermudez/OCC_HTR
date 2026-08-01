@@ -2843,7 +2843,13 @@ eval is inference-only so it fits 16 GB and doesn't touch the VM GPU).
 |---|---|---|---|---|---|
 | **Swin+BERT Stage-1** (COMETA-266k) | — pretrain — | 0.213 | **0.787** | 0.483 | Stage-1-only baseline; lands at the 120k plateau (curve 30k→90k→120k = 0.62/0.76/0.79) — diminishing returns past 120k Stage-1 volume. Backed up local. |
 | **ViT+RoBERTa T1 1font** | med4k+anno3k | **0.087** | **0.913** | 0.316 | single-stage, pretrained X-attn; +12.6pp over Stage-1-only. Backed up local. (MPS transcribe slow, ~12 s/batch — beam gen.) |
-| Swin+BERT **Stage-2** T1 1font | Stage-1 → med4k+anno3k | *pending* | — | — | running (fine-tune of Stage-1 on T1; user-prioritised over ViT T2) |
+| ViT+RoBERTa T1 mf | med4k+anno3k (mf) | *pending* | — | — | done (synthetic-val 0.908); pulling to eval |
+| **Swin+BERT Stage-2 T1 1font** | Stage-1 → med4k+anno3k | 0.207 | **0.793** | 0.487 | 2-stage; **only +0.6pp over Stage-1** and **−12pp vs ViT+RoBERTa** — reproduces the cross-attention bottleneck (§6.3.6/§6.3.11): from-scratch X-attn (Swin+BERT) plateaus ~0.79 even staged; pretrained X-attn (ViT+RoBERTa/TrOCR) wins. Output sane, not a bug. |
+
+**Read so far:** on the real 300-val, **single-stage ViT+RoBERTa (0.913) ≫ 2-stage
+Swin+BERT (0.793)** at T1. The full remaining Swin+BERT Stage-2 grid (T2–T4) is
+running (user choice) to see whether *more* annotated data closes the gap; the
+ViT+RoBERTa remainder (T2–T4) is paused.
 
 **300-val eval recipe (local):** `run_trocr_transcribe.py --model-dir <best_model>
 --input-dir data/processed/annotated_samples/OCR/validation --device mps` →
