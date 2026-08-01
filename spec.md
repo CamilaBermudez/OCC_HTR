@@ -2843,7 +2843,7 @@ eval is inference-only so it fits 16 GB and doesn't touch the VM GPU).
 |---|---|---|---|---|---|
 | **Swin+BERT Stage-1** (COMETA-266k) | — pretrain — | 0.213 | **0.787** | 0.483 | Stage-1-only baseline; lands at the 120k plateau (curve 30k→90k→120k = 0.62/0.76/0.79) — diminishing returns past 120k Stage-1 volume. Backed up local. |
 | **ViT+RoBERTa T1 1font** | med4k+anno3k | **0.087** | **0.913** | 0.316 | single-stage, pretrained X-attn; +12.6pp over Stage-1-only. Backed up local. (MPS transcribe slow, ~12 s/batch — beam gen.) |
-| ViT+RoBERTa T1 mf | med4k+anno3k (mf) | *pending* | — | — | done (synthetic-val 0.908); pulling to eval |
+| **ViT+RoBERTa T1 mf** | med4k+anno3k (mf) | 0.086 | **0.914** | 0.314 | ≈ 1font (0.913) — **multifont adds only +0.12pp at T1**; extra font diversity ~irrelevant at this tier. Backed up local. |
 | **Swin+BERT Stage-2 T1 1font** | Stage-1 → med4k+anno3k | 0.207 | **0.793** | 0.487 | 2-stage; **only +0.6pp over Stage-1** and **−12pp vs ViT+RoBERTa** — reproduces the cross-attention bottleneck (§6.3.6/§6.3.11): from-scratch X-attn (Swin+BERT) plateaus ~0.79 even staged; pretrained X-attn (ViT+RoBERTa/TrOCR) wins. Output sane, not a bug. |
 
 **Read so far:** on the real 300-val, **single-stage ViT+RoBERTa (0.913) ≫ 2-stage
