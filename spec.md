@@ -2833,6 +2833,23 @@ grid numbers** — the real grid should run on the GPU VMs (L4, 24 GB) at batch
 16–32 (Stage-1 uses 32). Each local model is evaluated on the 300-val (CER /
 char-acc) when it lands.
 
+**Execution log (VM = L4; started 2026-07-31, running 2026-08-01).** The grid
+runs on the L4 VM (batch 16, CUDA, resize=pad); the laptop (16 GB) was tried and
+**abandoned — a 330M model swap-thrashes** (19 GB paged → ~180 s/step). Models
+are pulled to local and evaluated there (**MPS transcribes 300 lines in ~50 s**;
+eval is inference-only so it fits 16 GB and doesn't touch the VM GPU).
+
+| model | dataset | 300-val CER | **char_acc** | WER | notes |
+|---|---|---|---|---|---|
+| **Swin+BERT Stage-1** (COMETA-266k) | — pretrain — | 0.213 | **0.787** | 0.483 | Stage-1-only baseline; lands at the 120k plateau (curve 30k→90k→120k = 0.62/0.76/0.79) — diminishing returns past 120k Stage-1 volume. Backed up local. |
+| ViT+RoBERTa T1 1font | med4k+anno3k | *pending* | — | — | trained (synthetic-val 0.944); pulled local; 300-eval next |
+| Swin+BERT **Stage-2** T1 1font | Stage-1 → med4k+anno3k | *pending* | — | — | running (fine-tune of Stage-1 on T1; user-prioritised over ViT T2) |
+
+**300-val eval recipe (local):** `run_trocr_transcribe.py --model-dir <best_model>
+--input-dir data/processed/annotated_samples/OCR/validation --device mps` →
+`run_evaluate_ocr.py --gt-dir <same> --pred name=<preds>`. Predictions land in a
+`trocr_<ts>/` subfolder; point `--pred` at that.
+
 ## 6.6 Line-level alignment for the viewer (2026-07-31)
 
 The manuscript viewer keys everything by **segmentation-line index** and pairs
