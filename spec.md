@@ -3316,13 +3316,13 @@ discrepancy, for later pattern-mining. Output format by extension: **`.json`**
 (e.g. `substantive` for real errors only). Run per model; needs the model's
 `line_alignment.json`.
 
-On `finetune_400_full_corpus` (41,650 discrepancies): the **substitution**
-pattern is dominated by **minim confusion** — `aui`/`au`/`ai`→`am` (155 combined,
-the word "with" misread), `sauat`→`sanat`, `malante`→`malaute`, `yen`→`yeu` —
-confirming §6.7.1/§6.8 at corpus scale; segmentation-head garble shows as
-`apitol`→`Capitol` (79). Editorial mass is punctuation (`.`→`,` 2835) + `de`+lo
-spacing (`dela`→`de la` 861) + capitalization (`e`→`E` 1043). Artefacts:
-`tests/ocr/evaluations/discrepancies/`.
+On the **CATMuS baseline** (`ocr_kept_20260622_120413`, the reference model;
+45,077 discrepancies): the **substitution** pattern is dominated by **minim
+confusion** — `ain`/`aui`/`au`→`am` (≈808 combined, the word "with" misread),
+`apostenia`→`apostema`, `entio`→`entro`, `sauat`→`sanat`, `cuin`→`cum` —
+confirming §6.7.1/§6.8 at corpus scale. Editorial mass is punctuation (`.`→`,`
+2823) + `de`+lo spacing (`dela`→`de la` 875) + capitalization + `⁊`/`¶` marks.
+Artefacts: `tests/ocr/evaluations/discrepancies/`.
 
 ## 6.8 Top-k token recall — are errors recoverable? (2026-08-02)
 
