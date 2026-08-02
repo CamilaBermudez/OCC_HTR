@@ -120,13 +120,16 @@ def classify_region(base: str, ocr: str) -> DiffType:
     if _has_abbrev_mark(ocr):
         return "abbreviation"
     fb, fo = _fold(base), _fold(ocr)
-    # scribal contraction: OCR word(s) are a subsequence of the scholarly form,
-    # keeping >=60% of the letters (del=de lo). Distinguishes a contraction from
-    # a random OCR error (which is not a subsequence).
+    # scribal contraction: a SHORT OCR function word is a subsequence of the
+    # scholarly form (del=de lo, dels=de los, al=a lo). Capped at 4 letters —
+    # without a brevigraph mark, a *content* word that merely drops letters
+    # (inscio<-inscisio) is a misread, not an abbreviation, so it must fall
+    # through to `substitution` and stay visible.
     if (
         fo
         and fb
         and fo != fb
+        and len(fo) <= 4
         and len(fo) < len(fb)
         and 0.6 * len(fb) <= len(fo)
         and _is_subseq(fo, fb)
@@ -292,11 +295,16 @@ _SCRAMBLE_LEN = 50
 def is_editorial(d: Diff) -> bool:
     """True if the difference is editorial normalization, not an OCR error.
 
-    Editorial = punctuation the editor adds, a brevigraph the editor expands, or
-    a bare article the editor spaces off ``de``/``a`` (``delo`` -> ``de lo``).
+    Editorial = punctuation the editor adds, an *unmarked* contraction the editor
+    spaces/expands (``dels`` -> ``de los``, ``delo`` -> ``de lo``), or a bare
+    article spaced off ``de``/``a``. A **brevigraph-marked** abbreviation
+    (``⁊``, tildes, superscripts) is NOT editorial — it is the manuscript feature
+    we predict, so it stays visible.
     """
-    if d.type in ("punctuation", "abbreviation", "orthographic"):
+    if d.type in ("punctuation", "orthographic"):
         return True
+    if d.type == "abbreviation":
+        return not _has_abbrev_mark(d.ocr_text)  # marked brevigraph -> shown
     if d.type in ("addition", "deletion"):
         span = d.ocr_text if d.type == "addition" else d.base_text
         if _fold(span) in _ARTICLE_FOLDS:

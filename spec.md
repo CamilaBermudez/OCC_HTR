@@ -3261,6 +3261,21 @@ smoke-tested (substantive `cumn→cum`, `iguit→ignit`; editorial `al→a lo`,
 `diff_transcriptions.py --model-dir <dir> --scholarly-txt <txt> --output
 <dir>/line_diff.json` (needs that model's `line_alignment.json` first).
 
+**Classification fixes from viewer review (2026-08-02).** Two false-negatives
+found in the wired viewer: (1) the subsequence-abbreviation heuristic fired on
+genuine content-word letter-drops — `inscio`←`inscisio` (a dropped *si*) was a
+subsequence of the scholarly form, so it was mislabeled `abbreviation` and hidden
+instead of shown as a misread. Fixed by capping that heuristic at **≤4-letter**
+OCR spans (keeps the real function-word contractions `del`/`dels`/`al`/`als`;
+content words fall through to `substitution`). (2) *All* abbreviations were hidden
+as editorial, but the brevigraphs (`⁊`, tildes, superscripts) are the manuscript
+feature the thesis predicts — the user wants them visible. `is_editorial` now
+hides an abbreviation **only when it carries no brevigraph mark** (unmarked
+contractions like `dels→de los` stay hidden; marked `⁊`/tilde abbreviations
+show). Manuscript-wide effect: 874 marked abbreviations now shown, 2255 unmarked
+contractions + 4309 punctuation still hidden; `inscio→inscisio` and similar are
+now visible substitutions.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
