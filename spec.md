@@ -3203,6 +3203,49 @@ high-confidence errors, mark loose ones low-confidence. New code:
 CATMuS `line_alignment.json` generated. Not yet wired to the frontend (pending
 this evaluation's sign-off).
 
+### 6.7.3 Anchored banded word-level NW diff (2026-08-02)
+
+The banded alignment-constrained diff that §6.7 (approach #3/#4) deferred as the
+"harder open problem" — now implemented and it attacks the loose-substitution
+residual. `src/ocr/word_align.py::diff_page_banded`. Idea (per the plan): build
+the whole page's **word** streams on each side; use the line-alignment matches
+(`{seg_idx: scholarly_no}`) as **diagonal anchors**; run Needleman–Wunsch over
+words where each matrix cell is scored by **folded word similarity** (rapidfuzz),
+with **1↔1, 2↔1, 1↔2** steps (merge/split-aware) and the DP restricted to a
+**band** (±6 words) around the interpolated diagonal. This simultaneously:
+- kills the **scramble** — a distant repeated `de`/`que` is out of band, so it
+  can't mis-match (the free char-diff's 260-char fake "addition" is gone);
+- kills the **edge-spill** — words flow **across line boundaries inside the
+  band**, so a word split by the manuscript lineation (`reguar`|`damient` ↔
+  `reguardament`) aligns in one 2↔1 step instead of becoming an add+del pair;
+- folds **`delo` ↔ `de lo`** in one merge step (editorial, suppressed).
+Emits the same `Diff` list, so `classify_region` + `split_diffs` + the viewer are
+unchanged. Word↔punctuation cells are forced to a gap (a fragment never matches a
+mark). `_GAP=-0.55`, `_MERGE_EPS=0.02` (1-1 wins ties over an equal merge).
+
+**Evaluation — free char-diff vs banded word-NW, CATMuS baseline, whole
+manuscript** (`assess_pagelevel_diff.py --method {free,banded}`):
+
+| metric | free char-diff | **banded word-NW** |
+|---|---|---|
+| raw spans/line | 2.03 | 1.82 |
+| **add/del spans** | 4425 (0.32/line) | **764 (0.06/line) — −83 %** |
+| **scramble spans** | 31 | **0** |
+| **loose (misalign) subs** | **25 %** | **19 %** |
+| tight (genuine) subs | 75 % | 81 % |
+
+The **edge-spill / scramble noise collapses ~6×** (add/del 0.32→0.06/line) and
+the loose-substitution residual drops **25 %→19 %**, with substitutions now clean
+word-level misreads (`apos tenia→apostema`, `teuebrosa→tenebrosa`,
+`reguar damient→reguardament`) instead of char fragments. Substitution *count*
+rises (11 159→14 390) because errors are reported per-word rather than merged
+into blobs — arguably a feature (one diff per wrong word). Residual 19 % loose =
+genuine positional ambiguity, real textual variants (`uianda`/`natura`), and
+article-boundary cases (`altertz→lo tertz`) — needs lexicon/LM knowledge, not
+better alignment. **Verdict: banded word-NW is the better diff; wire it as the
+viewer default (free kept as fallback for unaligned pages).** New code:
+`word_align.py`; `--method` flag on `assess_pagelevel_diff.py`.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop

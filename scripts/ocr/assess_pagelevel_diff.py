@@ -18,7 +18,10 @@ import re
 from collections import Counter
 from pathlib import Path
 
+from rapidfuzz.distance import Levenshtein
+
 from src.ocr.line_diff import _fold, diff_page, split_diffs
+from src.ocr.word_align import diff_page_banded
 
 _HEADER_RE = re.compile(r"=+\s*IMAGE:\s*(?P<key>.+?)_full\s*=+")
 _LINE_RE = re.compile(r"^(?P<no>\d+):\s?(?P<text>.*)$")
@@ -66,16 +69,43 @@ def bucket(dtype: str, o: str, b: str) -> str:
     return "substitution"
 
 
+def _foldsim(a: str, b: str) -> float:
+    fa, fb = _fold(a), _fold(b)
+    if not fa and not fb:
+        return 1.0
+    return 1.0 - Levenshtein.distance(fa, fb) / max(len(fa), len(fb), 1)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--model-dir", type=Path, required=True)
     ap.add_argument("--scholarly-txt", type=Path, required=True)
+    ap.add_argument(
+        "--method",
+        choices=("free", "banded"),
+        default="free",
+        help="free = shipped char-level diff_page; banded = anchored word-level "
+        "NW (needs <model-dir>/line_alignment.json).",
+    )
     args = ap.parse_args()
 
     scholarly = load_scholarly(args.scholarly_txt)
+    align_all: dict = {}
+    if args.method == "banded":
+        import json
+
+        align_all = json.loads((args.model_dir / "line_alignment.json").read_text(encoding="utf-8"))
+
+    def run_diff(pk: str, model: list[tuple[int, str]]):
+        if args.method == "banded":
+            align = {int(k): v for k, v in align_all[pk]["model_to_scholarly"].items()}
+            return diff_page_banded(scholarly[pk], model, align)
+        return diff_page(scholarly[pk], model)
+
     raw_buckets = Counter()
     split_counts = Counter()
     n_pages = n_ocr_lines = n_raw = 0
+    tight = loose = addel = 0
     subs: list[str] = []
     scrambles: list[str] = []
     for page_dir in sorted(p for p in args.model_dir.iterdir() if p.is_dir()):
@@ -85,7 +115,7 @@ def main() -> None:
             continue
         n_pages += 1
         n_ocr_lines += len(model)
-        diffs = diff_page(scholarly[pk], model)
+        diffs = run_diff(pk, model)
         n_raw += len(diffs)
         for d in diffs:
             raw_buckets[bucket(d.type, d.ocr_text, d.base_text)] += 1
@@ -94,13 +124,20 @@ def main() -> None:
         split_counts["editorial"] += len(editorial)
         split_counts["scramble"] += len(scramble)
         for d in substantive:
-            if d.type == "substitution" and len(subs) < 60:
-                subs.append(f"{d.ocr_text!r}->{d.base_text!r}")
+            if d.type == "substitution":
+                if _foldsim(d.ocr_text, d.base_text) >= 0.5:
+                    tight += 1
+                else:
+                    loose += 1
+                if len(subs) < 60:
+                    subs.append(f"{d.ocr_text!r}->{d.base_text!r}")
+            else:
+                addel += 1
         for d in scramble:
             if len(scrambles) < 10:
                 scrambles.append(f"[{pk}] {d.type}:{(d.ocr_text or d.base_text)[:70]!r}...")
 
-    print(f"model: {args.model_dir.name}")
+    print(f"model: {args.model_dir.name}  |  method: {args.method}")
     print(
         f"pages {n_pages} | OCR lines {n_ocr_lines} | raw diff spans {n_raw} "
         f"({n_raw/n_ocr_lines:.2f}/line)\n"
@@ -128,6 +165,13 @@ def main() -> None:
     print(f"  editorial   (suppressed)     : {e:>6} ({100*e/tot:.0f}%)")
     print(f"  scramble    (flag region)    : {sc:>6} ({100*sc/tot:.0f}%)")
     print(f"\n  NOISE REMOVED from the shown view: {100*(e+sc)/tot:.0f}% of raw spans")
+    nsub = tight + loose
+    print("\n--- substantive quality ---")
+    print(
+        f"  substitutions {nsub} | TIGHT(genuine) {100*tight/nsub:.0f}% ({tight/n_ocr_lines:.2f}/line)"
+        f" | LOOSE(misalign) {100*loose/nsub:.0f}% ({loose/n_ocr_lines:.2f}/line)"
+    )
+    print(f"  add/del spans {addel} ({addel/n_ocr_lines:.2f}/line)")
     print(
         "\nsample SUBSTANTIVE substitutions (should be genuine misreads):\n  "
         + "\n  ".join(subs[:40])
