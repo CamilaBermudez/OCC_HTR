@@ -3088,6 +3088,74 @@ it and `get_page` attaches each line's `diffs`; the 3-way tab renders compact
 category, TEI on hover) with a legend. Re-run `diff_transcriptions.py` + restart
 the viewer per model.
 
+### 6.7.1 Serious 200-line error assessment (2026-08-02)
+
+Deep audit of *what* OCR-vs-scholarly differences we actually face, to plan how
+to tackle them. Harness (reusable, seeded, any model's `line_alignment.json`):
+`scripts/ocr/assess_line_errors.py` (per-line raw + folded CER, shipped
+`diff_page` classification, full TSV dump) and
+`scripts/ocr/assess_line_errors_buckets.py` (root-cause bucketing of every diff
+span). Sample = 200 aligned pairs, seed 42, from `finetune_400_full_corpus`
+(the only full-manuscript alignment; **weak model → error *rates* are inflated
+vs the current ViT+RoBERTa 0.913, but the *typology* transfers**). Artefacts in
+`tests/ocr/evaluations/line_error_assessment_20260802/`.
+
+**Divergence magnitude (per line, OCR vs scholarly):** raw CER mean **0.191** /
+median 0.162; **folded** CER (after u/v·i/j·long-s fold) mean **0.128** — so
+~⅓ of the raw character divergence is pure orthographic normalization we already
+suppress. Exact match 3 % raw / 16 % folded; only 6 % of lines emit **zero**
+diffs. i.e. almost every line differs, but mostly for non-error reasons.
+
+**Root-cause decomposition of all 450 emitted diff spans:**
+
+| bucket | spans | share | nature |
+|---|---|---|---|
+| editorial punctuation (`,.;:¶`) | 118 | 26 % | EDITORIAL — editor punctuates; model correctly omits |
+| `de la`/`de lo` article spacing | 20 | 4 % | EDITORIAL — scribe joins, editor spaces (shows as a false *deletion*) |
+| brevigraph expansion (⁊, tildes, `del`=de lo) | 17 | 4 % | EDITORIAL — we predict the diplomatic form on purpose |
+| **line-edge word-spill** | 140 | **31 %** | ARTIFACT — manuscript lineation ≠ scholarly lineation, edge words spill in/out as add/del |
+| whole-pair misaligned (score < 0.7) | 9 | 2 % | ARTIFACT — 4 pairs / 200 produce pure garbage (CER > 1) |
+| content deletion (dropped word) | 13 | 3 % | OCR error |
+| content addition (over-generated) | 18 | 4 % | OCR error |
+| substitution (misread / variant) | 115 | 26 % | OCR error |
+| **roll-up** | | **34 % editorial · 33 % artifact · 32 % genuine OCR error** | |
+
+**So ⅔ of what the diff surfaces is NOT model error** — it is editorial style
+(punctuation, `de+lo` spacing, expansions) or the lineation-mismatch artifact.
+The genuine-error third is dominated by **substitutions**, and reading them the
+dominant class is unambiguous: **minim / allograph confusion** (n/m/u/i/v) —
+`auz→am`, `camula→canula`, `sauc→sanc`, `sauat→sanat`, `uecessari→necessari`,
+`deuant→denant`, `stormudar→stornudar`, `caua→cana`, `uislocat→dislocat`,
+`auar→anar`. Second class: **line-initial garbling** (the first token, cut by
+segmentation, is the worst-read span — `erestamiaatio→restauracio`,
+`ercincisio→Circumcisio`, `proelostacaelo→pronosticacio`), entangled with the
+edge-spill artifact. Third: a few **hard/degraded lines** garble wholesale
+(`diafinitoi→diafinicon`, `desancgnsugua→sancguisugua`), concentrated in the
+low-alignment-score tail.
+
+**Diff-tool failure modes found (for later fixing):** (1) **edge word-spill**
+is the #1 noise source (31 %) — the shipped *page-level* diff mitigates it by
+concatenation but the per-line residual is large and it still scrambles
+merged/2-column pages; (2) **`difflib` non-minimal fragmentation** on hard lines
+emits spurious micro-spans (`'a'→'factura'`, whole-line shredding) — the known
+greedy-LCS residual (§6.7 #2/#4); (3) **`de+lo` shown as *deletion*** rather than
+an expansion/orthographic; (4) **misaligned pairs (score < 0.7)** are trusted and
+produce garbage — should be filtered/flagged.
+
+**How to tackle (priority order):**
+- *For a trustworthy diff:* suppress the two editorial buckets that are currently
+  mislabeled — treat `de+article` spacing and editorial punctuation as non-errors
+  (as we already do for u/v·i/j·long-s), and **trim line-edge spill** (diff only
+  the aligned overlap, or gate add/del that sit at a line boundary). That alone
+  removes ~65 % of the spans as noise, leaving the ~32 % genuine signal legible.
+  Filter pairs with alignment score < 0.7 up front.
+- *For the model:* the dominant genuine error is **systematic minim/allograph
+  confusion**, not random noise → best levers are (a) a **lexicon / LM rescorer**
+  over the Old-Occitan medical vocabulary (the confusions almost always produce
+  non-words), and (b) more allograph-diverse training data. Line-initial garbling
+  argues for **better line segmentation** (or overlapping-context decoding) since
+  the cut token is the worst-read one.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop

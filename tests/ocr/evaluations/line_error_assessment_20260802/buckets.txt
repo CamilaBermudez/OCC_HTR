@@ -1,0 +1,14 @@
+sampled 200 pairs; 4 misaligned (score<0.7) contributing 9 garbage spans
+
+bucket                    spans   share   root cause
+editorial_punct             118   26.2%   EDITORIAL — editor punctuation
+abbrev_expansion             17    3.8%   EDITORIAL — brevigraph expansion (we predict diplomatic)
+article_split                20    4.4%   EDITORIAL — de+lo/la spacing
+boundary_spill              140   31.1%   ARTIFACT  — lineation mismatch, edge word-spill
+MISALIGNED_PAIR(spans)        9    2.0%   ARTIFACT  — whole pair mis-aligned (score<0.7)
+content_del                  13    2.9%   OCR ERROR — dropped word
+content_add                  18    4.0%   OCR ERROR — over-generated word
+substitution                115   25.6%   OCR ERROR — misread / variant
+TOTAL                       450
+
+ROLL-UP:  editorial 155 (34%)  |  artifact 149 (33%)  |  genuine OCR error 146 (32%)
