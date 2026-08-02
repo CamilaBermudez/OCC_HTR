@@ -3324,6 +3324,21 @@ confirming §6.7.1/§6.8 at corpus scale. Editorial mass is punctuation (`.`→`
 2823) + `de`+lo spacing (`dela`→`de la` 875) + capitalization + `⁊`/`¶` marks.
 Artefacts: `tests/ocr/evaluations/discrepancies/`.
 
+**Dispersion — the key nuance (2026-08-02).** The substitutions are **NOT
+aggregated at the word level**: 15,321 instances → **9,919 unique pairs**, and
+**56 % occur exactly once** (top-20 pairs cover only 11 %, top-500 only 32 %).
+No small list of frequent word-confusions to target. **But at the *character*
+level they are highly concentrated**: decomposing every substitution into char
+edits (18,069 ops) shows the top ops are all the **gothic minim ambiguity** —
+`u`→`n` (9.4 %), `ui`→`m` (5.4 %), `in`→`m` (3.7 %), `ni`→`m`, `iu`→`m`, `n`→`u`,
+`n`→`m` … the pure `m`/`n`/`u`/`i` stroke interchanges sum to **~28 % of all
+char-edits** (next: `t`→`c`, `i`→`r`, ~2 % each). So the model makes **one
+low-level mistake (minims are indistinguishable vertical strokes) thousands of
+times, landing on a different wrong word each time** — which is why word-pairs
+look dispersed but the cause is singular. Implication: a per-pattern lookup is
+hopeless, but a **context LM/lexicon reranker** (resolves minims by context — cf.
+the §6.8 recoverability) or **minim-targeted training** is the right lever.
+
 ## 6.8 Top-k token recall — are errors recoverable? (2026-08-02)
 
 Question: when a trained model's top-1 next-token is wrong, was the correct token
