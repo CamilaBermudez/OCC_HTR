@@ -304,6 +304,14 @@ def is_editorial(d: Diff) -> bool:
     return False
 
 
+def diff_group(d: Diff) -> str:
+    """Which shown-group a single diff belongs to: substantive / editorial / scramble."""
+    span_len = max(len(d.base_text), len(d.ocr_text))
+    if d.type in ("addition", "deletion") and span_len > _SCRAMBLE_LEN:
+        return "scramble"
+    return "editorial" if is_editorial(d) else "substantive"
+
+
 def split_diffs(diffs: list[Diff]) -> tuple[list[Diff], list[Diff], list[Diff]]:
     """Partition diffs into (substantive, editorial, scramble).
 
@@ -313,18 +321,10 @@ def split_diffs(diffs: list[Diff]) -> tuple[list[Diff], list[Diff], list[Diff]]:
     that stretch, not a real edit — surfaced so the caller can flag the region
     rather than show fabricated diffs.
     """
-    substantive: list[Diff] = []
-    editorial: list[Diff] = []
-    scramble: list[Diff] = []
+    groups: dict[str, list[Diff]] = {"substantive": [], "editorial": [], "scramble": []}
     for d in diffs:
-        span_len = max(len(d.base_text), len(d.ocr_text))
-        if d.type in ("addition", "deletion") and span_len > _SCRAMBLE_LEN:
-            scramble.append(d)
-        elif is_editorial(d):
-            editorial.append(d)
-        else:
-            substantive.append(d)
-    return substantive, editorial, scramble
+        groups[diff_group(d)].append(d)
+    return groups["substantive"], groups["editorial"], groups["scramble"]
 
 
 def diff_aligned(

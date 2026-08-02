@@ -86,6 +86,11 @@ def _align(
     exp = _expected_diagonal(n, anchors)
     neg = float("-inf")
 
+    def owner_at(pos: int) -> int | None:
+        # nearest OCR line for a span (esp. a deletion, which consumes no OCR
+        # token) — clamped so we never emit a None owner, matching diff_page.
+        return owners[min(max(pos, 0), m - 1)] if m else None
+
     def in_band(i: int, j: int) -> bool:
         return abs(j - exp[i]) <= band
 
@@ -134,23 +139,23 @@ def _align(
         op = bt[i][j]
         if op is None:  # fell out of band at an edge — drain remaining as gaps
             if i > 0:
-                _emit(sch[i - 1], "", owners[j - 1] if 0 <= j - 1 < m else None, out)
+                _emit(sch[i - 1], "", owner_at(j - 1), out)
                 i -= 1
             else:
-                _emit("", ocr[j - 1], owners[j - 1], out)
+                _emit("", ocr[j - 1], owner_at(j - 1), out)
                 j -= 1
             continue
         kind, pi, pj = op
         if kind == "del":
-            _emit(sch[pi], "", owners[pj - 1] if 0 <= pj - 1 < m else None, out)
+            _emit(sch[pi], "", owner_at(pj - 1), out)
         elif kind == "ins":
-            _emit("", ocr[pj], owners[pj], out)
+            _emit("", ocr[pj], owner_at(pj), out)
         elif kind == "sub":
-            _emit(sch[pi], ocr[pj], owners[pj], out)
+            _emit(sch[pi], ocr[pj], owner_at(pj), out)
         elif kind == "merge":
-            _emit(sch[pi] + " " + sch[pi + 1], ocr[pj], owners[pj], out)
+            _emit(sch[pi] + " " + sch[pi + 1], ocr[pj], owner_at(pj), out)
         elif kind == "split":
-            _emit(sch[pi], ocr[pj] + " " + ocr[pj + 1], owners[pj], out)
+            _emit(sch[pi], ocr[pj] + " " + ocr[pj + 1], owner_at(pj), out)
         i, j = pi, pj
     out.reverse()
     return out

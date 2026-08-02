@@ -112,11 +112,14 @@ function renderDiffChips(line) {
     box.className = "diff-chips";
     for (const d of line.diffs || []) {
         const chip = document.createElement("span");
-        chip.className = `diff-chip diff-${d.type}`;
+        // group = substantive | editorial | scramble (spec §6.7.2/6.7.3). Editorial
+        // + scramble are hidden by CSS unless the "show editorial" toggle is on.
+        const group = d.group || "substantive";
+        chip.className = `diff-chip diff-${d.type} diff-grp-${group}`;
         const ocr = d.ocr_text || "∅";
         const base = d.base_text || "∅";
         chip.textContent = `${ocr}→${base}`;
-        chip.title = `${d.type}: ${d.tei}`;
+        chip.title = `${d.type} (${group}): ${d.tei}`;
         box.appendChild(chip);
     }
     return box;
@@ -454,6 +457,12 @@ function bindEvents() {
     $("#page-select").addEventListener("change", (e) => selectPage(e.target.value));
     $("#copy-btn").addEventListener("click", copyToClipboard);
     $("#download-btn").addEventListener("click", downloadTranscription);
+    const editorialToggle = $("#toggle-editorial");
+    if (editorialToggle) {
+        editorialToggle.addEventListener("change", () => {
+            $("#tab-alignment").classList.toggle("show-editorial", editorialToggle.checked);
+        });
+    }
 }
 
 async function init() {

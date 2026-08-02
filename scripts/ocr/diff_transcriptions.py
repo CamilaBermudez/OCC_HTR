@@ -33,7 +33,8 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from src.ocr.line_diff import diff_page
+from src.ocr.line_diff import diff_group, diff_page
+from src.ocr.word_align import diff_page_banded
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
 log = logging.getLogger("diff_transcriptions")
@@ -80,9 +81,29 @@ def main() -> None:
     ap.add_argument("--model-dir", type=Path, required=True)
     ap.add_argument("--scholarly-txt", type=Path, required=True)
     ap.add_argument("--output", type=Path, required=True)
+    ap.add_argument(
+        "--method",
+        choices=("banded", "free"),
+        default="banded",
+        help="banded = anchored word-level NW (default, spec §6.7.3; needs "
+        "<model-dir>/line_alignment.json); free = legacy char-level diff_page.",
+    )
+    ap.add_argument(
+        "--alignment-json",
+        type=Path,
+        default=None,
+        help="line_alignment.json for --method banded. Default: "
+        "<model-dir>/line_alignment.json.",
+    )
     args = ap.parse_args()
 
     scholarly = load_scholarly(args.scholarly_txt)
+    align_all: dict = {}
+    if args.method == "banded":
+        align_path = args.alignment_json or (args.model_dir / "line_alignment.json")
+        align_all = json.loads(align_path.read_text(encoding="utf-8"))
+        log.info("Banded word-NW diff, anchors from %s", align_path)
+
     result: dict[str, dict] = {}
     grand = Counter()
     for page_dir in sorted(p for p in args.model_dir.iterdir() if p.is_dir()):
@@ -91,14 +112,20 @@ def main() -> None:
         if not model or page_key not in scholarly:
             continue
         scholarly_lines = [text for _, text in scholarly[page_key]]
-        diffs = diff_page(scholarly_lines, model)
+        if args.method == "banded" and page_key in align_all:
+            align = {int(k): v for k, v in align_all[page_key]["model_to_scholarly"].items()}
+            diffs = diff_page_banded(scholarly_lines, model, align)
+        else:
+            diffs = diff_page(scholarly_lines, model)
 
         by_line: dict[str, list[dict]] = {}
         counts = Counter()
         for d in diffs:
-            counts[d.type] += 1
-            key = str(d.ocr_line)
-            by_line.setdefault(key, []).append(d.as_dict())
+            group = diff_group(d)
+            counts[f"{group}:{d.type}"] += 1
+            dd = d.as_dict()
+            dd["group"] = group  # substantive | editorial | scramble (viewer filters)
+            by_line.setdefault(str(d.ocr_line), []).append(dd)
         grand.update(counts)
         result[page_key] = {"counts": dict(counts), "by_line": by_line}
 

@@ -3200,8 +3200,8 @@ edge-trim that made #3 regress), still the harder open problem. A **tight/loose
 folded-similarity confidence flag** is a cheap interim: show tight subs as
 high-confidence errors, mark loose ones low-confidence. New code:
 `split_diffs`/`is_editorial` in `line_diff.py`; `assess_pagelevel_diff.py`;
-CATMuS `line_alignment.json` generated. Not yet wired to the frontend (pending
-this evaluation's sign-off).
+CATMuS `line_alignment.json` generated. **Wired into the frontend 2026-08-02 —
+see §6.7.3.**
 
 ### 6.7.3 Anchored banded word-level NW diff (2026-08-02)
 
@@ -3245,6 +3245,21 @@ article-boundary cases (`altertz→lo tertz`) — needs lexicon/LM knowledge, no
 better alignment. **Verdict: banded word-NW is the better diff; wire it as the
 viewer default (free kept as fallback for unaligned pages).** New code:
 `word_align.py`; `--method` flag on `assess_pagelevel_diff.py`.
+
+**Wired into the viewer (2026-08-02).** `diff_transcriptions.py` now defaults to
+`--method banded` (loads `<model-dir>/line_alignment.json`; `--method free` is
+the legacy fallback) and tags every diff with its `group`
+(`substantive`/`editorial`/`scramble`) via `line_diff.diff_group`. The frontend
+renders each chip with a `diff-grp-<group>` class; **editorial + scramble chips
+are hidden by CSS by default** (only genuine OCR differences show), with a
+**"show editorial" checkbox** in the 3-way tab legend that reveals them
+(`#tab-alignment.show-editorial`). `word_align` owner attribution is clamped to
+the nearest OCR line (never emits a `None` owner — that had crashed the loader's
+`int(seg)`). Regenerated `finetune_400_full_corpus/line_diff.json`; viewer
+smoke-tested (substantive `cumn→cum`, `iguit→ignit`; editorial `al→a lo`,
+`ꝓp→aprop`, punctuation hidden). Re-run per model:
+`diff_transcriptions.py --model-dir <dir> --scholarly-txt <txt> --output
+<dir>/line_diff.json` (needs that model's `line_alignment.json` first).
 
 ## 7. Infrastructure
 
