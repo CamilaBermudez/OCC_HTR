@@ -385,6 +385,7 @@ main {
 .diff-addition     { background: rgba(102, 187, 106, 0.18); color: #9ede9f; border-color: rgba(102, 187, 106, 0.45); }
 .diff-deletion     { background: rgba(229, 115, 115, 0.18); color: #f0a0a0; border-color: rgba(229, 115, 115, 0.45); }
 .diff-substitution { background: rgba(255, 167, 38, 0.18);  color: #ffca7a; border-color: rgba(255, 167, 38, 0.45); }
+.diff-spacing      { background: rgba(38, 198, 218, 0.15);  color: #7fd6e3; border-color: rgba(38, 198, 218, 0.40); }
 
 /* Editorial suppression (spec §6.7.2): punctuation, brevigraph expansion and
    de+lo article spacing are editorial normalization, not OCR errors — hidden by

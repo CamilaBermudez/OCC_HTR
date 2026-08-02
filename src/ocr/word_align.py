@@ -22,7 +22,7 @@ existing classifier + ``split_diffs`` + viewer unchanged.
 
 from __future__ import annotations
 
-from src.ocr.line_diff import Diff, _fold, _is_punct, _tei, classify_region, tokenize
+from src.ocr.line_diff import Diff, _despace, _fold, _is_punct, _tei, classify_region, tokenize
 
 try:
     from rapidfuzz.distance import Levenshtein
@@ -49,11 +49,12 @@ _MERGE_EPS = 0.02  # tiny bias so a clean 1-1 wins over an equal-scoring merge
 
 def _emit(base: str, ocr: str, owner: int | None, out: list[Diff]) -> None:
     base, ocr = base.strip(), ocr.strip()
-    if not base and not ocr:
+    if base == ocr:  # identical (or both empty) -> a match, not a difference
         return
+    # Everything that actually differs is emitted; the group (is_editorial) +
+    # the viewer decide what to show. Word-boundary `spacing` (Esi/E si) and
+    # abbreviations are kept; only punctuation/orthographic are hidden by default.
     dtype = classify_region(base, ocr)
-    if dtype in ("spacing", "orthographic"):  # suppressed, as in diff_page
-        return
     out.append(Diff(dtype, base, ocr, owner, _tei(dtype, base, ocr)))
 
 
@@ -116,13 +117,27 @@ def _align(
                 cand = dp[i - 1][j - 1] + _word_sim(sch[i - 1], ocr[j - 1])
                 if cand > best:
                     best, op = cand, ("sub", i - 1, j - 1)
-            if i > 1 and j > 0 and dp[i - 2][j - 1] > neg:  # 2 sch -> 1 ocr
+            # merge/split never swallow a punctuation token — a mark must align
+            # on its own (else `agudas .`->`agudas` is folded to a false match).
+            if (
+                i > 1
+                and j > 0
+                and dp[i - 2][j - 1] > neg
+                and not _is_punct(sch[i - 2])
+                and not _is_punct(sch[i - 1])
+            ):  # 2 sch -> 1 ocr
                 cand = (
                     dp[i - 2][j - 1] + _word_sim(sch[i - 2] + sch[i - 1], ocr[j - 1]) - _MERGE_EPS
                 )
                 if cand > best:
                     best, op = cand, ("merge", i - 2, j - 1)
-            if i > 0 and j > 1 and dp[i - 1][j - 2] > neg:  # 1 sch -> 2 ocr
+            if (
+                i > 0
+                and j > 1
+                and dp[i - 1][j - 2] > neg
+                and not _is_punct(ocr[j - 2])
+                and not _is_punct(ocr[j - 1])
+            ):  # 1 sch -> 2 ocr
                 cand = (
                     dp[i - 1][j - 2]
                     + _word_sim(sch[i - 1], ocr[j - 2] + " " + ocr[j - 1])
@@ -155,7 +170,15 @@ def _align(
         elif kind == "merge":
             _emit(sch[pi] + " " + sch[pi + 1], ocr[pj], owner_at(pj), out)
         elif kind == "split":
-            _emit(sch[pi], ocr[pj] + " " + ocr[pj + 1], owner_at(pj), out)
+            b, o = sch[pi], ocr[pj] + " " + ocr[pj + 1]
+            # a word split ONLY by manuscript line-wrap (the two OCR tokens sit on
+            # different model lines and are identical modulo spacing) is not a
+            # transcription difference — suppress it. A same-line split (la gremas
+            # / lagremas) is a real word-boundary diff and is emitted.
+            if owner_at(pj) != owner_at(pj + 1) and _despace(b) == _despace(o):
+                pass
+            else:
+                _emit(b, o, owner_at(pj), out)
         i, j = pi, pj
     out.reverse()
     return out

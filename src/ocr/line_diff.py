@@ -146,7 +146,7 @@ def _tei(diff_type: DiffType, base: str, ocr: str) -> str:
     b, o = html.escape(base), html.escape(ocr)
     if diff_type == "abbreviation":
         return f"<choice><abbr>{o}</abbr><expan>{b}</expan></choice>"
-    if diff_type == "orthographic":
+    if diff_type in ("orthographic", "spacing"):
         return f"<choice><orig>{o}</orig><reg>{b}</reg></choice>"
     if diff_type == "addition":
         return f"<add>{o}</add>"
@@ -293,22 +293,21 @@ _SCRAMBLE_LEN = 50
 
 
 def is_editorial(d: Diff) -> bool:
-    """True if the difference is editorial normalization, not an OCR error.
+    """True if the difference is editorial normalization, not a transcription diff.
 
-    Editorial = punctuation the editor adds, an *unmarked* contraction the editor
-    spaces/expands (``dels`` -> ``de los``, ``delo`` -> ``de lo``), or a bare
-    article spaced off ``de``/``a``. A **brevigraph-marked** abbreviation
-    (``⁊``, tildes, superscripts) is NOT editorial — it is the manuscript feature
-    we predict, so it stays visible.
+    Editorial (hidden by default, shown via the viewer toggle) = punctuation the
+    editor adds, and pure **orthographic** variation (u/v, i/j, long-s). A bare
+    article added/dropped (``de``/``a`` + article) is also editorial spacing.
+    Everything else — **substitution, addition, deletion, abbreviation (marked
+    brevigraphs AND `del`=`de lo` contractions), and word-boundary `spacing`
+    (`Esi`/`E si`, `la gremas`/`lagremas`)** — is a real transcription
+    difference and stays visible.
     """
     if d.type in ("punctuation", "orthographic"):
         return True
-    if d.type == "abbreviation":
-        return not _has_abbrev_mark(d.ocr_text)  # marked brevigraph -> shown
     if d.type in ("addition", "deletion"):
         span = d.ocr_text if d.type == "addition" else d.base_text
-        if _fold(span) in _ARTICLE_FOLDS:
-            return True
+        return _fold(span) in _ARTICLE_FOLDS
     return False
 
 

@@ -3276,6 +3276,32 @@ show). Manuscript-wide effect: 874 marked abbreviations now shown, 2255 unmarked
 contractions + 4309 punctuation still hidden; `inscio→inscisio` and similar are
 now visible substitutions.
 
+**Second viewer-review pass — show word-boundary + contraction diffs
+(2026-08-02).** The user wants *all* real transcription differences visible, not
+just misreads. Three linked fixes:
+- **`spacing` (word-boundary) is now a *shown* category.** It was doubly used as
+  the match filter — an identical token folds to "spacing" (despace-equal), so
+  suppressing spacing was also how matches were dropped. `word_align._emit` now
+  suppresses **only truly identical spans** (`base == ocr`); a real word-boundary
+  difference (`Esi`↔`E si`, `la gremas`↔`lagremas`) is emitted as `spacing` and
+  shown (new cyan chip). A word split *only* by manuscript line-wrap (the two OCR
+  tokens sit on different model lines, identical modulo spacing) is still
+  suppressed — not a transcription diff.
+- **All abbreviations shown** (reverted the marked-only rule): `del`→`de lo`,
+  `dels`→`de los` contractions now show alongside brevigraphs. `is_editorial`
+  hides only punctuation, pure orthographic (u/v·i/j·long-s), and bare-article
+  add/del.
+- **Punctuation no longer swallowed by merge/split** — the DP forbids a
+  merge/split step that includes a punctuation token, so `agudas .`→`agudas` is a
+  `.` punctuation diff (hidden) + a clean word match, not a folded false
+  "orthographic". Known residual: an editorial elision written `l ' autra`
+  (word-`'`-word across a punctuation token) vs model `lautra` can't fold into
+  one span under the arity-2, punct-skipping DP — the `l` shows, split awkwardly.
+Manuscript-wide (CATMuS/finetune_400): shown 1.82/line (substitution 12.7k,
+spacing 8.4k, abbreviation 3.2k, add/del 0.6k), hidden 1.23/line (punctuation
+10.8k, orthographic 5.8k). Verified the four flagged lines via the viewer API.
+New frontend: cyan `diff-spacing` chip + legend entry.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
