@@ -58,3 +58,6 @@ __pycache__/
 
 # Glyph backup archives
 /glyphs_backup_*.tar.gz
+
+# Server / VPN connection notes (contains credentials + hostnames — never commit)
+/spec_server_connection.md
