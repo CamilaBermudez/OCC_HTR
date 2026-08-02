@@ -273,6 +273,60 @@ def diff_page(scholarly_lines: list[str], ocr_lines: list[tuple[int, str]]) -> l
     return _diff_core(" ".join(scholarly_lines), ocr, owner)
 
 
+# ---------------------------------------------------------------------------
+# Substantive / editorial split + scramble guard (spec §6.7.2, 2026-08-02).
+# Non-destructive layer over diff_page: separates genuine OCR differences from
+# editorial normalization and drops alignment-scramble artifacts, so a caller
+# (assessment or viewer) can show a clean substantive-error view.
+# ---------------------------------------------------------------------------
+
+# Bare Occitan articles that appear as a false add/del when the scribe joins
+# ``de``/``a`` + article (``delo``, ``als``) and the editor spaces them.
+_ARTICLE_FOLDS = {"lo", "la", "los", "las", "lu", "le", "l", "els", "al", "als"}
+
+# A single real edit is never this long; an add/del span above it is the
+# free page-level diff mis-associating distant text (a scramble), not an edit.
+_SCRAMBLE_LEN = 50
+
+
+def is_editorial(d: Diff) -> bool:
+    """True if the difference is editorial normalization, not an OCR error.
+
+    Editorial = punctuation the editor adds, a brevigraph the editor expands, or
+    a bare article the editor spaces off ``de``/``a`` (``delo`` -> ``de lo``).
+    """
+    if d.type in ("punctuation", "abbreviation", "orthographic"):
+        return True
+    if d.type in ("addition", "deletion"):
+        span = d.ocr_text if d.type == "addition" else d.base_text
+        if _fold(span) in _ARTICLE_FOLDS:
+            return True
+    return False
+
+
+def split_diffs(diffs: list[Diff]) -> tuple[list[Diff], list[Diff], list[Diff]]:
+    """Partition diffs into (substantive, editorial, scramble).
+
+    ``substantive`` = genuine OCR differences (misread / dropped / added word);
+    ``editorial`` = normalization (punctuation, expansion, article spacing);
+    ``scramble`` = over-long add/del spans that signal an alignment failure on
+    that stretch, not a real edit — surfaced so the caller can flag the region
+    rather than show fabricated diffs.
+    """
+    substantive: list[Diff] = []
+    editorial: list[Diff] = []
+    scramble: list[Diff] = []
+    for d in diffs:
+        span_len = max(len(d.base_text), len(d.ocr_text))
+        if d.type in ("addition", "deletion") and span_len > _SCRAMBLE_LEN:
+            scramble.append(d)
+        elif is_editorial(d):
+            editorial.append(d)
+        else:
+            substantive.append(d)
+    return substantive, editorial, scramble
+
+
 def diff_aligned(
     scholarly_lines: list[tuple[int, str]],
     ocr_lines: list[tuple[int, str]],

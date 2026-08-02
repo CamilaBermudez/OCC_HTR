@@ -3156,6 +3156,53 @@ produce garbage — should be filtered/flagged.
   argues for **better line segmentation** (or overlapping-context decoding) since
   the cut token is the worst-read one.
 
+### 6.7.2 Editorial-suppression + scramble-guard prototype (2026-08-02)
+
+Two corrections to §6.7.1 first. **(a) Reference model:** the §6.7.1 rates used
+`finetune_400` (weak) — but the **CATMuS baseline** (`ocr_kept_20260622_120413`,
+the kraken/catmus OCR seed, char_acc **0.9603**) is a strong full-manuscript
+transcription already on disk. Generated its `line_alignment.json` and re-ran on
+it. **(b) Methodology:** §6.7.1 diffed each pair *in isolation*, which inflates
+line-edge spill; the shipped viewer diffs **page-level** (concatenated), which
+absorbs most spill. So the honest evaluation runs `diff_page` per page
+(`scripts/ocr/assess_pagelevel_diff.py`).
+
+**Honest shipped-diff distribution (CATMuS baseline, 71 pages, 13 647 lines,
+27 770 spans = 2.03/line):** substitution 40 %, editorial-punct 33 %, content-add
+11 %, abbrev 5.7 %, content-del 5.5 %, article-split 5 %. Roll-up **44 %
+editorial / 56 % genuine**. Page-level removes the per-pair edge-spill but a new
+residual appears: on hard stretches the **free global diff mis-associates distant
+text** — e.g. a 260-char "addition" on `52_f`, wild subs `uianda→natura`,
+`curas→medicinas` (spec §6.7 residual #2).
+
+**Prototype (`src/ocr/line_diff.py::split_diffs`, non-destructive over
+`diff_page`):** partitions spans into *substantive / editorial / scramble*.
+- **Editorial suppression** — `is_editorial()` folds punctuation, brevigraph
+  expansion, and bare-article add/del (`de`+`lo`→`de lo`) into an editorial group
+  that the error view hides (as u/v·i/j·long-s already are).
+- **Scramble guard** — an add/del span > 50 chars is never a real single edit;
+  it is flagged as an alignment failure on that region, not shown as an edit.
+
+**Evaluation (same CATMuS run):** editorial **44 % of spans removed cleanly**;
+scramble guard flags **31 spans** across the manuscript (catches the 260-char
+monster). Substantive view = 56 % (1.14 spans/line). Drilling into the
+substantive substitutions with a folded-similarity split (genuine misreads are
+letter-similar; misalignments are not): **75 % tight = genuine misread
+(0.61/line — matches the 0.96 model), 25 % loose = residual misalignment.**
+Excluding the messy title page barely moves it (artifacts are distributed).
+
+**Verdict.** Editorial suppression is a clean, safe win (−44 % noise, no genuine
+error lost) and should be wired into the viewer + `diff_transcriptions.py`.
+Scramble guard cheaply removes catastrophic spans. The remaining **25 % loose
+substitutions** are the free-diff mis-association residual — the real fix is
+**alignment-constrained (banded) diffing** (§6.7 approach #3, but with the
+edge-trim that made #3 regress), still the harder open problem. A **tight/loose
+folded-similarity confidence flag** is a cheap interim: show tight subs as
+high-confidence errors, mark loose ones low-confidence. New code:
+`split_diffs`/`is_editorial` in `line_diff.py`; `assess_pagelevel_diff.py`;
+CATMuS `line_alignment.json` generated. Not yet wired to the frontend (pending
+this evaluation's sign-off).
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
