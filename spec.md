@@ -3302,6 +3302,45 @@ spacing 8.4k, abbreviation 3.2k, add/del 0.6k), hidden 1.23/line (punctuation
 10.8k, orthographic 5.8k). Verified the four flagged lines via the viewer API.
 New frontend: cyan `diff-spacing` chip + legend entry.
 
+## 6.8 Top-k token recall — are errors recoverable? (2026-08-02)
+
+Question: when a trained model's top-1 next-token is wrong, was the correct token
+still among the top-k most likely? If yes, the error is a "near miss" a
+lexicon/LM reranker could fix; if no, it is a genuine perception failure.
+Reusable script `scripts/ocr/topk_recall.py` — **teacher-forced** (feed the GT
+prefix at each position, rank the decoder logits): in free-running generation the
+"correct next token" is undefined once the model diverges, so teacher forcing is
+the right frame. Special tokens (bos/eos/pad/cls/sep) excluded; run per model on
+the 300-val. Artefacts: `tests/ocr/evaluations/topk/<model>.json` (+ 25 error
+examples each).
+
+| model | top-1 tok | top-10 recall (all pos) | **GT in top-10 among top-1 errors** |
+|---|---|---|---|
+| **ViT+RoBERTa T1 1font** | 82.1 % | 95.1 % | **72.8 %** |
+| **ViT+RoBERTa T1 mf** | 81.8 % | 95.4 % | **74.6 %** |
+| Swin+BERT Stage-2 T1 1font | 62.8 % | 86.3 % | 63.2 % |
+| Swin+BERT Stage-2 T1 mf | 63.9 % | 86.5 % | 62.7 % |
+| Swin+BERT Stage-2 T2 1font | 62.7 % | 86.6 % | 64.1 % |
+| Swin+BERT Stage-2 T2 mf | 61.8 % | 86.7 % | 65.1 % |
+
+**Findings.** (1) **Most errors are near misses.** For ViT+RoBERTa, **~73–75 % of
+top-1 errors still have the correct token in the top-10** (63–65 % for
+Swin+BERT); overall top-10 recall is 95 % (ViT) / 86–87 % (Swin). A reranker /
+Old-Occitan-medical LM over the top-10 is therefore a concrete, well-motivated
+next lever — and helps ViT more. (2) The error *type* matches §6.7.1: the top-1
+misses are minim/allograph confusions with the truth 1–3 ranks away (`em`←`en`
+rank 3, `may`←`mau` rank 2, `petit`←`per` rank 3). (3) Consistent with the
+cross-attention finding, ViT+RoBERTa's tokens are far more often top-1 correct
+(82 % vs 63 %) *and* more recoverable when wrong. (4) Swin+BERT T1→T2 is flat
+(62.8→62.7 %), echoing the §6.5.21 plateau; multifont ≈ neutral both arches.
+
+**Caveats.** Token-level and tokenizer-dependent: ViT+RoBERTa (RoBERTa BPE) emits
+4177 tokens for the 300-val vs Swin+BERT (BERT WordPiece) 3566, so top-1 *token*
+accuracy is not the char-accuracy of §6.5.21 and cross-arch absolute counts
+aren't directly comparable — the *rates* and the recovery story are. Only
+ViT+RoBERTa **T1** exists (T2–T4 never trained — VM stopped, §6.5.21); Swin+BERT
+has T1+T2.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop

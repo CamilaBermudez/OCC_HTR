@@ -1,0 +1,498 @@
+{
+ "model_dir": "models/ocr/finetuned/vitroberta_T1_mf_20260731/best_model",
+ "n_lines": 300,
+ "n_positions": 4177,
+ "n_top1_errors": 759,
+ "top1_acc": 0.8183,
+ "topk_recall": {
+  "1": 0.8183,
+  "2": 0.8894,
+  "3": 0.9121,
+  "5": 0.933,
+  "10": 0.9538
+ },
+ "error_recovery": {
+  "1": 0.0,
+  "2": 0.3913,
+  "3": 0.5165,
+  "5": 0.6311,
+  "10": 0.7457
+ },
+ "examples": [
+  {
+   "line": "05_garde_001_line_47",
+   "pos": 1,
+   "gt_token": "nom",
+   "pred_top1": "p",
+   "gt_rank": ">10",
+   "top10": [
+    "p",
+    "form",
+    "l",
+    "non",
+    "h",
+    "Item",
+    "n",
+    "ment",
+    "qu",
+    "�"
+   ]
+  },
+  {
+   "line": "05_garde_001_line_47",
+   "pos": 6,
+   "gt_token": "en",
+   "pred_top1": "cal",
+   "gt_rank": ">10",
+   "top10": [
+    "cal",
+    "sal",
+    "gal",
+    "col",
+    "Cal",
+    "a",
+    "c",
+    "acl",
+    "e",
+    "cel"
+   ]
+  },
+  {
+   "line": "05_garde_001_line_47",
+   "pos": 7,
+   "gt_token": "l",
+   "pred_top1": "le",
+   "gt_rank": 3,
+   "top10": [
+    "le",
+    "lo",
+    "l",
+    "so",
+    "cl",
+    "lon",
+    "lect",
+    "hol",
+    "o",
+    "les"
+   ]
+  },
+  {
+   "line": "05_garde_001_line_47",
+   "pos": 12,
+   "gt_token": ".",
+   "pred_top1": ",",
+   "gt_rank": 2,
+   "top10": [
+    ",",
+    ".",
+    ";",
+    "</s>",
+    "en",
+    ":",
+    "e",
+    "sen",
+    "ge",
+    "tern"
+   ]
+  },
+  {
+   "line": "05_garde_001_line_47",
+   "pos": 13,
+   "gt_token": "em",
+   "pred_top1": "en",
+   "gt_rank": 3,
+   "top10": [
+    "en",
+    "e",
+    "em",
+    "err",
+    "eng",
+    "enc",
+    "esc",
+    "cur",
+    "</s>",
+    "er"
+   ]
+  },
+  {
+   "line": "05_garde_001_line_47",
+   "pos": 14,
+   "gt_token": "a",
+   "pred_top1": "ai",
+   "gt_rank": 3,
+   "top10": [
+    "ai",
+    "ar",
+    "a",
+    "ac",
+    "uador",
+    "nar",
+    "au",
+    "ap",
+    "pl",
+    "and"
+   ]
+  },
+  {
+   "line": "06_f_001v_002_line_107",
+   "pos": 12,
+   "gt_token": "ca",
+   "pred_top1": ".",
+   "gt_rank": 2,
+   "top10": [
+    ".",
+    "ca",
+    ",",
+    "m",
+    "</s>",
+    "cou",
+    "ma",
+    "ament",
+    "man",
+    "ra"
+   ]
+  },
+  {
+   "line": "06_f_001v_002_line_107",
+   "pos": 15,
+   "gt_token": "a",
+   "pred_top1": "am",
+   "gt_rank": 10,
+   "top10": [
+    "am",
+    "an",
+    "am",
+    "amb",
+    "ans",
+    "al",
+    "Am",
+    "ampl",
+    "ain",
+    "a"
+   ]
+  },
+  {
+   "line": "06_f_001v_002_line_107",
+   "pos": 16,
+   "gt_token": "un",
+   "pred_top1": "in",
+   "gt_rank": 2,
+   "top10": [
+    "in",
+    "un",
+    "i",
+    "ins",
+    "un",
+    "IN",
+    "'m",
+    "ili",
+    "is",
+    "im"
+   ]
+  },
+  {
+   "line": "06_f_001v_002_line_41",
+   "pos": 13,
+   "gt_token": "or",
+   "pred_top1": "o",
+   "gt_rank": 4,
+   "top10": [
+    "o",
+    "de",
+    "oz",
+    "or",
+    "d",
+    "ob",
+    "on",
+    "ex",
+    "os",
+    "ox"
+   ]
+  },
+  {
+   "line": "06_f_001v_002_line_42",
+   "pos": 2,
+   "gt_token": "at",
+   "pred_top1": "a",
+   "gt_rank": 2,
+   "top10": [
+    "a",
+    "at",
+    "ot",
+    "iat",
+    "o",
+    "ar",
+    "as",
+    "ant",
+    "bat",
+    "ati"
+   ]
+  },
+  {
+   "line": "06_f_001v_002_line_42",
+   "pos": 9,
+   "gt_token": "instrument",
+   "pred_top1": "instr",
+   "gt_rank": 2,
+   "top10": [
+    "instr",
+    "instrument",
+    "inst",
+    "restaur",
+    "�",
+    "dist",
+    "instrumental",
+    "ins",
+    "</s>",
+    "int"
+   ]
+  },
+  {
+   "line": "06_f_001v_002_line_65",
+   "pos": 1,
+   "gt_token": "pet",
+   "pred_top1": "pot",
+   "gt_rank": 2,
+   "top10": [
+    "pot",
+    "pet",
+    "put",
+    "p",
+    "pit",
+    "port",
+    "pic",
+    "dit",
+    "t",
+    "pt"
+   ]
+  },
+  {
+   "line": "06_f_001v_002_line_65",
+   "pos": 6,
+   "gt_token": "mos",
+   "pred_top1": "mes",
+   "gt_rank": ">10",
+   "top10": [
+    "mes",
+    "mo",
+    "ac",
+    "m",
+    "imes",
+    "inas",
+    "u",
+    "ines",
+    "mb",
+    "inos"
+   ]
+  },
+  {
+   "line": "06_f_001v_002_line_65",
+   "pos": 9,
+   "gt_token": "tem",
+   "pred_top1": "semen",
+   "gt_rank": 2,
+   "top10": [
+    "semen",
+    "tem",
+    "ten",
+    "emen",
+    "ben",
+    "term",
+    "ter",
+    "demon",
+    "u",
+    "item"
+   ]
+  },
+  {
+   "line": "07_f_002v_003_line_138",
+   "pos": 4,
+   "gt_token": "am",
+   "pred_top1": "las",
+   "gt_rank": 4,
+   "top10": [
+    "las",
+    "l",
+    "lap",
+    "am",
+    "ius",
+    "un",
+    "ins",
+    "an",
+    "bre",
+    "mil"
+   ]
+  },
+  {
+   "line": "07_f_002v_003_line_138",
+   "pos": 5,
+   "gt_token": "dos",
+   "pred_top1": "�",
+   "gt_rank": ">10",
+   "top10": [
+    "�",
+    "per",
+    "for",
+    "f",
+    "medic",
+    "succ",
+    "fl",
+    "fac",
+    "facilit",
+    "�"
+   ]
+  },
+  {
+   "line": "07_f_002v_003_line_138",
+   "pos": 12,
+   "gt_token": "inc",
+   "pred_top1": "sec",
+   "gt_rank": ">10",
+   "top10": [
+    "sec",
+    "fac",
+    "ins",
+    "exc",
+    "z",
+    "i",
+    "acc",
+    "foc",
+    "it",
+    "pac"
+   ]
+  },
+  {
+   "line": "07_f_002v_003_line_138",
+   "pos": 14,
+   "gt_token": "y",
+   "pred_top1": "ys",
+   "gt_rank": 2,
+   "top10": [
+    "ys",
+    "y",
+    "yss",
+    "yd",
+    "yt",
+    "yl",
+    "u",
+    "yr",
+    "yth",
+    "i"
+   ]
+  },
+  {
+   "line": "07_f_002v_003_line_71",
+   "pos": 1,
+   "gt_token": "phe",
+   "pred_top1": "pl",
+   "gt_rank": ">10",
+   "top10": [
+    "pl",
+    "ple",
+    "plom",
+    "p",
+    "bl",
+    "plus",
+    "pi",
+    "pler",
+    "ph",
+    "pire"
+   ]
+  },
+  {
+   "line": "07_f_002v_003_line_71",
+   "pos": 2,
+   "gt_token": "c",
+   "pred_top1": "cr",
+   "gt_rank": 2,
+   "top10": [
+    "cr",
+    "c",
+    "cre",
+    "c",
+    "cz",
+    "t",
+    "gran",
+    "gran",
+    "cra",
+    "cran"
+   ]
+  },
+  {
+   "line": "07_f_002v_003_line_71",
+   "pos": 3,
+   "gt_token": "ati",
+   "pred_top1": "cr",
+   "gt_rank": ">10",
+   "top10": [
+    "cr",
+    "c",
+    "ca",
+    "t",
+    "cre",
+    "co",
+    "un",
+    "can",
+    "tre",
+    "d"
+   ]
+  },
+  {
+   "line": "07_f_002v_003_line_71",
+   "pos": 4,
+   "gt_token": "pet",
+   "pred_top1": "per",
+   "gt_rank": ">10",
+   "top10": [
+    "per",
+    "</s>",
+    "p",
+    ".",
+    "pus",
+    "pu",
+    "pro",
+    ",",
+    "pre",
+    "q"
+   ]
+  },
+  {
+   "line": "08_f_003v_004_line_111",
+   "pos": 1,
+   "gt_token": "empl",
+   "pred_top1": "tem",
+   "gt_rank": 2,
+   "top10": [
+    "tem",
+    "empl",
+    "Cap",
+    "am",
+    "com",
+    "cum",
+    "mp",
+    "m",
+    "se",
+    "c"
+   ]
+  },
+  {
+   "line": "08_f_003v_004_line_111",
+   "pos": 6,
+   "gt_token": "cer",
+   "pred_top1": "te",
+   "gt_rank": 7,
+   "top10": [
+    "te",
+    "rem",
+    "ter",
+    "tem",
+    "pe",
+    "t",
+    "cer",
+    "tet",
+    "ret",
+    "re"
+   ]
+  }
+ ]
+}
