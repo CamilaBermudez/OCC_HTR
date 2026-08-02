@@ -3302,6 +3302,28 @@ spacing 8.4k, abbreviation 3.2k, add/del 0.6k), hidden 1.23/line (punctuation
 10.8k, orthographic 5.8k). Verified the four flagged lines via the viewer API.
 New frontend: cyan `diff-spacing` chip + legend entry.
 
+
+### 6.7.4 Discrepancy export for pattern analysis (2026-08-02)
+
+`scripts/ocr/discrepancy_table.py` flattens every OCR-vs-scholarly line
+difference (from the same banded word-NW diff, §6.7.3) into one record per
+discrepancy, for later pattern-mining. Output format by extension: **`.json`**
+(rich: `category_totals`, `by_category` = top confusion pairs per category, and
+`rows` = every discrepancy) or **`.csv`** (flat rows). Columns per row: `page`,
+`scholarly_row`, `model_row`, `category`, `group`
+(substantive/editorial/scramble), `scholarly_span`, `model_span`, plus full
+`scholarly_line_text` / `model_line_text` for context. `--groups` filters
+(e.g. `substantive` for real errors only). Run per model; needs the model's
+`line_alignment.json`.
+
+On `finetune_400_full_corpus` (41,650 discrepancies): the **substitution**
+pattern is dominated by **minim confusion** — `aui`/`au`/`ai`→`am` (155 combined,
+the word "with" misread), `sauat`→`sanat`, `malante`→`malaute`, `yen`→`yeu` —
+confirming §6.7.1/§6.8 at corpus scale; segmentation-head garble shows as
+`apitol`→`Capitol` (79). Editorial mass is punctuation (`.`→`,` 2835) + `de`+lo
+spacing (`dela`→`de la` 861) + capitalization (`e`→`E` 1043). Artefacts:
+`tests/ocr/evaluations/discrepancies/`.
+
 ## 6.8 Top-k token recall — are errors recoverable? (2026-08-02)
 
 Question: when a trained model's top-1 next-token is wrong, was the correct token

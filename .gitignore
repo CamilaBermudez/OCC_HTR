@@ -61,3 +61,6 @@ __pycache__/
 
 # Server / VPN connection notes (contains credentials + hostnames — never commit)
 /spec_server_connection.md
+
+# Discrepancy exports (large derived data — regenerate via discrepancy_table.py)
+/tests/ocr/evaluations/discrepancies/
