@@ -43,8 +43,12 @@ def transcribe_page(
     image_path: str | Path,
     model: str = "catmus",
     device: str = "cpu",
+    image_name: str | None = None,
 ) -> dict:
     """Segment + reading-order + recognise one page image.
+
+    ``image_name`` overrides the name written into the ALTO ``<fileName>`` (the
+    server hands us a temp file, so we pass the user's original upload name).
 
     Returns ``{width, height, model, n_lines, lines: [{order, polygon,
     baseline, text}]}`` with lines already in reading order.
@@ -114,13 +118,14 @@ def transcribe_page(
             alto = serialization.serialize(
                 Segmentation(
                     type="baselines",
-                    imagename=image_path.name,
+                    imagename=image_name or image_path.name,
                     text_direction="horizontal-lr",
                     script_detection=False,
                     lines=preds,
                 ),
                 image_size=(width, height),
                 template="alto",
+                sub_line_segmentation=False,  # word-level <String>, no per-glyph clutter
             )
         except Exception:
             logging.exception("ALTO serialization failed")

@@ -3819,7 +3819,11 @@ tab 3 runs the live pipeline on an uploaded image:
   `.txt` and **ALTO** (`.xml`, layout + text — `kraken.serialization.serialize`
   on the rpred *records*, so `<String CONTENT>` is populated; a bare
   `BaselineLine.text` does not serialise), both named
-  `transcription_<uploaded-file>_<model>.<ext>`. **New image** button resets +
+  `transcription_<uploaded-file>_<model>.<ext>`. ALTO uses
+  `sub_line_segmentation=False` → one `<String>` per `<TextLine>` carrying the
+  **whole line text** (no per-`<Glyph>` clutter; ~99 KB vs ~2.6 MB), and
+  `image_name` writes the **original upload filename** into `<fileName>` (the
+  server transcribes a temp file). **New image** button resets +
   reopens the picker; the corpus **Page selector is hidden** on this tab (you
   bring your own image). Model registry `KRAKEN_MODELS` (currently `catmus`) is
   where kraken-ft / TrOCR options plug in later. Needs `python-multipart`

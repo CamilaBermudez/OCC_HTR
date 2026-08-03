@@ -120,7 +120,7 @@ def api_transcribe(
         shutil.copyfileobj(file.file, tf)
         tmp = Path(tf.name)
     try:
-        return transcribe_page(tmp, model=model)
+        return transcribe_page(tmp, model=model, image_name=file.filename)
     except Exception as exc:  # surface pipeline errors to the client
         logging.exception("transcribe failed")
         raise HTTPException(status_code=500, detail=f"transcription failed: {exc}") from exc
