@@ -415,10 +415,14 @@ function activateTab(tabId) {
     });
     // Copy/Download only make sense on tab 1.
     $("#tab-actions").style.display = tabId === "tab-transcription" ? "flex" : "none";
+    // The corpus Page selector is irrelevant on the upload tab (you bring your
+    // own image), so hide it there.
+    $(".page-selector").style.display = tabId === "tab-transcribe" ? "none" : "flex";
     // A pane that was previously ``display: none`` had clientWidth = 0
     // when its image loaded, so applyZoom used a bogus fit. Recompute
     // now that the pane is measurable again.
-    const target = tabId === "tab-transcription" ? "1" : "2";
+    const target =
+        tabId === "tab-transcription" ? "1" : tabId === "tab-alignment" ? "2" : "3";
     applyZoom(target);
     applySelection();
 }
@@ -467,9 +471,29 @@ function bindUploadTab() {
         state.upload.imgURL = f ? URL.createObjectURL(f) : null;
     });
     runBtn.addEventListener("click", runTranscribe);
+    $("#upload-new").addEventListener("click", resetUploadTab);
     $("#upload-copy").addEventListener("click", () =>
         navigator.clipboard.writeText(uploadPlainText()));
     $("#upload-download").addEventListener("click", downloadUploadText);
+    $("#upload-alto").addEventListener("click", downloadUploadAlto);
+}
+
+// Clear the tab back to its initial state and open the file picker so the user
+// can transcribe a different page.
+function resetUploadTab() {
+    if (state.upload.imgURL) URL.revokeObjectURL(state.upload.imgURL);
+    state.upload = { file: null, imgURL: null, result: null };
+    $("#image-wrap-3").innerHTML = "";
+    $("#lines-transcribe").innerHTML =
+        '<div class="upload-hint">Upload a manuscript page, pick a model ' +
+        "(default CATMuS), and hit Transcribe. The full pipeline runs — line " +
+        "segmentation → reading order → line-by-line recognition (~30–60 s/page).</div>";
+    $("#upload-status").textContent = "";
+    $("#upload-run").disabled = true;
+    const input = $("#upload-input");
+    input.value = "";
+    input.closest(".upload-file").querySelector("span").textContent = "Choose page image…";
+    input.click();
 }
 
 async function runTranscribe() {
@@ -554,14 +578,28 @@ function selectUploadLine(order) {
 function uploadPlainText() {
     return (state.upload.result?.lines || []).map((l) => l.text).join("\n");
 }
-function downloadUploadText() {
-    const blob = new Blob([uploadPlainText()], { type: "text/plain" });
+// transcription_<uploaded-file-name>_<model>.<ext>
+function uploadBaseName() {
+    return (state.upload.file?.name || "page").replace(/\.[^.]+$/, "");
+}
+function saveBlob(text, filename, mime) {
+    const blob = new Blob([text], { type: mime });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "transcription.txt";
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+}
+function downloadUploadText() {
+    const m = state.upload.result?.model || "catmus";
+    saveBlob(uploadPlainText(), `transcription_${uploadBaseName()}_${m}.txt`, "text/plain");
+}
+function downloadUploadAlto() {
+    const alto = state.upload.result?.alto || "";
+    if (!alto) return;
+    const m = state.upload.result?.model || "catmus";
+    saveBlob(alto, `transcription_${uploadBaseName()}_${m}.xml`, "application/xml");
 }
 
 // ---------- Wire up ----------

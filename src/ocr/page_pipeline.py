@@ -13,6 +13,7 @@ image size, and per line (in reading order) the boundary polygon + predicted tex
 from __future__ import annotations
 
 import json
+import logging
 import tempfile
 from functools import lru_cache
 from pathlib import Path
@@ -83,6 +84,7 @@ def transcribe_page(
         for i, ln in enumerate(json_lines)
     ]
     out_lines: list[dict] = []
+    alto = ""
     if kraken_lines:
         seg = Segmentation(
             type="baselines",
@@ -102,6 +104,26 @@ def transcribe_page(
                     "text": getattr(pred, "prediction", "") or "",
                 }
             )
+        # ALTO XML complementing the segmentation with the recognised text.
+        # Serialise the rpred RECORDS directly — they carry prediction + character
+        # cuts, so ALTO <String CONTENT> is populated (a plain BaselineLine.text
+        # is not). Standard OCR interchange format: layout + text in one file.
+        try:
+            from kraken import serialization
+
+            alto = serialization.serialize(
+                Segmentation(
+                    type="baselines",
+                    imagename=image_path.name,
+                    text_direction="horizontal-lr",
+                    script_detection=False,
+                    lines=preds,
+                ),
+                image_size=(width, height),
+                template="alto",
+            )
+        except Exception:
+            logging.exception("ALTO serialization failed")
 
     return {
         "width": width,
@@ -109,4 +131,5 @@ def transcribe_page(
         "model": model,
         "n_lines": len(out_lines),
         "lines": out_lines,
+        "alto": alto,
     }

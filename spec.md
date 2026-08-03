@@ -3813,12 +3813,17 @@ tab 3 runs the live pipeline on an uploaded image:
   `src/ocr/page_pipeline.transcribe_page` = kraken baseline **segmentation**
   (`kraken segment -bl`) → our **reading-order** reorder → line-by-line
   **recognition** via `kraken.rpred` with the `.mlmodel` (~30–60 s/page on CPU).
-  Returns image size + per-line polygon + predicted text; the frontend overlays
-  the boxes on the uploaded image (client-side object URL, same SVG/zoom/pan as
-  tabs 1–2) and lists the transcription with copy/download. Model registry
-  `KRAKEN_MODELS` (currently `catmus`) is where kraken-ft / TrOCR options plug in
-  later. Needs `python-multipart` (FastAPI file uploads) + kraken on PATH
-  (`KRAKEN_BIN` or `shutil.which`).
+  Returns image size + per-line polygon + predicted text **+ ALTO XML**; the
+  frontend overlays the boxes on the uploaded image (client-side object URL, same
+  SVG/zoom/pan as tabs 1–2) and lists the transcription. **Downloads:** plain
+  `.txt` and **ALTO** (`.xml`, layout + text — `kraken.serialization.serialize`
+  on the rpred *records*, so `<String CONTENT>` is populated; a bare
+  `BaselineLine.text` does not serialise), both named
+  `transcription_<uploaded-file>_<model>.<ext>`. **New image** button resets +
+  reopens the picker; the corpus **Page selector is hidden** on this tab (you
+  bring your own image). Model registry `KRAKEN_MODELS` (currently `catmus`) is
+  where kraken-ft / TrOCR options plug in later. Needs `python-multipart`
+  (FastAPI file uploads) + kraken on PATH (`KRAKEN_BIN` or `shutil.which`).
 
 Both panes have a zoom toolbar (`−` `+` `⌂` reset), `Cmd`/`Ctrl` +
 scroll to zoom under the cursor, and **click-and-drag to pan** (Google
