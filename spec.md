@@ -3421,6 +3421,18 @@ box-geometry problem.** Overall PaddleOCR is strong general OCR but neither its
 recognizer nor its detector beats what we have for this manuscript — **do not
 adopt.** (Isolated paddle env + large exports live in scratch, not committed.)
 
+**Visual confirmation (page 06, both segmentations overlaid).**
+`overlay_ours_vs_paddle_06.jpg` (green = our kraken segmentation, red =
+PaddleOCR): **206 vs 202 boxes**, agreeing on essentially every line in both
+columns — neither misses text, both handle the illuminated initials and the
+4-column layout. The only visible difference matches the metrics: **our green
+boxes are slightly tighter and start a touch further left** (capturing the
+line-start), which is why our first-word accuracy is higher. So the picture and
+the numbers agree — the two detectors are near-equivalent, with our kraken
+segmentation marginally better at line-starts. Extending the numeric eval to all
+300 val lines (~15 min) or drawing overlays for 10 pages (~5 min) is cheap but
+was judged unnecessary given the clear, consistent negative.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
