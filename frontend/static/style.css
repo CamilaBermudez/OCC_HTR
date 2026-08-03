@@ -441,7 +441,10 @@ main {
     padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border, #3a4150);
     background: #232833; color: #cdd6e0; cursor: pointer;
 }
-#upload-run { background: #2d5f8a; border-color: #3a76a8; color: #fff; }
+#upload-run { background: #2d5f8a; border-color: #3a76a8; color: #fff; }  /* primary */
 #upload-run:disabled { opacity: 0.5; cursor: default; }
+/* New image = secondary action: muted outline so Transcribe reads as primary. */
+#upload-new { background: transparent; border-color: var(--panel-border, #3a4150); color: var(--muted, #9fb3c4); }
+#upload-new:hover { color: var(--text, #e5e5e5); border-color: var(--accent, #ffb84d); }
 .upload-status { color: var(--muted, #9fb3c4); margin-left: auto; }
 .upload-hint { padding: 16px; color: var(--muted, #9fb3c4); font-size: 13px; line-height: 1.5; }

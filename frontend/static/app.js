@@ -418,6 +418,9 @@ function activateTab(tabId) {
     // The corpus Page selector is irrelevant on the upload tab (you bring your
     // own image), so hide it there.
     $(".page-selector").style.display = tabId === "tab-transcribe" ? "none" : "flex";
+    // The corpus footer (page · segmented/scholarly line counts) is irrelevant
+    // on the upload tab too.
+    $("#status").style.display = tabId === "tab-transcribe" ? "none" : "";
     // A pane that was previously ``display: none`` had clientWidth = 0
     // when its image loaded, so applyZoom used a bogus fit. Recompute
     // now that the pane is measurable again.
@@ -593,7 +596,11 @@ function saveBlob(text, filename, mime) {
 }
 function downloadUploadText() {
     const m = state.upload.result?.model || "catmus";
-    saveBlob(uploadPlainText(), `transcription_${uploadBaseName()}_${m}.txt`, "text/plain");
+    // include the text-line number: "<n>\t<text>" per line
+    const text = (state.upload.result?.lines || [])
+        .map((l) => `${l.order}\t${l.text}`)
+        .join("\n");
+    saveBlob(text, `transcription_${uploadBaseName()}_${m}.txt`, "text/plain");
 }
 function downloadUploadAlto() {
     const alto = state.upload.result?.alto || "";
