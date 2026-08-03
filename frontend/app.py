@@ -18,8 +18,9 @@ Environment variables (all optional; see :class:`frontend.config.Config`):
 import logging
 from dataclasses import asdict
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -97,6 +98,34 @@ def api_get_page_image(page_key: str) -> FileResponse:
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return FileResponse(path, media_type="image/jpeg")
+
+
+@app.post("/api/transcribe")
+def api_transcribe(
+    file: Annotated[UploadFile, File()],
+    model: Annotated[str, Form()] = "catmus",
+) -> dict:
+    """Upload a page image → segment + reading-order + line-by-line recognise.
+
+    Sync endpoint (FastAPI runs it in a threadpool) since kraken is blocking and
+    takes ~30-60 s/page. Returns image size + per-line polygon + predicted text.
+    """
+    import shutil
+    import tempfile
+
+    from src.ocr.page_pipeline import transcribe_page
+
+    suffix = Path(file.filename or "upload.jpg").suffix or ".jpg"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tf:
+        shutil.copyfileobj(file.file, tf)
+        tmp = Path(tf.name)
+    try:
+        return transcribe_page(tmp, model=model)
+    except Exception as exc:  # surface pipeline errors to the client
+        logging.exception("transcribe failed")
+        raise HTTPException(status_code=500, detail=f"transcription failed: {exc}") from exc
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 # Static mount is LAST so ``/api/*`` routes take precedence. The SPA at

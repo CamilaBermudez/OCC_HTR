@@ -133,6 +133,10 @@ main {
     grid-template-columns: 1.4fr 1fr 1fr;
 }
 
+#tab-transcribe.active {
+    grid-template-columns: 1.4fr 1fr;
+}
+
 /* ---------- Panes ---------- */
 .pane {
     background: var(--panel);
@@ -413,3 +417,31 @@ main {
     content: " ⚠";
     color: #d0a020;
 }
+
+/* ---------- Tab 3: upload & transcribe ---------- */
+.upload-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border, #2a2f37);
+    background: var(--panel, #1b1f27);
+    font-size: 13px;
+}
+.upload-bar label { color: var(--muted, #9fb3c4); display: inline-flex; align-items: center; gap: 5px; }
+.upload-file { cursor: pointer; }
+.upload-file input[type="file"] { display: none; }
+.upload-file span {
+    display: inline-block; padding: 5px 10px; border-radius: 4px;
+    border: 1px solid var(--border, #3a4150); background: #232833; color: #cdd6e0;
+    max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.upload-bar select, .upload-bar button {
+    padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border, #3a4150);
+    background: #232833; color: #cdd6e0; cursor: pointer;
+}
+#upload-run { background: #2d5f8a; border-color: #3a76a8; color: #fff; }
+#upload-run:disabled { opacity: 0.5; cursor: default; }
+.upload-status { color: var(--muted, #9fb3c4); margin-left: auto; }
+.upload-hint { padding: 16px; color: var(--muted, #9fb3c4); font-size: 13px; line-height: 1.5; }

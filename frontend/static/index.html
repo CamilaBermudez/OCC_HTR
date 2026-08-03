@@ -12,6 +12,7 @@
         <nav class="tab-nav">
             <button class="tab-btn active" data-tab="tab-transcription">Transcription</button>
             <button class="tab-btn" data-tab="tab-alignment">3-way alignment</button>
+            <button class="tab-btn" data-tab="tab-transcribe">Transcribe a page</button>
         </nav>
         <div class="page-selector">
             <label for="page-select">Page</label>
@@ -81,6 +82,42 @@
                     </div>
                 </div>
                 <div class="line-list" id="lines-ours-2"></div>
+            </div>
+        </section>
+
+        <!-- ============ TAB 3: upload & transcribe a page ============ -->
+        <section id="tab-transcribe" class="tab-panel">
+            <div class="pane pane-image" data-target="3">
+                <div class="upload-bar">
+                    <label class="upload-file">
+                        <input type="file" id="upload-input" accept="image/*">
+                        <span>Choose page image…</span>
+                    </label>
+                    <label>Model
+                        <select id="upload-model">
+                            <option value="catmus">CATMuS (kraken)</option>
+                        </select>
+                    </label>
+                    <button id="upload-run" disabled>Transcribe</button>
+                    <span id="upload-status" class="upload-status"></span>
+                </div>
+                <div class="image-scroll">
+                    <div class="image-wrap" id="image-wrap-3"></div>
+                </div>
+            </div>
+            <div class="pane pane-text">
+                <div class="pane-header">
+                    <span class="pane-title">Predicted transcription</span>
+                    <div class="pane-actions">
+                        <button id="upload-copy">Copy</button>
+                        <button id="upload-download">Download .txt</button>
+                    </div>
+                </div>
+                <div class="line-list" id="lines-transcribe">
+                    <div class="upload-hint">Upload a manuscript page, pick a model (default CATMuS),
+                        and hit Transcribe. The full pipeline runs — line segmentation → reading order →
+                        line-by-line recognition (~30–60 s/page).</div>
+                </div>
             </div>
         </section>
     </main>

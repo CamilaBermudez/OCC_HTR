@@ -16,7 +16,10 @@ const state = {
     // Per-image-pane zoom level (1.0 = fit-to-pane at load time).
     // Two independent images (one per tab) so users can zoom on tab 1
     // and independently zoom on tab 2 without losing their place.
-    zoom: { "1": 1, "2": 1 },
+    zoom: { "1": 1, "2": 1, "3": 1 },
+    // Tab 3 (upload & transcribe): the selected File, its object URL, and the
+    // last pipeline result.
+    upload: { file: null, imgURL: null, result: null },
 };
 
 const ZOOM_MIN = 0.25;
@@ -63,7 +66,7 @@ async function selectPage(pageKey) {
     // Reset zoom on page change — otherwise a previously-cranked-up
     // zoom persists silently and the new page opens at the wrong
     // magnification.
-    state.zoom = { "1": 1, "2": 1 };
+    state.zoom = { "1": 1, "2": 1, "3": state.zoom["3"] || 1 };
     state.currentPage = await fetchJson(`/api/pages/${encodeURIComponent(pageKey)}`);
     $("#page-select").value = pageKey;
     renderAll();
@@ -449,6 +452,118 @@ function downloadTranscription() {
     URL.revokeObjectURL(url);
 }
 
+// ---------- Tab 3: upload & transcribe a page ----------
+function bindUploadTab() {
+    const input = $("#upload-input");
+    const runBtn = $("#upload-run");
+    if (!input || !runBtn) return;
+    input.addEventListener("change", () => {
+        const f = input.files[0] || null;
+        state.upload.file = f;
+        runBtn.disabled = !f;
+        const span = input.closest(".upload-file").querySelector("span");
+        span.textContent = f ? f.name : "Choose page image…";
+        if (state.upload.imgURL) URL.revokeObjectURL(state.upload.imgURL);
+        state.upload.imgURL = f ? URL.createObjectURL(f) : null;
+    });
+    runBtn.addEventListener("click", runTranscribe);
+    $("#upload-copy").addEventListener("click", () =>
+        navigator.clipboard.writeText(uploadPlainText()));
+    $("#upload-download").addEventListener("click", downloadUploadText);
+}
+
+async function runTranscribe() {
+    const f = state.upload.file;
+    if (!f) return;
+    const status = $("#upload-status");
+    const runBtn = $("#upload-run");
+    runBtn.disabled = true;
+    status.textContent = "⏳ running pipeline… (~30–60 s)";
+    const fd = new FormData();
+    fd.append("file", f);
+    fd.append("model", $("#upload-model").value);
+    const t0 = performance.now();
+    try {
+        const resp = await fetch("/api/transcribe", { method: "POST", body: fd });
+        if (!resp.ok) {
+            let msg = resp.statusText;
+            try { msg = (await resp.json()).detail || msg; } catch (_) {}
+            throw new Error(msg);
+        }
+        const data = await resp.json();
+        state.upload.result = data;
+        renderUploadResult(data);
+        status.textContent = `✅ ${data.n_lines} lines · ${data.model} · ${((performance.now() - t0) / 1000).toFixed(0)}s`;
+    } catch (e) {
+        status.textContent = `❌ ${e.message}`;
+    } finally {
+        runBtn.disabled = false;
+    }
+}
+
+function renderUploadResult(data) {
+    // image + polygon overlay (same structure as the viewer panes)
+    const wrap = $("#image-wrap-3");
+    wrap.innerHTML = "";
+    const img = document.createElement("img");
+    img.src = state.upload.imgURL;
+    img.addEventListener("load", () => applyZoom("3"));
+    wrap.appendChild(img);
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", `0 0 ${data.width} ${data.height}`);
+    svg.setAttribute("preserveAspectRatio", "none");
+    for (const ln of data.lines) {
+        if (!ln.polygon || ln.polygon.length < 3) continue;
+        const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+        poly.setAttribute("points", ln.polygon.map(([x, y]) => `${x},${y}`).join(" "));
+        poly.dataset.order = String(ln.order);
+        poly.addEventListener("click", () => selectUploadLine(ln.order));
+        svg.appendChild(poly);
+    }
+    wrap.appendChild(svg);
+    // line list
+    const list = $("#lines-transcribe");
+    list.innerHTML = "";
+    for (const ln of data.lines) {
+        const row = document.createElement("div");
+        row.className = "line-row";
+        row.dataset.order = String(ln.order);
+        const idx = document.createElement("span");
+        idx.className = "line-idx";
+        idx.textContent = ln.order;
+        const txt = document.createElement("span");
+        txt.className = "line-text";
+        txt.textContent = ln.text || "";
+        if (!ln.text) txt.classList.add("missing");
+        row.append(idx, txt);
+        row.addEventListener("click", () => selectUploadLine(ln.order));
+        list.appendChild(row);
+    }
+}
+
+function selectUploadLine(order) {
+    $$("#image-wrap-3 svg polygon").forEach((p) =>
+        p.classList.toggle("selected", Number(p.dataset.order) === order));
+    $$("#lines-transcribe .line-row").forEach((r) => {
+        const on = Number(r.dataset.order) === order;
+        r.classList.toggle("selected", on);
+        if (on) r.scrollIntoView({ block: "nearest" });
+    });
+}
+
+function uploadPlainText() {
+    return (state.upload.result?.lines || []).map((l) => l.text).join("\n");
+}
+function downloadUploadText() {
+    const blob = new Blob([uploadPlainText()], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "transcription.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
 // ---------- Wire up ----------
 function bindEvents() {
     $$(".tab-btn").forEach((btn) => {
@@ -467,6 +582,7 @@ function bindEvents() {
 
 async function init() {
     bindEvents();
+    bindUploadTab();
     bindZoomHandlers();
     bindPanHandlers();
     try {
