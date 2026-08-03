@@ -3378,6 +3378,49 @@ aren't directly comparable — the *rates* and the recovery story are. Only
 ViT+RoBERTa **T1** exists (T2–T4 never trained — VM stopped, §6.5.21); Swin+BERT
 has T1+T2.
 
+## 6.9 PaddleOCR evaluated (recognizer + detector) — negative (2026-08-03)
+
+User asked to assess **PaddleOCR** (PaddlePaddle framework, not PyTorch) as an
+alternative. Installed CPU-only in an isolated env on the Mac (PaddlePaddle has
+**no Apple-MPS** support; the M4 speedup they cite is CPU). Two out-of-the-box
+smoke tests; artefacts in `tests/ocr/paddleocr_smoke_20260803/`, scripts
+`scripts/ocr/paddleocr_seg_eval.py` (+ scratch `paddle_rec_test.py`,
+`paddle_detect_pages.py`).
+
+**(a) Recognizer — not competitive.** Zero-shot `latin_PP-OCRv5_mobile_rec` on
+10 validation lines: **mean CER ≈ 0.234** (~77 % char-acc). A competent
+printed-Latin reader that struggles with the gothic hand — far behind our
+fine-tuned ViT+RoBERTa (**0.087**) and behind kraken/CATMuS. Architecturally it's
+another CTC recognizer (SVTR/PP-HGNet), i.e. the same family as our kraken
+baseline. **Skip as a recognizer.**
+
+**(b) Detector — great recall, no crop-quality win.** Hypothesis (from §6.7.1):
+better line detection could cut the **line-initial garble**. Test
+(`paddleocr_seg_eval.py`): for each of 92 validation lines on 12 pages, crop it
+from the RAW page with our kraken box vs the **IoU-matched** PaddleOCR box (both
+raw rects from the same image, so only box geometry differs), run the *same*
+ViT+RoBERTa on each. (First pass matched some lines to a *neighbouring* PaddleOCR
+box → fake huge gap; fixed with IoU≥0.4 clean-match filter — a reminder that
+comparing two segmentations needs reliable line correspondence, the same problem
+as §6.7.)
+
+| metric | our kraken seg | PaddleOCR det |
+|---|---|---|
+| detection recall (real text lines) | — | **100 %** (0 missed) |
+| mean CER (89 clean matches) | **0.103** | 0.125 |
+| **first-word acc** (line-initial test) | **0.674** | 0.629 |
+| per-line better / worse / equal | — | 20 / 33 / 36 |
+
+PaddleOCR's **recall is excellent** (found every real text line; the "2 missed"
+seen in the annotated page were decoration, not text), but its crops are
+**marginally worse** for our recogniser and — the decisive cell — **first-word
+accuracy is *lower*, not higher**, so it does **not** fix line-initial garble.
+Median box heights are identical (37 vs 38 px). **Conclusion: our existing
+segmentation is as good or better; line-initial errors are not primarily a
+box-geometry problem.** Overall PaddleOCR is strong general OCR but neither its
+recognizer nor its detector beats what we have for this manuscript — **do not
+adopt.** (Isolated paddle env + large exports live in scratch, not committed.)
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
