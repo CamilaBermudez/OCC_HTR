@@ -3815,19 +3815,21 @@ tab 3 runs the live pipeline on an uploaded image:
   **recognition** via `kraken.rpred` with the `.mlmodel` (~30–60 s/page on CPU).
   Returns image size + per-line polygon + predicted text **+ ALTO XML**; the
   frontend overlays the boxes on the uploaded image (client-side object URL, same
-  SVG/zoom/pan as tabs 1–2) and lists the transcription. **Downloads:** plain
-  `.txt` and **ALTO** (`.xml`, layout + text — `kraken.serialization.serialize`
-  on the rpred *records*, so `<String CONTENT>` is populated; a bare
-  `BaselineLine.text` does not serialise), both named
-  `transcription_<uploaded-file>_<model>.<ext>`. ALTO uses
+  SVG/zoom/pan as tabs 1–2) and lists the transcription. **Downloads:** a
+  **numbered `.txt`** (`<line-no>\t<text>` per line) and **ALTO** (`.xml`, layout
+  + text — `kraken.serialization.serialize` on the rpred *records*, so
+  `<String CONTENT>` is populated; a bare `BaselineLine.text` does not
+  serialise), both named `transcription_<uploaded-file>_<model>.<ext>`. ALTO uses
   `sub_line_segmentation=False` → one `<String>` per `<TextLine>` carrying the
   **whole line text** (no per-`<Glyph>` clutter; ~99 KB vs ~2.6 MB), and
   `image_name` writes the **original upload filename** into `<fileName>` (the
-  server transcribes a temp file). **New image** button resets +
-  reopens the picker; the corpus **Page selector is hidden** on this tab (you
-  bring your own image). Model registry `KRAKEN_MODELS` (currently `catmus`) is
-  where kraken-ft / TrOCR options plug in later. Needs `python-multipart`
-  (FastAPI file uploads) + kraken on PATH (`KRAKEN_BIN` or `shutil.which`).
+  server transcribes a temp file). **UI:** **New image** button resets + reopens
+  the picker (styled as a muted *secondary* action so the blue **Transcribe**
+  reads as primary); on this tab the corpus **Page selector and status-bar
+  footer are hidden** (both are about browsing the corpus, irrelevant to an
+  upload). Model registry `KRAKEN_MODELS` (currently `catmus`) is where
+  kraken-ft / TrOCR options plug in later. Needs `python-multipart` (FastAPI file
+  uploads) + kraken on PATH (`KRAKEN_BIN` or `shutil.which`).
 
 Both panes have a zoom toolbar (`−` `+` `⌂` reset), `Cmd`/`Ctrl` +
 scroll to zoom under the cursor, and **click-and-drag to pan** (Google
