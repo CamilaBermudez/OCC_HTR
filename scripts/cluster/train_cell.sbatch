@@ -30,13 +30,17 @@ trap 'echo "FAILED $(date -Is)" >> "'"$STAT"'"' ERR
 # assemble the tier (symlink medical+anno pools + merge labels.json)
 POOL=$(bash scripts/cluster/build_tier.sh "$TIER" "$FONT")
 
+# optional smoke-test overrides: EPOCHS / BATCH / MAX_AUG (cap the aug pool)
+EPOCHS="${EPOCHS:-15}"; BATCH="${BATCH:-64}"
+extra=(); [ -n "${MAX_AUG:-}" ] && extra+=(--max-aug-samples "$MAX_AUG")
+
 # train: single-stage, pretrained cross-attention; big batch on the 141 GB H200
 python scripts/ocr/run_trocr_finetune.py \
   --pretrained-model-id microsoft/trocr-base-handwritten \
   --augmented-folder "$POOL" \
   --labels-json "$POOL/labels.json" \
   --output-base-dir "$WS/models/$CELL" \
-  --batch-size 64 --gradient-accumulation-steps 1 \
-  --epochs 15 --device cuda --resize-mode pad
+  --batch-size "$BATCH" --gradient-accumulation-steps 1 \
+  --epochs "$EPOCHS" --device cuda --resize-mode pad "${extra[@]}"
 
 echo "DONE $(date -Is) -> $WS/models/$CELL" > "$STAT"

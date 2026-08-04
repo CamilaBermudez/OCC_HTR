@@ -13,14 +13,16 @@ source "$(dirname "$0")/env.sh"
 
 uv venv --python 3.11 "$WS/.venv"
 source "$WS/.venv/bin/activate"
+# torchvision is REQUIRED: TrOCR's AutoImageProcessor imports it (image
+# transforms). Install it in the SAME resolve as torch so the CUDA builds match.
 uv pip install \
-    torch \
+    torch torchvision \
     "transformers==5.12.1" \
     accelerate pillow rapidfuzz numpy python-dotenv huggingface_hub
 
 python - <<'PY'
-import torch
-print("torch", torch.__version__,
+import torch, torchvision
+print("torch", torch.__version__, "| torchvision", torchvision.__version__,
       "| cuda:", torch.cuda.is_available(),
       "| device:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu")
 PY
