@@ -10,8 +10,14 @@
 export WS="$(ws_find cayn 2>/dev/null)"
 : "${WS:=/work/dlc2workfs3/zehlet-cayn}"       # fallback if ws_find is unavailable
 export PROJECT_ROOT="$HOME/cayn"              # code (rsynced from the laptop)
+export PATH="$HOME/.local/bin:$PATH"          # uv lives here (non-login shells)
+# Internet on the cluster is ONLY via the TF proxy — a compute-node srun shell
+# doesn't source ~/.bashrc, so set it explicitly here (uv/pip/hf all honour it).
+export http_proxy="http://tfsquid.informatik.intra.uni-freiburg.de:8080/"
+export https_proxy="$http_proxy"
+export ftp_proxy="$http_proxy"
+export no_proxy="informatik.privat,informatik.uni-freiburg.de,intra.informatik.uni-freiburg.de,localhost,127.0.0.1,rz.ki.privat,tf.ki.privat,tf.uni-freiburg.de,uni-freiburg.de"
 export HF_HOME="$WS/hf"                       # HuggingFace model/dataset cache
-export HF_HUB_ENABLE_HF_TRANSFER=1
 export UV_CACHE_DIR="$WS/uv-cache"
 export TMPDIR="$WS/tmp"
 export TOKENIZERS_PARALLELISM=false
@@ -19,5 +25,10 @@ export TOKENIZERS_PARALLELISM=false
 # resolve by putting the code root on the path (repo runs as `PROJECT_ROOT=.`).
 export PYTHONPATH="$PROJECT_ROOT:${PYTHONPATH:-}"
 mkdir -p "$WS"/{pools,models,hf,uv-cache,tmp,eval}
-# Activate the training venv if it has been built (node_setup.sh).
-[ -f "$WS/.venv/bin/activate" ] && source "$WS/.venv/bin/activate"
+# Activate the training venv if it has been built (node_setup.sh). Use an
+# if-block (not `&&`) so sourcing this file always returns 0 — otherwise a
+# caller running under `set -e` (node_setup.sh) exits when the venv is absent.
+if [ -f "$WS/.venv/bin/activate" ]; then
+    # shellcheck disable=SC1091
+    source "$WS/.venv/bin/activate"
+fi

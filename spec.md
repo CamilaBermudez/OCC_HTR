@@ -4023,12 +4023,18 @@ choice). Phases:
    relative `data/processed/…` paths resolve while big artifacts stay on `/work`.
    `env.sh` also sets `PYTHONPATH=$PROJECT_ROOT` (the cluster venv is not the
    repo's editable install).
-3. **Env** (once, on a GPU node) — `node_setup.sh`: `uv venv` + **CUDA torch** +
-   `transformers==5.12.1` + deps (training-only; NOT the repo's kraken/Mac
-   pins). Verify `torch.cuda.is_available()` on an H200. *This is the step most
-   likely to need version-tuning (Hopper needs a CUDA-12 torch matching
-   transformers) — not dangerous, just the main compatibility check; if it
-   mismatches we pin matching versions.*
+3. **Env** ✅ (2026-08-04, on an H200 via `srun`) — `node_setup.sh` built
+   `$WS/.venv` with **`torch 2.13.0+cu130` (`cuda: True`, device `NVIDIA H200`)**
+   + `transformers==5.12.1` + accelerate/pillow/rapidfuzz/numpy/huggingface_hub
+   (training-only; NOT the repo's kraken/Mac pins). Compatibility confirmed.
+   **Two cluster gotchas fixed in `env.sh`** (a compute-node `srun` shell does
+   NOT source `~/.bashrc`): (a) **internet is only via the TF proxy** —
+   `export http_proxy=http://tfsquid.informatik.intra.uni-freiburg.de:8080/` (+
+   `https_/ftp_/no_proxy`), else `uv`/pip/hf time out on GitHub & PyPI; (b) **`uv`
+   is in `~/.local/bin`** → add to PATH. Also fixed a `set -e` trap (env.sh's
+   venv-activate `&&` returned non-zero when the venv was absent, aborting
+   `node_setup.sh` before any output). `HF_HUB_ENABLE_HF_TRANSFER` dropped
+   (deprecated; hub uses Xet now).
 4. **Pools** — regenerate T2/T3/T4 medical+anno pools (seed 42) on a CPU node
    (`mldlc2_cpu-epyc9655`) into `$WS/pools/`.
 5. **Smoke test** — one tiny cell on `testdlc2_gpu-h200` (1 h) end-to-end.

@@ -16,7 +16,7 @@ source "$WS/.venv/bin/activate"
 uv pip install \
     torch \
     "transformers==5.12.1" \
-    accelerate pillow rapidfuzz numpy python-dotenv "huggingface_hub[hf_transfer]"
+    accelerate pillow rapidfuzz numpy python-dotenv huggingface_hub
 
 python - <<'PY'
 import torch
