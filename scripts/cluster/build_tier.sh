@@ -11,6 +11,7 @@ set -euo pipefail
 source "$(dirname "$0")/env.sh"
 TIER="$1"; FONT="$2"   # FONT = 1font | mf
 case "$TIER" in
+  T1) MED=4k; ANNO=3k ;;
   T2) MED=12k; ANNO=9k ;;
   T3) MED=36k; ANNO=27k ;;
   T4) MED=120k; ANNO=90k ;;

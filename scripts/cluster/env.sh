@@ -28,7 +28,9 @@ mkdir -p "$WS"/{pools,models,hf,uv-cache,tmp,eval}
 # Activate the training venv if it has been built (node_setup.sh). Use an
 # if-block (not `&&`) so sourcing this file always returns 0 — otherwise a
 # caller running under `set -e` (node_setup.sh) exits when the venv is absent.
-if [ -f "$WS/.venv/bin/activate" ]; then
+# The kraken track sets CAYN_NO_VENV=1 to skip this: it runs via `uv run` in the
+# pyproject env (torch 2.4.1) instead of the TrOCR venv (torch 2.13).
+if [ -z "${CAYN_NO_VENV:-}" ] && [ -f "$WS/.venv/bin/activate" ]; then
     # shellcheck disable=SC1091
     source "$WS/.venv/bin/activate"
 fi
