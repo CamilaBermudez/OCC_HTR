@@ -4003,10 +4003,34 @@ separate GPUs.
   `uv pip install …` + `hf download …`, so PyPI/HF work here (removes the
   earlier "no internet" blocker seen from a bare `curl` on the submit host).
 
-**Resume plan (cayn):** `/work/dlclarge1/zehlet-cayn/` for data+checkpoints; get
-the repo to `~/cayn` (rsync from laptop, or clone + strip the `occ_htr` remote —
-no `occ_htr` string on the cluster); `uv venv`+`uv pip install`; `sbatch` to
-`mldlc2_gpu-h200`; smoke-test on `testdlc2_gpu-h200` first.
+**Resume plan (cayn) — ViT+RoBERTa T2–T4, then kraken (2026-08-04).** Scripts
+drafted in `scripts/cluster/` (`env.sh`, `node_setup.sh`, `build_tier.sh`,
+`train_cell.sbatch`, `README.md`). Priority = the 6 unfinished **ViT+RoBERTa**
+cells (T2/T3/T4 × {1font, mf}); **kraken** next (before Swin+RoBERTa, user
+choice). Phases:
+1. **Local drafts** (done) — the `scripts/cluster/` set above.
+2. **Deploy** — `mkdir` `$WS=/work/dlclarge1/zehlet-cayn` + `~/cayn`; `rsync` the
+   **code** to `~/cayn` (exclude `.git`/`.venv`/`models`/`data/raw`/`frontend`/
+   `notebooks`/`spec*.md` → no `occ_htr` remote or docs on the cluster); `rsync`
+   the pool-gen **inputs** (medical corpus, 600 GT, fonts, glyphs, parchment,
+   300-val) to `$WS/inputs`.
+3. **Env** (once, on a GPU node) — `node_setup.sh`: `uv venv` + **CUDA torch** +
+   `transformers==5.12.1` + deps (training-only; NOT the repo's kraken/Mac
+   pins). Verify `torch.cuda.is_available()` on an H200.
+4. **Pools** — regenerate T2/T3/T4 medical+anno pools (seed 42) on a CPU node
+   (`mldlc2_cpu-epyc9655`) into `$WS/pools/`.
+5. **Smoke test** — one tiny cell on `testdlc2_gpu-h200` (1 h) end-to-end.
+6. **Full grid** — 6 `sbatch` jobs to `mldlc2_gpu-h200`, 1 GPU each, parallel on
+   idle H200s (batch 64), ~½–1 day.
+7. **Harvest** — `rsync` each `best_model` to the laptop, **rename cayn→occ_htr**,
+   300-val eval on MPS, log to §6.5.21.
+
+**Monitoring — no email** (the `--mail-type` signal goes to the user, not the
+assistant, so it's dropped). Instead: `squeue -u $USER` for live state, and each
+job writes `$WS/status/<cell>.status` = RUNNING/DONE/FAILED (one `cat`); the
+assistant polls these + the job logs whenever the session is up. sbatch jobs run
+**independently of any SSH session** (unlike the old GCP VM detached scripts), so
+they survive the VPN/session closing.
 
 ## 8. Command cheat-sheet
 
