@@ -2858,9 +2858,25 @@ eval is inference-only so it fits 16 GB and doesn't touch the VM GPU).
 | **Swin+BERT Stage-2 T2 mf** | Stage-1 → med12k+anno9k (mf) | 0.219 | **0.781** | 0.492 | same story — flat ~0.78. |
 | **Swin+BERT Stage-2 T3 1font** | Stage-1 → med36k+anno27k | 0.222 | **0.778** | 0.514 | 9× T1 data → **worse than T1** (0.793). Monotonic decline T1→T2→T3 = 0.793→0.784→0.778: more synthetic augmentation actively *hurts* real accuracy for this arch. |
 
+| **ViT+RoBERTa T2 1font** | med12k+anno9k | 0.073 | **0.9271** | 0.288 | single-stage pretrained X-attn; **+1.4pp over its own T1** (0.913). Trained on the **Freiburg H200** (batch 64, 15 ep, ~1h20m). Backed up local (`vitroberta_T2_1font_20260804`). |
+| **ViT+RoBERTa T2 mf** | med12k+anno9k (mf) | 0.070 | **0.9298** | 0.280 | +1.6pp over its own T1 (0.914); **mf now edges 1font** (+0.27pp) — multifont starts to matter past T1 (was +0.12pp at T1). Freiburg H200. |
+
 **T1 tier complete (both archs).** 300-val char_acc: ViT+RoBERTa 1font 0.913 / mf
 0.914 ≫ Swin+BERT Stage-2 1font 0.793 / mf 0.800 (Stage-1 baseline 0.787).
 **ViT+RoBERTa wins by ~11–12pp** on both fonts (cross-attention bottleneck).
+
+**T2 tier (ViT+RoBERTa) — the two arch lines diverge.** ViT+RoBERTa T2 lands at
+**0.9271 (1font) / 0.9298 (mf)**, *above* its own T1, while Swin+BERT T2 *fell*
+to 0.784 / 0.781. Same tier, same data, **opposite slope**: pretrained
+cross-attention keeps converting extra synthetic volume into real-manuscript
+accuracy where from-scratch cross-attention overfits it. The gap widens to
+**~14–15pp** at T2 (from ~11–12pp at T1). This is the thesis's central claim made
+quantitative — the bottleneck is *architectural*, not data. T3/T4 ViT+RoBERTa
+cells are training on the H200s to confirm whether the pretrained line keeps
+climbing or plateaus (Stage-1-only plateaued ~0.79 at 120k). Eval recipe
+unchanged: `run_trocr_transcribe` (MPS, beam 4) → `run_evaluate_ocr` vs the
+canonical 300-val; per-line CSV at
+`tests/ocr/evaluations/vitroberta_T2_vs_val300/`.
 **Multifont** ≈ neutral for ViT (+0.1pp), small real gain for Swin+BERT (+0.7pp).
 
 **Swin+BERT Stage-2 T1→T2 = FLAT (~0.78–0.80).** Tripling the Stage-2 data
