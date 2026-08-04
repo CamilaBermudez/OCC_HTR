@@ -2860,6 +2860,8 @@ eval is inference-only so it fits 16 GB and doesn't touch the VM GPU).
 
 | **ViT+RoBERTa T2 1font** | med12k+anno9k | 0.073 | **0.9271** | 0.288 | single-stage pretrained X-attn; **+1.4pp over its own T1** (0.913). Trained on the **Freiburg H200** (batch 64, 15 ep, ~1h20m). Backed up local (`vitroberta_T2_1font_20260804`). |
 | **ViT+RoBERTa T2 mf** | med12k+anno9k (mf) | 0.070 | **0.9298** | 0.280 | +1.6pp over its own T1 (0.914); **mf now edges 1font** (+0.27pp) — multifont starts to matter past T1 (was +0.12pp at T1). Freiburg H200. |
+| **ViT+RoBERTa T3 1font** | med36k+anno27k | 0.082 | **0.9185** | 0.303 | **down −0.86pp from T2** (0.9271) — the pretrained line peaks at T2 and starts to dip. Still +14.1pp over Swin+BERT T3 (0.778). Freiburg H200 (~4h). |
+| **ViT+RoBERTa T3 mf** | med36k+anno27k (mf) | 0.090 | **0.9098** | 0.321 | **down −2.0pp from T2** (0.9298); **1font now beats mf** (+0.87pp) — the T2 mf-edge reverses. At high synthetic volume the extra font diversity *hurts* real transfer. |
 
 **T1 tier complete (both archs).** 300-val char_acc: ViT+RoBERTa 1font 0.913 / mf
 0.914 ≫ Swin+BERT Stage-2 1font 0.793 / mf 0.800 (Stage-1 baseline 0.787).
@@ -2878,6 +2880,19 @@ unchanged: `run_trocr_transcribe` (MPS, beam 4) → `run_evaluate_ocr` vs the
 canonical 300-val; per-line CSV at
 `tests/ocr/evaluations/vitroberta_T2_vs_val300/`.
 **Multifont** ≈ neutral for ViT (+0.1pp), small real gain for Swin+BERT (+0.7pp).
+
+**T3 tier (ViT+RoBERTa) — the pretrained line PEAKS at T2, then dips.** Full
+1font ladder on the 300-val: **0.913 (T1) → 0.9271 (T2) → 0.9185 (T3)** — a clean
+inverted-U with the optimum at **T2 (med12k+anno9k)**. So even the winning arch
+has a *best* synthetic volume, past which more augmentation mildly overfits — but
+critically it **never collapses** (stays 0.91–0.93, always ~+13–14pp above
+Swin+BERT, which by T3 has fallen to 0.778). The mf/1font order also **flips**:
+mf led at T2 (+0.27pp) but 1font leads at T3 (+0.87pp) — extra font diversity
+helps at moderate volume and hurts at high volume. Reading: the two knobs
+(augmentation count × font diversity) both push the synthetic distribution
+*away* from the real manuscript once past the T2 sweet spot. T4 (the 210k giants)
+tests whether the dip continues or flattens. Per-line CSV:
+`tests/ocr/evaluations/vitroberta_T3_vs_val300/`.
 
 **Swin+BERT Stage-2 T1→T2 = FLAT (~0.78–0.80).** Tripling the Stage-2 data
 (7k→21k) did not move the real 300-val (it even dipped slightly), while the
