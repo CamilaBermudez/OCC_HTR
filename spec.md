@@ -3962,6 +3962,52 @@ On 2026-07-22 this freed ~48 GB (7 runs; `/home/jupyter` 25 GB → 72 GB
 free). **Never prune before the backup byte count is verified on the
 laptop.**
 
+### 7.6 Freiburg TF KI-Cluster (SLURM) — scanned 2026-08-04
+
+Successor to the GCP VM for the remaining grid. **Login / VPN / passwords /
+access policy are in the gitignored `spec_server_connection.md`** (not committed).
+On the cluster this project is code-named **`cayn`** — **never write `occ_htr`
+there**: work dir `/work/dlclarge1/zehlet-cayn/`, repo dir `~/cayn`; rename back
+to `occ_htr` only when pulling artifacts to the laptop.
+
+**Compute (accounts `ml`, `ml-dlc2`, … all QOS `normal`; 24 h walltime, `test*`
+partitions = 1 h debug):**
+
+| partition | GPUs | per-GPU mem | per node |
+|---|---|---|---|
+| `mldlc2_gpu-h200` | 8 nodes ×8 = 64× **H200** | **141 GB** | 384 CPU, 1.5 TB RAM, 3.6 TB localtmp |
+| `mldlc2_gpu-l40s` | 30 nodes ×8 = 240× **L40S** | 48 GB | 128 CPU, 1 TB RAM, 1.6 TB localtmp |
+| `ml_gpu-rtx2080` | 3 nodes | 11 GB | — |
+
+SLURM allocates **per-GPU, not per-node** — request `--gres=gpu:1
+--cpus-per-task N --mem …` and you get 1 dedicated GPU while the node's other 7
+run other users' jobs (no "half a GPU"; 1 GPU is the unit; you neither slow nor
+are slowed by co-tenants). 1× H200 ≈ 6× the L4's memory. **Rough estimate:**
+ViT+RoBERTa T2–T4 both fonts was ~50 h on the L4 (per font ~2/5.6/18.5 h for
+T2/T3/T4); on one H200 ≈ **½–1 day**, or a few hours if cells run in parallel on
+separate GPUs.
+
+**Group conventions (observed, read-only):**
+- **Code in `$HOME`** (git-cloned straight from GitHub — e.g. the user's
+  `~/auto-research-agent`, `~/catapult`), **big artifacts NEVER in home** (75 GB
+  quota) → `/work/dlclarge{1,2}/<user>-<project>/`. Folder naming
+  `<username>-<project>`. Node-local `localtmp` (1.6–3.6 TB) for fast job I/O.
+- **Envs per-user** (own `~/miniconda3` or **`uv`** — the user already uses
+  `uv venv --python 3.12` + `uv pip install` here, matching our toolchain). No
+  shared module system.
+- **Experiment tracking = wandb** (heavily used).
+- **Jobs = `sbatch`** with `#SBATCH` headers (`--nodes/--time 24:00:00/
+  --cpus-per-task/--gpus-per-task 1/--mem`, `-o /home/<user>/%x_%j.o`,
+  `--mail-type=END,FAIL`), body activates a venv + runs python.
+- **Deps ARE installable** on the cluster: the user's own `node_setup.sh` does
+  `uv pip install …` + `hf download …`, so PyPI/HF work here (removes the
+  earlier "no internet" blocker seen from a bare `curl` on the submit host).
+
+**Resume plan (cayn):** `/work/dlclarge1/zehlet-cayn/` for data+checkpoints; get
+the repo to `~/cayn` (rsync from laptop, or clone + strip the `occ_htr` remote —
+no `occ_htr` string on the cluster); `uv venv`+`uv pip install`; `sbatch` to
+`mldlc2_gpu-h200`; smoke-test on `testdlc2_gpu-h200` first.
+
 ## 8. Command cheat-sheet
 
 All commands assume `cd` into the project root and are runnable via
