@@ -1,3 +1,14 @@
+/* JuliaMono — monospace with full Latin-Extended + combining-mark coverage, so
+   medieval abbreviation glyphs (⁊ ꝑ ꝗ ꝯ ꝰ, combining tildes/superscripts, etc.)
+   render instead of tofu boxes. SF Mono/Menlo/Consolas lack these glyphs. OFL. */
+@font-face {
+    font-family: "JuliaMono";
+    src: url("/fonts/JuliaMono-Regular.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* ---------- Global ---------- */
 :root {
     --bg: #1e1e1e;
@@ -311,7 +322,7 @@ main {
     gap: 8px;
     padding: 6px 12px;
     cursor: pointer;
-    font-family: "SF Mono", "Menlo", "Consolas", monospace;
+    font-family: "JuliaMono", "SF Mono", "Menlo", "Consolas", monospace;
     font-size: 13px;
     line-height: 1.5;
     border-left: 3px solid transparent;
