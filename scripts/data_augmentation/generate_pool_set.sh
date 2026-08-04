@@ -24,7 +24,10 @@
 # =============================================================================
 set -uo pipefail
 cd "$(cd "$(dirname "$0")/../.." && pwd)"
-RUN(){ env PROJECT_ROOT=. PYTHONPATH=. uv run python "$@"; }
+# Runner: `uv run python` by default (uses the project venv from pyproject). On a
+# cluster where the pyproject's kraken/torch pins aren't wanted, set POOLGEN_PY to
+# a python interpreter (a venv with the render/augment deps) to bypass uv/pyproject.
+RUN(){ env PROJECT_ROOT=. PYTHONPATH=. ${POOLGEN_PY:-uv run python} "$@"; }
 
 # SCOPE=full (default) runs all 18 pools — use this on a dedicated VM.
 # SCOPE=small runs only the 12 cheaper pools (medical 4k/12k/36k + anno
