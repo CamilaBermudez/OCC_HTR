@@ -185,6 +185,17 @@ def main():
         "training pool is small (e.g. real-only) so the model sees "
         "more visual variation without needing more annotated lines.",
     )
+    parser.add_argument(
+        "--aug-unrouted-to-train",
+        action="store_true",
+        help="When the real/synth split routes aug files by real stem "
+        "(--real-*-frac > 0), send aug stems that match NO real line "
+        "(e.g. medical-corpus renders) to TRAIN instead of dropping them. "
+        "They carry no train/val leak risk — they don't derive from any "
+        "real val line — so this keeps medical in the tier for a fair "
+        "cross-architecture match with the TrOCR cells. Default: drop "
+        "(leak-safe, anno-only).",
+    )
 
     args = parser.parse_args()
     if not args.no_synth_train:
@@ -229,6 +240,7 @@ def main():
         real_replaces_synth_val=args.real_replaces_synth_val,
         no_synth_train=args.no_synth_train,
         ketos_augment=args.augment,
+        unrouted_to_train=args.aug_unrouted_to_train,
     )
 
 

@@ -44,6 +44,7 @@ uv run python scripts/ocr/run_finetune_ocr.py \
   --labels-json "$POOL/labels.json" \
   --real-folder data/processed/annotated_samples/OCR/full_annotated \
   --real-train-frac 0.6 --real-val-frac 0.4 \
+  --aug-unrouted-to-train \
   --output-base-dir "$WS/models/$CELL" \
   --val-fraction 0.1 --seed 42 \
   --lrate 1e-5 --lag 5 --resize union --epochs -1 \

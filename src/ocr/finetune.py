@@ -172,6 +172,7 @@ def stage_finetune_data(
     smoke_size: int | None,
     logger: logging.Logger,
     route_by_stems: tuple[set[str], set[str]] | None = None,
+    unrouted_to_train: bool = False,
 ) -> tuple[Path, Path, dict]:
     """Stage augmented PNGs + .gt.txt siblings into train/val subdirs.
 
@@ -208,11 +209,19 @@ def stage_finetune_data(
         train_stems = external_train & aug_stems_set
         val_stems = external_val & aug_stems_set
         unrouted = aug_stems_set - external_train - external_val
+        # Unrouted aug stems = variants of a source line NOT in the real split —
+        # e.g. medical-corpus renders, which don't derive from any real (val)
+        # line and so carry NO train/val leak risk. With unrouted_to_train they
+        # join TRAIN (keeping medical in the tier for a fair cross-arch match);
+        # otherwise they're dropped (leak-safe but anno-only).
+        if unrouted_to_train:
+            train_stems = train_stems | unrouted
         logger.info(
             f"stage_finetune_data: routing by external stem split "
             f"(aug pool has {len(aug_stems_set)} stems; "
-            f"routed {len(train_stems)} to train + {len(val_stems)} to val; "
-            f"{len(unrouted)} unrouted aug stems dropped)"
+            f"routed {len(external_train & aug_stems_set)} real-train + "
+            f"{len(val_stems)} val; {len(unrouted)} unrouted aug stems "
+            f"{'-> train' if unrouted_to_train else 'dropped'})"
         )
         if smoke_size is not None:
             logger.warning(
@@ -678,6 +687,7 @@ def finetune(
     real_replaces_synth_val: bool = True,
     no_synth_train: bool = False,
     ketos_augment: bool = False,
+    unrouted_to_train: bool = False,
 ) -> Path:
     """End-to-end fine-tune: stage data, run ``ketos train``, return run dir.
 
@@ -840,6 +850,7 @@ def finetune(
             smoke_size=effective_smoke_size,
             logger=logger,
             route_by_stems=route_by_stems,
+            unrouted_to_train=unrouted_to_train,
         )
     if real_folder is not None and (real_train_frac > 0 or real_val_frac > 0):
         # When we've already routed augs by the real split, the val_list
