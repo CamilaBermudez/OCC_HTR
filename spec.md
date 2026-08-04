@@ -3990,8 +3990,12 @@ separate GPUs.
 **Group conventions (observed, read-only):**
 - **Code in `$HOME`** (git-cloned straight from GitHub — e.g. the user's
   `~/auto-research-agent`, `~/catapult`), **big artifacts NEVER in home** (75 GB
-  quota) → `/work/dlclarge{1,2}/<user>-<project>/`. Folder naming
-  `<username>-<project>`. Node-local `localtmp` (1.6–3.6 TB) for fast job I/O.
+  quota) → `/work` workspaces. Node-local `localtmp` (1.6–3.6 TB) for fast job I/O.
+- **`/work` dirs are provisioned with the workspace tool, NOT `mkdir`** (top-level
+  `/work/dlclargeN` is admin-owned). `ws_allocate <name> <days>` creates
+  `/work/<fs>/<user>-<name>` (auto-picks the filesystem with room), `ws_find
+  <name>` resolves the path, `ws_list` shows them, `ws_extend` renews before the
+  expiry. Folder naming `<username>-<name>`.
 - **Envs per-user** (own `~/miniconda3` or **`uv`** — the user already uses
   `uv venv --python 3.12` + `uv pip install` here, matching our toolchain). No
   shared module system.
@@ -4008,15 +4012,23 @@ drafted in `scripts/cluster/` (`env.sh`, `node_setup.sh`, `build_tier.sh`,
 `train_cell.sbatch`, `README.md`). Priority = the 6 unfinished **ViT+RoBERTa**
 cells (T2/T3/T4 × {1font, mf}); **kraken** next (before Swin+RoBERTa, user
 choice). Phases:
-1. **Local drafts** (done) — the `scripts/cluster/` set above.
-2. **Deploy** — `mkdir` `$WS=/work/dlclarge1/zehlet-cayn` + `~/cayn`; `rsync` the
-   **code** to `~/cayn` (exclude `.git`/`.venv`/`models`/`data/raw`/`frontend`/
-   `notebooks`/`spec*.md` → no `occ_htr` remote or docs on the cluster); `rsync`
-   the pool-gen **inputs** (medical corpus, 600 GT, fonts, glyphs, parchment,
-   300-val) to `$WS/inputs`.
+1. **Local drafts** ✅ — the `scripts/cluster/` set above.
+2. **Deploy** ✅ (2026-08-04) — `ws_allocate cayn 60` → **`$WS=/work/dlc2workfs3/
+   zehlet-cayn`** (the ws tool put it on `dlc2workfs3`, not `dlclarge1`; `env.sh`
+   resolves `$WS` via `ws_find cayn`). Code `rsync`'d to `~/cayn` (only
+   `src scripts fonts glyphs pyproject.toml uv.lock` — 6 MB, no `.git`/docs, so no
+   `occ_htr` remote or spec on the cluster). Inputs `rsync -R`'d to `$WS/data`
+   (42 MB: medical corpus, 600 annotated, 300-val, 172 parchments — **no cometa**,
+   ViT+RoBERTa is single-stage). `~/cayn/data → $WS/data` symlink so the repo's
+   relative `data/processed/…` paths resolve while big artifacts stay on `/work`.
+   `env.sh` also sets `PYTHONPATH=$PROJECT_ROOT` (the cluster venv is not the
+   repo's editable install).
 3. **Env** (once, on a GPU node) — `node_setup.sh`: `uv venv` + **CUDA torch** +
    `transformers==5.12.1` + deps (training-only; NOT the repo's kraken/Mac
-   pins). Verify `torch.cuda.is_available()` on an H200.
+   pins). Verify `torch.cuda.is_available()` on an H200. *This is the step most
+   likely to need version-tuning (Hopper needs a CUDA-12 torch matching
+   transformers) — not dangerous, just the main compatibility check; if it
+   mismatches we pin matching versions.*
 4. **Pools** — regenerate T2/T3/T4 medical+anno pools (seed 42) on a CPU node
    (`mldlc2_cpu-epyc9655`) into `$WS/pools/`.
 5. **Smoke test** — one tiny cell on `testdlc2_gpu-h200` (1 h) end-to-end.
