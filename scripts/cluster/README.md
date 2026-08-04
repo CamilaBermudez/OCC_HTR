@@ -6,7 +6,7 @@ passwords + the *no-modify* access policy are in the gitignored
 `spec_server_connection.md`; the resource + convention notes are in spec §7.6.
 
 Conventions followed: **code in `~/cayn`, all big artifacts in `/work`**
-(`$WS=/work/dlclarge1/zehlet-cayn`), **`uv`** venv, **`sbatch`** jobs (which run
+(`$WS` via `ws_find cayn`; currently `/work/dlc2workfs3/zehlet-cayn`), **`uv`** venv, **`sbatch`** jobs (which run
 independently of any SSH session), **logs-based** tracking (no wandb).
 
 ## Files
@@ -20,8 +20,8 @@ independently of any SSH session), **logs-based** tracking (no wandb).
 ## Order of operations
 ```bash
 # --- from the LAPTOP (VPN up, one `ssh kislurm` session open) ---
-# 1. workspace + code
-ssh kislurm 'mkdir -p /work/dlclarge1/zehlet-cayn ~/cayn'
+# 1. workspace (allocate via the cluster tool) + code dir
+ssh kislurm 'ws_allocate cayn 60; mkdir -p ~/cayn; ln -sfn "$(ws_find cayn)/data" ~/cayn/data'
 rsync -avz --exclude '.git' --exclude '.venv' --exclude 'models' \
   --exclude 'data/raw' --exclude 'tests/ocr/evaluations' --exclude 'frontend' \
   --exclude 'notebooks' --exclude 'spec*.md' \
