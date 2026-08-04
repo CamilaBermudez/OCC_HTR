@@ -2862,6 +2862,7 @@ eval is inference-only so it fits 16 GB and doesn't touch the VM GPU).
 | **ViT+RoBERTa T2 mf** | med12k+anno9k (mf) | 0.070 | **0.9298** | 0.280 | +1.6pp over its own T1 (0.914); **mf now edges 1font** (+0.27pp) — multifont starts to matter past T1 (was +0.12pp at T1). Freiburg H200. |
 | **ViT+RoBERTa T3 1font** | med36k+anno27k | 0.082 | **0.9185** | 0.303 | **down −0.86pp from T2** (0.9271) — the pretrained line peaks at T2 and starts to dip. Still +14.1pp over Swin+BERT T3 (0.778). Freiburg H200 (~4h). |
 | **ViT+RoBERTa T3 mf** | med36k+anno27k (mf) | 0.090 | **0.9098** | 0.321 | **down −2.0pp from T2** (0.9298); **1font now beats mf** (+0.87pp) — the T2 mf-edge reverses. At high synthetic volume the extra font diversity *hurts* real transfer. |
+| **kraken T1 1font** | catmus + med4k+anno3k | 0.122 | **0.8781** | 0.553 | fine-tune CATMuS (single-stage, leak-fixed; medical in train via `--aug-unrouted-to-train`). **BELOW the off-the-shelf catmus baseline (0.9603)** and the earlier leak-fixed kraken (~0.90): fine-tuning on the synthetic tier pulls catmus's strong general-medieval prior toward the render distribution. word_acc 0.447 (CTC, no LM). Freiburg H200 (~30min). T2-T4 pending. |
 
 **T1 tier complete (both archs).** 300-val char_acc: ViT+RoBERTa 1font 0.913 / mf
 0.914 ≫ Swin+BERT Stage-2 1font 0.793 / mf 0.800 (Stage-1 baseline 0.787).
