@@ -4057,6 +4057,35 @@ assistant polls these + the job logs whenever the session is up. sbatch jobs run
 **independently of any SSH session** (unlike the old GCP VM detached scripts), so
 they survive the VPN/session closing.
 
+#### 7.6.1 Deployment execution log (2026-08-04)
+
+Scripts live in `scripts/cluster/` (`env.sh`, `node_setup.sh`, `poolgen_setup.sh`,
+`build_tier.sh`, `regen_pools.sbatch`, `train_cell.sbatch`, `README.md`).
+
+- **Phase 0–2 done** — workspace `ws_allocate cayn` landed on
+  `/work/dlc2workfs3/zehlet-cayn` (`env.sh` resolves it via `ws_find cayn`); code
+  in `~/cayn` with a `data` symlink to `$WS/data`; inputs rsynced (42 MB). Two
+  venvs: `$WS/.venv` (training) and `$WS/.venv-poolgen` (render+augment, no torch).
+- **Pools (Phase 4)** — `regen_pools.sbatch SCOPE=small` on `dlc2cpu01`
+  (epyc9655, 32 cores) regenerated the T2/T3 pools in **~29 min**: medical
+  4k/12k/36k + anno 3k/9k/27k, ×{1font,mf}, all with matching `labels.json`
+  (12 pools + 12 label sets, counts verified). The **T4 giants**
+  (`SCOPE=full`, medical 120k + anno 90k) run in a follow-up CPU job.
+- **torchvision gap (fixed)** — the smoke test caught it: TrOCR's
+  `AutoImageProcessor` imports **torchvision** (image transforms), absent from
+  the first `node_setup.sh` list → finetune died at load. Fixed by installing
+  `torchvision` in the same resolve as torch (**0.28.0+cu130 pairs with torch
+  2.13.0+cu130**); `node_setup.sh` updated so it's reproducible.
+- **Smoke test (Phase 5) PASSED** — `testdlc2_gpu-h200`, T2/1font,
+  `EPOCHS=1 MAX_AUG=200 BATCH=32` (via new `train_cell.sbatch` overrides). Full
+  path validated: `build_tier` (600 real + 200 aug → 634 train/166 val) → load
+  `trocr-base-handwritten` → train → eval → save `best_model` + processor. CER
+  was meaningless (1 epoch, 200 samples) — plumbing only.
+- **Grid (Phase 6) launched** — 4 real cells submitted to `mldlc2_gpu-h200`
+  (1 GPU, batch 64, 15 epochs each): T2/T3 × {1font, mf}. T4 cells wait on the
+  giants pool. Harvest (Phase 7): `rsync` each `best_model` to the laptop,
+  rename cayn→occ_htr, 300-val eval, log to §6.5.21.
+
 ## 8. Command cheat-sheet
 
 All commands assume `cd` into the project root and are runnable via
