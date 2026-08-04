@@ -20,6 +20,13 @@
 
 ---
 
+## 0. Questions to revisit (ask the assistant)
+
+Running list of things to discuss/understand later (user-maintained).
+- **Cluster internet is only via the TF proxy** (`http_proxy=http://tfsquid.informatik.intra.uni-freiburg.de:8080/`) — `uv`/pip/hf time out without it; an `srun` shell doesn't inherit it from `~/.bashrc`, so `scripts/cluster/env.sh` sets it. (Why proxy-only? implications for downloads/caching?) — added 2026-08-04, see §7.6.
+
+---
+
 ## 1. Thesis context
 
 - Manuscript: **AlbucE**, medieval medical text in Old Occitan.
