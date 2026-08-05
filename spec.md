@@ -2862,6 +2862,8 @@ eval is inference-only so it fits 16 GB and doesn't touch the VM GPU).
 | **ViT+RoBERTa T2 mf** | med12k+anno9k (mf) | 0.070 | **0.9298** | 0.280 | +1.6pp over its own T1 (0.914); **mf now edges 1font** (+0.27pp) — multifont starts to matter past T1 (was +0.12pp at T1). Freiburg H200. |
 | **ViT+RoBERTa T3 1font** | med36k+anno27k | 0.082 | **0.9185** | 0.303 | **down −0.86pp from T2** (0.9271) — the pretrained line peaks at T2 and starts to dip. Still +14.1pp over Swin+BERT T3 (0.778). Freiburg H200 (~4h). |
 | **ViT+RoBERTa T3 mf** | med36k+anno27k (mf) | 0.090 | **0.9098** | 0.321 | **down −2.0pp from T2** (0.9298); **1font now beats mf** (+0.87pp) — the T2 mf-edge reverses. At high synthetic volume the extra font diversity *hurts* real transfer. |
+| **ViT+RoBERTa T4 1font** | med120k+anno90k | 0.122 | **0.8783** | 0.371 | **down −4.0pp from T3** — the dip steepens at the 210k giant; 1font slides to catmus-fine-tune territory. Freiburg H200 (~10h). |
+| **ViT+RoBERTa T4 mf** | med120k+anno90k (mf) | 0.093 | **0.9074** | 0.324 | **≈ flat vs T3** (−0.24pp); mf **plateaus ~0.91** where 1font drops → **mf beats 1font by +2.9pp** at T4. Multifont is the more *robust* setting at extreme volume. |
 | **kraken T1 1font** | catmus + med4k+anno3k | 0.122 | **0.8781** | 0.553 | fine-tune CATMuS (single-stage, leak-fixed; medical in train via `--aug-unrouted-to-train`). **BELOW the off-the-shelf catmus baseline (0.9603)**. word_acc 0.447 (CTC, no LM). Freiburg H200 (~30min). |
 | **kraken T1 mf** | catmus + med4k+anno3k (mf) | 0.180 | **0.8204** | 0.726 | mf worse than 1font (−5.8pp), as at every kraken tier. word_acc 0.274. |
 | **kraken T2 1font** | catmus + med12k+anno9k | 0.226 | **0.7742** | 0.797 | −10.4pp vs T1 — more synthetic data makes it WORSE. |
@@ -2895,9 +2897,23 @@ Swin+BERT, which by T3 has fallen to 0.778). The mf/1font order also **flips**:
 mf led at T2 (+0.27pp) but 1font leads at T3 (+0.87pp) — extra font diversity
 helps at moderate volume and hurts at high volume. Reading: the two knobs
 (augmentation count × font diversity) both push the synthetic distribution
-*away* from the real manuscript once past the T2 sweet spot. T4 (the 210k giants)
-tests whether the dip continues or flattens. Per-line CSV:
+*away* from the real manuscript once past the T2 sweet spot. Per-line CSV:
 `tests/ocr/evaluations/vitroberta_T3_vs_val300/`.
+
+**T4 tier (ViT+RoBERTa) — the dip continues, gently; mf plateaus.** Full ladders:
+**1font 0.913 → 0.9271 → 0.9185 → 0.8783** and **mf 0.914 → 0.9298 → 0.9098 →
+0.9074**. Both peak at **T2**; 1font then slides −4.9pp to T4 while mf holds a
+~0.91 plateau (T4 mf beats T4 1font by +2.9pp — a *reversal* of the 1font-lead
+at T3, so the mf/1font order flips at every tier and multifont is the more robust
+setting at extreme volume). The pretrained line thus **overfits synthetic volume
+too, but degrades gracefully** — worst case T4 1font 0.878 ≈ kraken *T1* — never
+the kraken-style collapse (0.60) nor a Swin-style floor. Net grid picture: **more
+synthetic augmentation past T2 (≈med12k+anno9k) never helps and eventually hurts
+every architecture**; severity ranks kraken-collapse ≫ ViT-dip > Swin-flat, and
+pretrained cross-attention is both the **best** (T2 mf 0.9298) and the **most
+robust**. Overall corrected-benchmark leader remains **frozen catmus 0.9603** —
+no fine-tune beats it, but ViT+RoBERTa T2 comes within ~3pp. Per-line CSV:
+`tests/ocr/evaluations/vitroberta_T4_vs_val300/`.
 
 **kraken (fine-tune CATMuS) — MONOTONIC COLLAPSE with synthetic volume; frozen
 catmus wins.** 1font ladder: **0.878 (T1) → 0.774 (T2) → 0.603 (T3)**; mf is worse
