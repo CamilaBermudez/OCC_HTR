@@ -1,0 +1,19 @@
+{
+  "model": "models/ocr/catmus-medieval.mlmodel",
+  "n_lines": 300,
+  "gt_chars": 10997,
+  "char_acc_top1": 0.9708,
+  "errors": {
+    "substitutions": 253,
+    "model_deletions": 68,
+    "model_insertions": 174
+  },
+  "substitution_topk_recall": {
+    "top1": 0.0,
+    "top2": 0.6008,
+    "top3": 0.7549,
+    "top5": 0.9012,
+    "top10": 0.9328
+  },
+  "note": "top-k recall computed on substitution errors only; ins/del are segmentation-level and have no per-frame top-k."
+}

@@ -3618,6 +3618,51 @@ good hypothesis*, not as a standalone reader. Pred/eval:
 `data/processed/transcription/unlimited_ocr_val300/`,
 `tests/ocr/evaluations/external_ocr_vs_val300/`.
 
+## 6.12 Kraken/CTC top-k recall — the CTC analog of §6.8 (2026-08-05)
+
+**Question (user):** the §6.8 top-k analysis ("when the model errs, was the truth
+in its top-3/5/10?") for **kraken/catmus** too. Kraken is **CTC**, not
+autoregressive — there is no "next token", so the faithful analog is per-CHARACTER
+/ per-FRAME: run catmus with access to the raw CTC output matrix (`net.outputs`),
+and for each predicted character read the top-k alphabet symbols at its **peak
+output frame**; align the predicted string to the GT (char-level Levenshtein) and,
+for each **substitution** error, ask whether the correct character is in kraken's
+top-k there. Insertions/deletions are CTC segmentation-level errors with no clean
+per-frame top-k, so they're reported separately. Script
+`scripts/ocr/kraken_topk_recall.py` (reuses the rpred line transform — **note
+`valid_norm=False`**, required to reproduce rpred for catmus, a binarized `'1'`
+model; `True` silently degrades the transcription 0.955→0.85). Artefact
+`tests/ocr/evaluations/kraken_topk/catmus_topk.json`.
+
+**Result (catmus, 300-val, 10 997 GT chars; re-run char_acc 0.955 = matches
+rpred).** Among **substitution** errors (n=253):
+
+| k | recall (GT char in kraken's top-k) |
+|---|---|
+| top-1 | 0 % (top-1 is the wrong char by definition) |
+| top-2 | **60.1 %** |
+| top-3 | **75.5 %** |
+| top-5 | **90.1 %** |
+| top-10 | **93.3 %** |
+
+**Error split (495 char errors):** 253 substitutions (51 %), 174 model-insertions
++ 68 model-deletions (49 %).
+
+**Findings.** (1) **catmus's substitution errors are *extremely* recoverable** —
+90 % have the correct character in the top-5, 93 % in the top-10, *higher* than
+TrOCR's 73–75 % (§6.8, top-10 among errors). And the alternatives are exactly the
+expected allographs: for the correct `n`, the top-3 is `n / u / m` — textbook
+minim confusion (§6.7.1). (2) **BUT only ~half of kraken's errors are
+substitutions** — the other ~49 % are CTC insertions/deletions (segmentation), which
+per-character top-k *cannot* fix; those need the CTC lattice / an alignment-aware
+LM, not a per-char reranker. (3) **This closes the loop with §6.10:** the lexicon
+post-correction failed because it operated on the **1-best string** and never saw
+these top-k alternatives — yet the alternatives clearly carry the right answer 90 %
+of the time. So the recoverable headroom is real, but it lives in the
+**recogniser's top-k / lattice**, reachable only by an LM/VLM reranker over
+alternatives (cf. Medusa 0.9505), never by a blind dictionary swap on the final
+text. Confirms the "winning approach" recommendation with kraken's own numbers.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
