@@ -3507,6 +3507,61 @@ segmentation marginally better at line-starts. Extending the numeric eval to all
 300 val lines (~15 min) or drawing overlays for 10 pages (~5 min) is cheap but
 was judged unnecessary given the clear, consistent negative.
 
+## 6.10 Lexicon post-correction on catmus — negative (2026-08-05)
+
+**Question (from the "winning approach" synthesis §6.5.21 tail):** catmus frozen
+is the corrected-benchmark leader (0.9603); can a **lexicon/dictionary
+post-correction** pass push it higher by fixing out-of-vocabulary garbles? The
+top-k result (§6.8: ~73 % of the *recogniser's* errors have the right answer in
+its top-10) motivated it.
+
+**Setup.** `scripts/ocr/lexicon_postcorrect.py` — conservative, OOV-only,
+word-level. For each predicted token: keep it if its normalized form is in the
+lexicon or too short (length-aware threshold, reusing
+`dictionary_evaluation.normalize_old_occitan` + `length_aware_threshold`);
+otherwise fuzzy-match (rapidfuzz `fuzz.ratio`) against the lexicon and, above a
+score cutoff, replace the letter-core with the preferred surface spelling
+(punctuation preserved). Lexicon (63 253 forms, **no val leak**): DOM medieval-
+Occitan dictionary (`data/raw/DOM_lemma_variants.json`, ~55k forms) + 600 real
+TRAIN GT tokens + 12k medical-corpus lines; preferred spelling = TRAIN-GT
+**diplomatic** > medical > DOM headword, so corrections stay in the GT's
+diplomatic convention rather than expanding abbreviations.
+
+**Result — it never helps; every non-trivial correction hurts.** 300-val
+char_acc vs the 0.9603 baseline:
+
+| threshold / lexicon | corrections | char_acc | word_acc |
+|---|---|---|---|
+| **baseline (no correction)** | 0 | **0.9603** | **0.8512** |
+| fuzzy 88, full lexicon | 129 (6.3 %) | 0.9489 | 0.8051 |
+| fuzzy 93, full lexicon | 43 (2.1 %) | 0.9566 | 0.8342 |
+| fuzzy 96 / 99, full lexicon | 0 | 0.9603 | 0.8512 |
+| train-GT-only (diplomatic), fuzzy 90 | 72 (3.5 %) | 0.9535 | 0.8226 |
+
+Monotonic: the more it corrects, the worse it gets; the only non-hurting setting
+makes **zero** corrections (= baseline). word_acc falls *more* than char_acc
+(−4.6 pp at fuzzy 88), i.e. whole words get broken. Per-model bootstrap CIs
+(10 000, seed 42): baseline 96.04 % [95.50, 96.54] vs fuzzy-93 95.66 % [95.12,
+96.18] — the gentlest hurt is within noise, aggressive settings are clearly
+negative. Eval dirs: `tests/ocr/evaluations/{lexcorr_sweep,catmus_lexcorr_cmp}/`.
+
+**Why (diagnosis).** (1) **Diplomatic vs normalized mismatch** — the GT keeps
+abbreviation marks (⁊, tildes, ꝑ…); dictionaries are expanded, so a "correction"
+toward the lexicon moves *away* from the GT. (2) At 0.96 char_acc the residual
+OOV tokens are largely **correct-but-rare** diplomatic forms / proper terms the
+model already got right — replacing them destroys value. (3) The remaining true
+errors are **character-level minim confusions inside otherwise-plausible words**
+(e.g. `ealobra`→`enlobra`), which a blind whole-word fuzzy swap gets wrong more
+often than right.
+
+**Takeaway (updates §6.5.21 "winning approach").** A blind dictionary swap on the
+1-best is the wrong tool for this strong diplomatic baseline. The top-k headroom
+(§6.8) lives in the *recogniser's own n-best/lattice* and in **context/image-
+aware** correction (an LM rescorer over alternatives, or a VLM that reads the
+line image — cf. Medusa 0.9505), **not** in a post-hoc lexicon on the final
+string. Recommend: don't ship lexicon correction; if pursuing post-correction,
+use an LM/VLM rescorer over the recogniser's alternatives.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
