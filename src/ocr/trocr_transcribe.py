@@ -138,35 +138,40 @@ def transcribe_trocr(
 
     resolved_device = _detect_device(device)
 
-    if log_config:
-        try:
-            git_commit = (
-                subprocess.check_output(
-                    ["git", "rev-parse", "--short", "HEAD"],
-                    cwd=str(project_root),
-                    stderr=subprocess.DEVNULL,
-                )
-                .decode()
-                .strip()
+    try:
+        git_commit = (
+            subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"],
+                cwd=str(project_root),
+                stderr=subprocess.DEVNULL,
             )
-        except Exception:
-            git_commit = "unknown"
-        config = {
-            "run_name": run_name,
-            "git_commit": git_commit,
-            "timestamp": datetime.datetime.now().isoformat(),
-            "model_dir": str(model_dir),
-            "input_dir": str(input_dir),
-            "output_dir": str(output_dir),
-            "save_dir": str(save_dir),
-            "n_lines": len(pairs),
-            "device_requested": device,
-            "device_resolved": resolved_device,
-            "batch_size": batch_size,
-            "max_new_tokens": max_new_tokens,
-            "num_beams": num_beams,
-            "environment": {"PROJECT_ROOT": os.environ.get("PROJECT_ROOT")},
-        }
+            .decode()
+            .strip()
+        )
+    except Exception:
+        git_commit = "unknown"
+    config = {
+        "run_name": run_name,
+        "git_commit": git_commit,
+        "timestamp": datetime.datetime.now().isoformat(),
+        "model_dir": str(model_dir),
+        "input_dir": str(input_dir),
+        "output_dir": str(output_dir),
+        "save_dir": str(save_dir),
+        "n_lines": len(pairs),
+        "device_requested": device,
+        "device_resolved": resolved_device,
+        "batch_size": batch_size,
+        "max_new_tokens": max_new_tokens,
+        "num_beams": num_beams,
+        "environment": {"PROJECT_ROOT": os.environ.get("PROJECT_ROOT")},
+    }
+    # Write provenance INTO the prediction dir so the model that produced these
+    # predictions ALWAYS travels with them — logs often aren't pulled alongside
+    # predictions (this is exactly how the medical-4000 model got un-identifiable).
+    save_dir.mkdir(parents=True, exist_ok=True)
+    (save_dir / "_provenance.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
+    if log_config:
         logger.info("Configuration: %s", json.dumps(config, indent=2))
 
     logger.info("Loading TrOCR checkpoint: %s", model_dir)

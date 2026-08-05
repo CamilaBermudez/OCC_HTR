@@ -158,6 +158,9 @@ def transcribe_line_crops(
             "n_lines": len(pngs),
             "environment": {"PROJECT_ROOT": os.environ.get("PROJECT_ROOT")},
         }
+        # Provenance travels with the predictions (logs often aren't pulled with them).
+        save_dir.mkdir(parents=True, exist_ok=True)
+        (save_dir / "_provenance.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
         logger.info("Configuration: %s", json.dumps(config, indent=2))
 
     logger.info("Loading kraken model: %s", model_path)
