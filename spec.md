@@ -3507,6 +3507,18 @@ segmentation marginally better at line-starts. Extending the numeric eval to all
 300 val lines (~15 min) or drawing overlays for 10 pages (~5 min) is cheap but
 was judged unnecessary given the clear, consistent negative.
 
+**Full 300-val recognition (2026-08-05, on request).** Extended from the 1-page
+smoke to the whole 300-val: PP-OCRv5 **Latin** text-recognition model
+(`latin_PP-OCRv5_mobile_rec`, paddleocr 3.7 / paddle 3.3.1), recognition-ONLY on
+each pre-cropped line (no re-detection — matches how catmus/TrOCR read the crop),
+via `scripts/ocr/paddleocr_recognize.py`. Result: **char_acc 0.7672, CER 0.2328,
+word_acc 0.3364, WER 0.6636** — **−19.3 pp vs catmus 0.9603**. (The §6.9 1-page
+CER 0.125 came from paddle's own IoU-matched detection box on an easier page; on
+the standard 300 line-crops the fair number is 0.233.) Confirms PaddleOCR is not
+competitive here — same CTC-recogniser family as kraken, where catmus already
+leads. Pred dir `data/processed/transcription/paddleocr_latin_val300/`, eval
+`tests/ocr/evaluations/paddleocr_vs_val300/`.
+
 ## 6.10 Lexicon post-correction on catmus — negative (2026-08-05)
 
 **Question (from the "winning approach" synthesis §6.5.21 tail):** catmus frozen
