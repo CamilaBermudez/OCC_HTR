@@ -22,10 +22,14 @@ echo "RUNNING $(date -Is) job=${SLURM_JOB_ID:-?} node=$(hostname)" > "$STAT/$NAM
 
 OUT="$WS/preds/unlimited_ocr_val300"; [ -n "${LIMIT:-}" ] && OUT="$WS/preds/uocr_probe"
 extra=(); [ -n "${LIMIT:-}" ] && extra+=(--limit "$LIMIT")
+# only override the prompt if PROMPT is set — else the script's own default
+# ("<image>\nOCR:", a REAL newline) applies. Passing it here would inject a
+# bash-literal backslash-n and the empty-yielding "Free OCR." prompt.
+[ -n "${PROMPT:-}" ] && extra+=(--prompt "$PROMPT")
 
 "$WS/.venv-uocr/bin/python" scripts/ocr/unlimited_ocr_transcribe.py \
   --input-dir data/processed/annotated_samples/OCR/validation \
-  --out-dir "$OUT" --prompt "${PROMPT:-<image>\nFree OCR.}" "${extra[@]}"
+  --out-dir "$OUT" "${extra[@]}"
 rc=$?
 [ $rc -eq 0 ] && echo "DONE $(date -Is) -> $OUT" > "$STAT/$NAME.status" \
              || echo "FAILED $(date -Is) rc=$rc" > "$STAT/$NAME.status"

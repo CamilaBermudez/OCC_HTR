@@ -3574,6 +3574,50 @@ line image — cf. Medusa 0.9505), **not** in a post-hoc lexicon on the final
 string. Recommend: don't ship lexicon correction; if pursuing post-correction,
 use an LM/VLM rescorer over the recogniser's alternatives.
 
+## 6.11 Unlimited-OCR (Baidu VLM / DeepSeek-OCR base) — negative (2026-08-05)
+
+**Question (user, after PaddleOCR §6.9):** evaluate Baidu **Unlimited-OCR** — a
+~3B vision-language OCR model (DeepSeek-OCR base, "one-shot long-horizon document
+parsing") — over the full 300-val, for complete statistics.
+
+**Setup.** Cluster (needs CUDA; MPS can't run it): `.venv-uocr` (py3.12, torch
+2.10.0+cu128, transformers 4.57.1) + model weights on `/work`; `scripts/cluster/
+unlimited_ocr_{setup.sh,infer.sbatch}` + `scripts/ocr/unlimited_ocr_transcribe.py`
+(sbatch, not interactive srun — survives the day's VPN drops). The custom model
+needed `addict/matplotlib/easydict`, an `output_path` arg, and `eval_mode=True`
+(to return text). A **prompt sweep** was required: only `"<image>\nOCR:"`
+(crop_mode=True) yields text — `Free OCR.`/grounding return empty, `document
+parsing.` returns a layout bbox `<|det|>…<|/det|>`. Layout control tokens stripped
+in post.
+
+**Result — catastrophic; the worst model tried.** 300-val:
+
+| model | corpus char_acc | median char_acc | median CER | note |
+|---|---|---|---|---|
+| catmus (frozen) | **0.9603** | ~0.97 | 0.028 | leader |
+| PaddleOCR Latin | 0.7672 | ~0.79 | 0.207 | §6.9 |
+| **Unlimited-OCR** | **≈0 (−19.3)** | **~0.51** | 0.488 | hallucinates |
+
+The corpus char_acc is *pathologically negative* (edit-distance CER 20.3) because
+the VLM **hallucinates**: **19 % of lines (58/299) have CER > 1** — it generates
+far more text than the line holds (max CER 818×; p90 CER 10.6). Even the *median*
+line is ~0.51 char_acc — half the characters wrong — well below every other model.
+Sample: GT `nom es mot mays enlobra petit. emaior` → `non es una una calona peru,
+enano`; GT `phecati petit` → `pherien`. Output is **normalized, not diplomatic**
+(no ⁊/tildes), and one prompt even hallucinated English (*"Now of our new
+children…"*).
+
+**Why (as predicted §"winning approach").** A general document-parsing VLM is
+triply mismatched here: (1) built for full-page layout, not isolated ~40 px line
+crops; (2) 14th-c. Occitan scribal hands are far out-of-distribution → it invents
+plausible-but-wrong text; (3) it normalizes/expands the medieval shorthand the
+diplomatic GT preserves. Confirms the broader pattern: **every general/off-the-
+shelf model (PaddleOCR, this) loses badly to frozen catmus**; the only VLM that
+works here is Medusa (0.9505), which succeeds as an image-aware *cleaner over a
+good hypothesis*, not as a standalone reader. Pred/eval:
+`data/processed/transcription/unlimited_ocr_val300/`,
+`tests/ocr/evaluations/external_ocr_vs_val300/`.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
