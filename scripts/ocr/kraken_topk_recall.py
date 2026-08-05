@@ -120,23 +120,33 @@ def main() -> None:
             elif op == "delete":
                 ops["delete"] += 1  # pred char with no GT (insertion by model)
 
-    # top-1 char accuracy from edit distance: matches = gt_chars - (replace+insert)
-    correct = gt_chars - ops["replace"] - ops["insert"]
+    # matches = GT chars correctly produced; framed = GT positions that HAVE a
+    # prediction frame (matches + substitutions). Deletions (68) have no frame.
+    subs = ops["replace"]
+    matches = gt_chars - subs - ops["insert"]  # ops[insert] = model deletions
+    framed = matches + subs
+    cer = round((subs + ops["insert"] + ops["delete"]) / gt_chars, 4) if gt_chars else 0
     result = {
         "model": str(args.model),
+        "level": "character (CTC) — NOT token-level; compare err->top-k structure only",
         "n_lines": len(crops),
         "gt_chars": gt_chars,
-        "char_acc_top1": round(correct / gt_chars, 4) if gt_chars else 0,
+        "cer_from_alignment": cer,
         "errors": {
-            "substitutions": ops["replace"],
+            "substitutions": subs,
             "model_deletions": ops["insert"],
             "model_insertions": ops["delete"],
         },
-        "substitution_topk_recall": {
-            f"top{k}": round(sub_in_topk[k] / n_sub, 4) if n_sub else 0 for k in K_LIST
+        # top-1 char acc + top-k recall over framed positions (matches+subs)
+        "top1_char": round(matches / framed, 4) if framed else 0,
+        "topk_recall_all_framed": {
+            f"top{k}": round((matches + sub_in_topk[k]) / framed, 4) if framed else 0
+            for k in K_LIST
         },
-        "note": "top-k recall computed on substitution errors only; ins/del are "
-        "segmentation-level and have no per-frame top-k.",
+        # err->top-k: among substitution errors, GT char in top-k
+        "err_topk": {f"top{k}": round(sub_in_topk[k] / n_sub, 4) if n_sub else 0 for k in K_LIST},
+        "note": "err->top-k over substitution errors only; the ~49% of errors that "
+        "are CTC ins/del have no per-frame top-k.",
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2), encoding="utf-8")
