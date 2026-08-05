@@ -4127,18 +4127,18 @@ recoverable by prediction-matching. NOT `trocr_20260712_150413` (that's medical
 `_provenance.json` (model + run + git + params) **into the prediction dir** so the
 model travels with the predictions (`src/ocr/{trocr_transcribe,transcribe_line_crops}.py`).
 
-**Run status (started 2026-08-05, IN PROGRESS — update when done).**
-- **ViT medical-4000 transcription + per-token confidence** — CLUSTER (cayn H200),
-  `scripts/ocr/vit_transcribe_conf.py` (beam 4, per-page JSON, resumable), input =
-  the 13,677 kept crops (rsynced to `$WS/data/filtered_kept`), model
-  `~/cayn/models/ocr/finetuned/trocr_20260724_145651/best_model`, output
-  `$WS/preds/vitconf/<page>.json` → **pull to `data/processed/transcription/vit_conf_fullms/`
-  when done.** ~1–2 h.
-- **catmus per-char confidence** — LOCAL, `scripts/ocr/catmus_transcribe_conf.py`
-  (rpred over the same kept crops), output
-  `data/processed/transcription/catmus_conf_fullms/<page>.json`. ~15 min.
-- ⟶ *When both land:* build the per-page comparison JSON (align scholarly + catmus
-  + ViT, mark mismatch spans) → Phase 2 carousel tab.
+**Run status (2026-08-05 — DONE).**
+- ✅ **ViT medical-4000 transcription + per-token confidence** — CLUSTER (cayn H200
+  `dlc2gpu24`, ~15 min via `vitconf_infer.sbatch` → `vit_transcribe_conf.py`, beam 4).
+  **71 pages / 13,677 lines** pulled to `data/processed/transcription/vit_conf_fullms/`
+  (`<page>.json` = `{lines:{stem:{text, tokens:[[tok,p],…]}}}` + `_provenance.json`
+  pinning `trocr_20260724_145651/best_model`).
+- ✅ **catmus per-char confidence** — LOCAL (`catmus_transcribe_conf.py`, rpred,
+  ~17.5 min). **71 pages / 13,677 lines** at
+  `data/processed/transcription/catmus_conf_fullms/` (`{stem:{text, chars:[[c,p],…]}}`).
+- Both over the identical kept crops; scholarly aligned file already covers all 71
+  pages. **Next:** per-page comparison JSON (align scholarly + catmus + ViT, mark
+  mismatch spans) → Phase 2 carousel tab.
 
 **Data sources** (all resolvable via `VIEWER_*` env vars — see
 [frontend/config.py](frontend/config.py)):
