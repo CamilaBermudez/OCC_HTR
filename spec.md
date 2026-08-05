@@ -4119,6 +4119,27 @@ vs ~overnight on MPS), crop-less (kept crops already exist), backfill every page
 catmus text reuses `ocr_kept_20260622_120413`; catmus per-char confidence is a
 cheap local rpred re-pass over the same kept crops.
 
+**The right ViT model = `trocr_20260724_145651` (medical-4000, 0.9487).** Verified
+by exact 3/3 byte-match against the stored `vitroberta_medical_4000_val300_20260724`
+predictions — the local dirs' finetune logs weren't pulled, so the model was only
+recoverable by prediction-matching. NOT `trocr_20260712_150413` (that's medical
+**3:1**, 0.9443). Fix so this can't recur: both 300-val transcribers now write a
+`_provenance.json` (model + run + git + params) **into the prediction dir** so the
+model travels with the predictions (`src/ocr/{trocr_transcribe,transcribe_line_crops}.py`).
+
+**Run status (started 2026-08-05, IN PROGRESS — update when done).**
+- **ViT medical-4000 transcription + per-token confidence** — CLUSTER (cayn H200),
+  `scripts/ocr/vit_transcribe_conf.py` (beam 4, per-page JSON, resumable), input =
+  the 13,677 kept crops (rsynced to `$WS/data/filtered_kept`), model
+  `~/cayn/models/ocr/finetuned/trocr_20260724_145651/best_model`, output
+  `$WS/preds/vitconf/<page>.json` → **pull to `data/processed/transcription/vit_conf_fullms/`
+  when done.** ~1–2 h.
+- **catmus per-char confidence** — LOCAL, `scripts/ocr/catmus_transcribe_conf.py`
+  (rpred over the same kept crops), output
+  `data/processed/transcription/catmus_conf_fullms/<page>.json`. ~15 min.
+- ⟶ *When both land:* build the per-page comparison JSON (align scholarly + catmus
+  + ViT, mark mismatch spans) → Phase 2 carousel tab.
+
 **Data sources** (all resolvable via `VIEWER_*` env vars — see
 [frontend/config.py](frontend/config.py)):
 
