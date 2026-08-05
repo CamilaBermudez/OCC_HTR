@@ -14,7 +14,7 @@ export UV_UOCR="$WS/.venv-uocr"
 uv venv --python 3.12 "$UV_UOCR"
 uv pip install --python "$UV_UOCR/bin/python" \
     torch==2.10.0 torchvision==0.25.0 transformers==4.57.1 \
-    "pillow>=11" einops accelerate safetensors huggingface_hub
+    "pillow>=11" einops accelerate safetensors huggingface_hub addict matplotlib
 
 # prefetch the model into HF_HOME (on /work) so the sbatch run is offline-fast
 "$UV_UOCR/bin/python" - <<'PY'
