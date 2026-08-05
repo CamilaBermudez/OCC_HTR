@@ -4068,6 +4068,57 @@ turns to `grabbing` mid-drag). A short click without meaningful motion
 still fires the polygon's normal click handler, so line selection keeps
 working alongside drag.
 
+#### 7.4.1 Tab 4 — model-vs-model confidence comparison (in progress, 2026-08-05)
+
+**Goal (user request).** A tab that shows, per line, **three transcriptions
+side-by-side — scholarly (GT) vs catmus vs Vi+RoBERTa-medical-4000** — with the
+model **confidence** surfaced at each position, focused on the tokens/characters
+where a model disagrees with the scholarly and/or with the other model. catmus is
+the corrected-benchmark leader (0.9603); ViT-medical-4000 is the best fine-tune
+(0.9487) → the two strongest models contrasted.
+
+**Scope = the whole manuscript (13,677 kept lines / 71 pages).** Runs on the SAME
+inputs catmus was scored on — the **kept/filtered line crops**
+`data/processed/filtered_images/20260618_160948/original/kept/<page>/<page>_line_<N>.png`
+(the `input_img_dir` of `ocr_kept_20260622_120413`; verified in
+`logs/transcription/ocr_kept_20260622_120413_ocr_transcription.log`). These kept
+crops double as the tab's per-line images (already segmented; no re-crop). NB the
+kept set (13,677) < the raw segmentation lines (13,819) — filtering drops
+~140 noise/marginalia crops. Scholarly aligned file
+`tests/ocr/AlbucE_aligned_20260628_142959.txt` covers **all 71 pages / 13,675
+lines** (verified — an earlier "partial coverage" claim was a bad introspection);
+scholarly line-numbers map to segmentation lines via the existing content-match
+`line_alignment.json` (§6.6), not 1:1.
+
+**Confidence sources (native granularity — do NOT force a common unit).**
+- **catmus (CTC → per-CHARACTER):** `kraken.rpred` records already carry
+  `.confidences` (peak-frame probability per character); see also §6.12.
+- **ViT (autoregressive → per-TOKEN/subword):** `model.generate(...,
+  output_scores=True, return_dict_in_generate=True)` +
+  `compute_transition_scores(..., normalize_logits=True)` → per-emitted-token
+  probability. Validated 2026-08-05: low-confidence tokens land exactly on the
+  errors (e.g. GT `…mays enlobra…emaior` → ViT `…mays esi lobre…emauor` with
+  p=0.52/0.59 on the wrong tokens). Char↔token granularity differs by model; the
+  UI shows each at its native unit rather than faking alignment.
+- **scholarly:** GT — no confidence (it's the reference the others score against).
+
+**Frontend (planned).** Vertical **scroll-snap carousel** of line crops: the
+centred line is in focus (full size), off-focus lines shrink + dim
+(`IntersectionObserver` picks focus). The focused card shows the crop + a 3-row
+panel (labels scholarly / catmus / ViT on the left; transcription per row; a
+**confidence heat-underline** below catmus & ViT — green→red — with the exact
+probability **on hover**; positions that mismatch scholarly and/or the other model
+are **boxed**). 13.7k lines → the carousel **lazy-loads per page** (can't ship one
+giant JSON/all images). Data served as **per-page** JSON.
+
+**Build phases.** P1 (local): confidence-transcription module (ViT per-token +
+catmus per-char) + per-page comparison JSON (reuses `word_align`/`line_diff` for
+mismatch spans), validated on one page. P2: the carousel tab + lazy loading. P3:
+the full 13,677-line **ViT batch on the H200 cluster** (rsync the model; ~1–2 h
+vs ~overnight on MPS), crop-less (kept crops already exist), backfill every page.
+catmus text reuses `ocr_kept_20260622_120413`; catmus per-char confidence is a
+cheap local rpred re-pass over the same kept crops.
+
 **Data sources** (all resolvable via `VIEWER_*` env vars — see
 [frontend/config.py](frontend/config.py)):
 
