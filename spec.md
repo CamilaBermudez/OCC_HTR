@@ -3089,6 +3089,30 @@ decoder; now Metaspace + forced alphabet). **NB the Metaspace decoder doesn't
 survive save/reload (serialized as null); the consumer must re-set
 `decoder = Metaspace()` after load** — else decode inserts spurious spaces.
 
+**`--tokenizer` path (code).** `run_trocr_finetune.py` gained `--tokenizer <hf_dir>`;
+`trocr_finetune._reinit_vocab_layers` loads it (re-attaching the Metaspace decoder),
+resizes the pretrained decoder's token-embeddings + LM head to the new vocab and
+re-inits **only** those vocab-tied layers (ViT encoder + decoder self/cross-attn +
+FFN stay pretrained), then sets `decoder_start=[CLS] pad=[PAD] eos=[EOS]`. A
+**surface-string warm-start** (`_warm_start_embeddings`) copies pretrained rows for
+custom tokens whose surface maps to a single RoBERTa token: **98/150 warm-started**
+(all Latin chars + `▁`-prefixed variants); the 48 random-init tokens are exactly the
+multi-byte medieval glyphs byte-level BPE can't match (`◌ͣ ꝑ ꝓ ꝗ ℥ ⁊ ẽ …`). Only
+valid with a pretrained model (asserted).
+
+**Launched 2026-08-06 on the H200 cluster** (`scripts/cluster/medical4000_finetune.sbatch`,
+parametric on `TAG/RESIZE/TOKENIZER`), both identical data (7600 pairs → 6075 train /
+1525 val, 80/20 stem-split, `microsoft/trocr-base-handwritten`, epochs 15, bs 64,
+val_fraction 0.2, seed 42):
+- **Run A — pad** (`vitroberta_medical4000_pad`), job **29411991**, pretrained tokenizer.
+- **Run B — pad + BPE-150** (`vitroberta_medical4000_pad_tok`), job **29412002**,
+  custom tokenizer, 98/150 warm-started. Confirmed at build: vocab 150,
+  `decoder_start=2 pad=0 eos=3`, pretrained body kept.
+
+Both entered training cleanly. TODO: harvest `final_metrics.json`, eval both on the
+300-val + fresh top-k/error pass, log here. NB Run B's saved tokenizer.json will have
+the null Metaspace decoder → **re-attach `Metaspace()` at eval/transcription time**.
+
 ## 6.6 Line-level alignment for the viewer (2026-07-31)
 
 The manuscript viewer keys everything by **segmentation-line index** and pairs
