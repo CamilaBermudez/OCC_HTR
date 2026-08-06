@@ -632,9 +632,36 @@ function bindEvents() {
 let _compareInited = false;
 let _compareObserver = null;
 
+function setupCompareTooltip() {
+    let tip = $("#cmp-tooltip");
+    if (!tip) {
+        tip = document.createElement("div");
+        tip.id = "cmp-tooltip";
+        document.body.appendChild(tip);
+    }
+    const car = $("#compare-carousel");
+    car.addEventListener("mousemove", (e) => {
+        const t = e.target.closest(".tok");
+        if (!t || !t.dataset.tip) {
+            tip.style.display = "none";
+            return;
+        }
+        tip.textContent = t.dataset.tip;
+        tip.style.display = "block";
+        // keep it on-screen (flip left near the right edge)
+        const x = e.clientX + 14;
+        tip.style.left = Math.min(x, window.innerWidth - tip.offsetWidth - 8) + "px";
+        tip.style.top = Math.max(6, e.clientY - 30) + "px";
+    });
+    car.addEventListener("mouseleave", () => {
+        tip.style.display = "none";
+    });
+}
+
 async function initCompare() {
     if (_compareInited) return;
     _compareInited = true;
+    setupCompareTooltip();
     const sel = $("#compare-page");
     try {
         const { pages } = await fetchJson("/api/compare/pages");
@@ -668,10 +695,10 @@ function confSpans(items) {
         sp.style.borderBottomColor = confColor(prob);
         if (mSchol) sp.classList.add("mism-schol");
         if (mOther) sp.classList.add("mism-other");
-        sp.title =
-            `p=${prob.toFixed(3)}` +
-            (mSchol ? " · ≠ scholarly" : "") +
-            (mOther ? " · ≠ other model" : "");
+        sp.dataset.tip =
+            `${JSON.stringify(text)}  p=${prob.toFixed(3)}` +
+            (mSchol ? "  · ≠ scholarly" : "") +
+            (mOther ? "  · ≠ other model" : "");
         frag.appendChild(sp);
     }
     return frag;

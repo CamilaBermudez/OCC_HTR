@@ -524,3 +524,12 @@ main {
 /* differs from the other model → dotted overline marker */
 .cmp-text .tok.mism-other { box-shadow: inset 0 2px 0 -1px var(--muted); }
 .cmp-card:not(.focus) .cmp-img { max-height: 46px; object-fit: cover; object-position: left; }
+/* instant custom tooltip (native title is too slow on single-char targets) */
+#cmp-tooltip {
+    position: fixed; display: none; z-index: 1000; pointer-events: none;
+    background: #000; color: #fff; border: 1px solid var(--accent);
+    border-radius: 5px; padding: 4px 8px; font-size: 12px; white-space: nowrap;
+    font-family: "JuliaMono", "SF Mono", monospace; box-shadow: 0 3px 12px rgba(0,0,0,0.5);
+}
+/* highlight the hovered token a touch */
+.cmp-text .tok:hover { background: rgba(255,255,255,0.10); }
