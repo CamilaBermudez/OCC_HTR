@@ -3150,20 +3150,29 @@ transcribe + `evaluate_ocr`, resize read from each model's `resize_mode.txt=pad`
 | model | internal val (1525) | **300-val char-acc** | 300-val CER | vs stretch baseline |
 |---|---|---|---|---|
 | medical-4000 (**stretch**, orig `trocr_20260724_145651`) | — | **0.9487** | 0.0513 | — (reproduced exactly) |
+| **stretch retrain** (control, seed 42, `vitroberta_medical4000_stretch`) | — | **0.9527** | 0.0473 | +0.40 |
 | **Run A — pad** | 0.9461 | **0.9248** | 0.0752 | **−2.39** |
 | **Run B — pad + BPE-150** | 0.9443 | **0.9253** | 0.0747 | −2.34 |
 
 Baseline **reproduced to the 4th decimal** (0.9487, same pipeline, using `stretch`
 which medical-4000 needs), so the comparison is clean. Two findings:
 
-1. **Padding did NOT help — it cost ~2.4 pts** vs stretch on the real 300-val, the
+1. **Padding did NOT help — it cost ~2.7 pts** vs stretch on the real 300-val, the
    opposite of the §6.5.18 expectation. Likely cause: manuscript lines are wide/short,
    so aspect-preserving letterbox **pad** shrinks the text into a small central band
    with dead borders (wasted resolution), while **stretch** fills the encoder's square
-   frame. *Caveat:* Run A/B used the v3 aug pool + 80/20 split (not bit-identical to
-   the original sweep's medical-4000), so the gap conflates resize with pool/split —
-   but pad clearly did **not** improve on stretch. **Stretch stays the ViT+RoBERTa
-   default for this data.**
+   frame. **Confound ruled out + control run (2026-08-06):** Run A/B used the *same*
+   pool the sweep's medical-4000 was trained on (`aug_20260723_v3_medical_4000`,
+   verified on disk) + the same composition (600 real + 3000 + 4000) + the CLI-default
+   `val_fraction 0.2, seed 42`, so pool/split are matched, not a confound. To rule out
+   training nondeterminism (a single retrain is one draw from a distribution), a
+   **stretch retrain under the identical Run A pipeline** (`vitroberta_medical4000_stretch`,
+   seed 42) reproduced the stretch regime at **0.9527** — *above* the original 0.9487
+   and 2.7 pt clear of both pad runs (0.9248, 0.9253). Two clean points per condition
+   (stretch {0.9487, 0.9527}, pad {0.9248, 0.9253}); the between-condition gap (~2.7 pt)
+   dwarfs the within-condition spread (≤0.4 pt), so the effect is the resize, not
+   pipeline or variance. **Stretch stays the ViT+RoBERTa default for this data.**
+   `tests/ocr/evaluations/med4k_stretch_retrain_val300/`.
 2. **Custom BPE-150 tokenizer is aggregate-neutral.** Run A vs Run B is a *clean*
    ablation (identical except the tokenizer): 0.9248 vs 0.9253 = +0.05 pt (noise). The
    re-init + 98/150 warm-start trained fine (caught up in ~4 epochs, § trajectory
