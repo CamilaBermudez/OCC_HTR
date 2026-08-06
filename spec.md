@@ -2942,12 +2942,20 @@ lower than an 80/20 run would, but the **collapse trend (more synthetic → wors
 robust to the split**, so the tiers were NOT re-run (they're a confirmed negative;
 frozen catmus wins regardless). New kraken work uses 80/20.
 
-**Real-only + ketos-augment (2026-08-06, in progress).** catmus fine-tuned on the
-**600 annotated only** with ketos's internal augmentation (`--no-synth-train
+**Real-only + ketos-augment (2026-08-06) → new best, 0.9710.** catmus fine-tuned on
+the **600 annotated only** with ketos's internal augmentation (`--no-synth-train
 --augment`, base catmus, `--resize union`, lrate 1e-5, lag 5, **80/20** = 480/120),
-CPU, `models/ocr/finetuned/finetune_20260806_123435/`. Tests whether real-only +
-built-in augment (no synthetic renders at all) beats the synthetic-tier kraken /
-approaches frozen catmus. Eval on 300-val when it early-stops.
+CPU, `models/ocr/finetuned/finetune_20260806_123435/` (best epoch 30, internal-val
+char-acc 0.9396). **300-val result: CER 0.0290, char-acc 0.9710, WER 0.1799,
+word-acc 0.8201** (`tests/ocr/evaluations/kraken_600real_8020_val300/`). This
+**beats frozen catmus (0.9603) by +1.07 pts** and is the new leaderboard leader —
+the first fine-tune to clear the frozen model. **No leak:** real-only + ketos
+*internal* augmentation (no synthetic re-renders at all → the §6.3.9 text-level leak
+vector doesn't exist), 80/20 on the 600, evaluated on the disjoint 300-val (0
+overlap with full_annotated, verified). Contrast the synthetic-tier kraken (collapses
+with more synth) and the leaky historical 0.9620 (§ leaderboard row, leak-fixed to
+~0.90): built-in augmentation on real lines is what the CTC model wants, not
+synthetic volume.
 
 **Swin+BERT Stage-2 T1→T2 = FLAT (~0.78–0.80).** Tripling the Stage-2 data
 (7k→21k) did not move the real 300-val (it even dipped slightly), while the
