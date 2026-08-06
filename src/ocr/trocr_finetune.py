@@ -915,6 +915,22 @@ def finetune_trocr(
     trainer.save_model(str(best_model_dir))
     image_processor.save_pretrained(str(best_model_dir))
     tokenizer.save_pretrained(str(best_model_dir))
+    if custom_tokenizer is not None:
+        # save_pretrained serialises the Metaspace decoder as null (tokenizers
+        # quirk), so a plain reload would decode with spurious inter-token
+        # spaces. Inject the decoder spec into the saved tokenizer.json so the
+        # model is self-contained — plain AutoTokenizer.from_pretrained then
+        # round-trips correctly with no re-attach needed downstream.
+        tok_json = best_model_dir / "tokenizer.json"
+        spec = json.loads(tok_json.read_text(encoding="utf-8"))
+        spec["decoder"] = {
+            "type": "Metaspace",
+            "replacement": "▁",
+            "prepend_scheme": "always",
+            "split": True,
+        }
+        tok_json.write_text(json.dumps(spec, ensure_ascii=False), encoding="utf-8")
+        logger.info("Injected Metaspace decoder into %s (self-contained round-trip)", tok_json)
     # Persist the line-resize mode (pad/stretch) so transcription reproduces
     # the exact preprocessing this model was trained with (train/inference
     # MUST match, or accuracy silently collapses).
