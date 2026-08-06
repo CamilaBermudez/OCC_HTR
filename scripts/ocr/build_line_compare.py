@@ -80,6 +80,34 @@ def scholarly_for_line(ocr_folded, raw_concat, folded_concat, f2raw, bounds, min
     return text, no, int(a.score)
 
 
+def clean_vit_tokens(tokens: list, text: str) -> list:
+    """Repair byte-split multi-byte characters. Byte-level BPE can split one UTF-8
+    character (e.g. a combining diacritic) across tokens, so per-token decode yields
+    U+FFFD ('�'). The full `text` decodes correctly, so replace each U+FFFD run with
+    the real character(s) from `text` at that position, averaging the run's probs."""
+    if "�" not in "".join(t for t, _ in tokens):
+        return tokens
+    out, ti, i, n = [], 0, 0, len(tokens)
+    while i < n:
+        s, p = tokens[i]
+        if "�" not in s:
+            out.append([s, p])
+            ti += len(s)
+            i += 1
+            continue
+        probs, j = [], i
+        while j < n and "�" in tokens[j][0]:
+            probs.append(tokens[j][1])
+            j += 1
+        nxt = tokens[j][0] if j < n else ""
+        k = text.find(nxt, ti) if nxt else len(text)
+        seg = text[ti:k] if k >= 0 else text[ti : ti + 1]
+        out.append([seg, round(sum(probs) / len(probs), 4)])
+        ti += len(seg)
+        i = j
+    return out
+
+
 def seg_of(stem: str) -> int:
     try:
         return int(stem.split("_line_")[1])
@@ -134,8 +162,9 @@ def main() -> None:
                 fold(ctext)[0], raw_concat, folded_concat, f2raw, bounds
             )
 
-            # ViT display text = concatenation of its token surfaces (keeps token↔char exact)
-            vtoks = v.get("tokens", [])
+            # ViT display text = concatenation of its token surfaces (keeps token↔char
+            # exact); repair any byte-split multi-byte chars (U+FFFD) from v["text"].
+            vtoks = clean_vit_tokens(v.get("tokens", []), v.get("text", ""))
             vtext = "".join(t for t, _ in vtoks)
             offs, pos = [], 0
             for t, _ in vtoks:
