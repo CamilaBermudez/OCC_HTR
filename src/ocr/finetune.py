@@ -240,10 +240,22 @@ def stage_finetune_data(
         n_val = max(1, int(round(len(source_stems) * val_fraction)))
         val_stems = set(source_stems[:n_val])
         train_stems = set(source_stems[n_val:])
-    assert train_stems and val_stems, (
-        f"Split produced empty side (train={len(train_stems)}, val={len(val_stems)}). "
-        f"Need at least 2 source lines."
-    )
+    if route_by_stems is not None:
+        # Routing is only ever active when a real split governs the partition,
+        # and mix_in_real_samples appends the real train+val images afterward.
+        # A pool with NO val-stem augs (e.g. a medical-only or minim-only pool
+        # where every source is unrouted -> train) therefore legitimately has an
+        # empty synth val side; the real val images supply val. Only require
+        # that there is *some* training data.
+        assert train_stems, (
+            f"Routed split produced no train stems (aug pool had {len(by_source)} source "
+            f"stems, none matched the real split or unrouted set). Need >=1 source line."
+        )
+    else:
+        assert train_stems and val_stems, (
+            f"Split produced empty side (train={len(train_stems)}, val={len(val_stems)}). "
+            f"Need at least 2 source lines."
+        )
 
     train_dir = staging_dir / "train"
     val_dir = staging_dir / "val"
