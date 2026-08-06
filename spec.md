@@ -3046,7 +3046,7 @@ to local at `models/ocr/finetuned/<label>_20260731/best_model` (e.g.
 `swinbert_stage2_T1_1font`) via `gcloud scp --recurse --compress` (run in the
 background — a 1.1 GB pull exceeds the 2-min tool timeout).
 
-### 6.5.22 medical-4000 reruns — padding + custom BPE tokenizer (2026-08-06, in progress)
+### 6.5.22 medical-4000 reruns — padding + custom BPE tokenizer (2026-08-06)
 
 Motivated by §6.8.1 (minim + abbreviation errors) and the discovery that the best
 fine-tune **medical-4000 was trained with `stretch`** resize (no `resize_mode.txt`;
@@ -3143,10 +3143,46 @@ healthy "pretrained body + fresh head" signature, not a failure mode (flat/NaN l
 would be). By epoch 6 the two runs are within 0.4 pt — the custom tokenizer costs
 only a couple of warm-up epochs, no final-quality penalty visible yet.
 
-TODO (auto-harvested by the completion monitor): `final_metrics.json` for both, then
-eval on the 300-val + fresh top-k/error pass, logged here. NB Run B's saved
-tokenizer.json has the null Metaspace decoder → **re-attach `Metaspace()` at
-eval/transcription time**.
+**RESULTS (2026-08-06).** Both finished 15 epochs. Two vals: the internal 1525-line
+val (mostly synthetic augs) and the **standard 300-val** (the leaderboard set,
+transcribe + `evaluate_ocr`, resize read from each model's `resize_mode.txt=pad`):
+
+| model | internal val (1525) | **300-val char-acc** | 300-val CER | vs stretch baseline |
+|---|---|---|---|---|
+| medical-4000 (**stretch**, orig `trocr_20260724_145651`) | — | **0.9487** | 0.0513 | — (reproduced exactly) |
+| **Run A — pad** | 0.9461 | **0.9248** | 0.0752 | **−2.39** |
+| **Run B — pad + BPE-150** | 0.9443 | **0.9253** | 0.0747 | −2.34 |
+
+Baseline **reproduced to the 4th decimal** (0.9487, same pipeline, using `stretch`
+which medical-4000 needs), so the comparison is clean. Two findings:
+
+1. **Padding did NOT help — it cost ~2.4 pts** vs stretch on the real 300-val, the
+   opposite of the §6.5.18 expectation. Likely cause: manuscript lines are wide/short,
+   so aspect-preserving letterbox **pad** shrinks the text into a small central band
+   with dead borders (wasted resolution), while **stretch** fills the encoder's square
+   frame. *Caveat:* Run A/B used the v3 aug pool + 80/20 split (not bit-identical to
+   the original sweep's medical-4000), so the gap conflates resize with pool/split —
+   but pad clearly did **not** improve on stretch. **Stretch stays the ViT+RoBERTa
+   default for this data.**
+2. **Custom BPE-150 tokenizer is aggregate-neutral.** Run A vs Run B is a *clean*
+   ablation (identical except the tokenizer): 0.9248 vs 0.9253 = +0.05 pt (noise). The
+   re-init + 98/150 warm-start trained fine (caught up in ~4 epochs, § trajectory
+   above) — it just doesn't move overall CER.
+   - **Medieval-glyph recall (Run B's raison d'être):** the 300-val is **glyph-sparse**
+     — only **48 non-ASCII occurrences, 7 distinct** (̃×17, ⁊×13, ¶×11, ñ, ꝑ, ẽ, ͦ).
+     Recall: stretch 0.375, pad 0.375, **Run B 0.396** (19 vs 18 matched — one glyph),
+     and Run B *emits* more glyphs (29 vs ~20) but over-produces (~10 spurious). Too
+     little medieval content in the hand-annotated val to show a real benefit — the
+     abbreviation glyphs live in the **manuscript/CATMuS body**, not the annotated
+     lines. So the tokenizer's value (no byte-splitting, dedicated glyph tokens) can't
+     be demonstrated on this val; it would need a glyph-dense eval to matter.
+
+**Takeaway.** Neither knob beats the incumbent **medical-4000 (stretch, 0.9487)** on
+the 300-val, and the **kraken 600-real+ketos-aug = 0.9710** (§6.5.21) remains the
+overall leader. Artefacts: `tests/ocr/evaluations/{med4k_reruns_val300,
+med4k_stretch_val300}/`. Models: `models/ocr/finetuned/vitroberta_medical4000_{pad,
+pad_tok}/`. Run B's tokenizer.json is self-contained (Metaspace decoder injected at
+save time, `trocr_finetune`).
 
 ## 6.6 Line-level alignment for the viewer (2026-07-31)
 
