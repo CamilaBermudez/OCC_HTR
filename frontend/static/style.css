@@ -481,7 +481,9 @@ main {
 .heatbar i:nth-child(3){ background: hsl(60,70%,45%); }
 .heatbar i:nth-child(4){ background: hsl(90,70%,45%); }
 .heatbar i:nth-child(5){ background: hsl(120,70%,45%); }
-.lg-box { outline: 2px solid var(--accent-strong); border-radius: 3px; padding: 0 3px; color: var(--text); }
+.lg-box { border-radius: 3px; padding: 0 4px; color: var(--text); }
+.lg-schol { background: rgba(255, 149, 0, 0.36); }
+.lg-other { background: rgba(120, 160, 255, 0.24); }
 
 .compare-carousel {
     flex: 1; overflow-y: auto; scroll-snap-type: y proximity;
@@ -523,13 +525,12 @@ main {
 .cmp-none { color: var(--muted); font-style: italic; }
 /* confidence heat underline (green=high → red=low), set inline per token */
 .cmp-text .tok { border-bottom: 3px solid transparent; padding-bottom: 1px; }
-/* substantive disagreement with scholarly → box */
-.cmp-text .tok.mism-schol {
-    outline: 2px solid var(--accent-strong); outline-offset: 1px;
-    border-radius: 3px; background: rgba(255, 149, 0, 0.12);
-}
-/* differs from the other model → dotted overline marker */
-.cmp-text .tok.mism-other { box-shadow: inset 0 2px 0 -1px var(--muted); }
+/* disagreement highlighted by BACKGROUND (adjacent chars merge into a readable
+   band, unlike outlines which overlap). differs-from-other-model = blue tint;
+   differs-from-scholarly = orange tint and takes precedence when both apply. */
+.cmp-text .tok.mism-other { background: rgba(120, 160, 255, 0.24); }
+.cmp-text .tok.mism-schol { background: rgba(255, 149, 0, 0.36); }
+.cmp-text .tok:hover { filter: brightness(1.5); }
 .cmp-card:not(.focus) .cmp-img { max-height: 46px; object-fit: cover; object-position: left; }
 /* instant custom tooltip (native title is too slow on single-char targets) */
 #cmp-tooltip {
@@ -538,5 +539,3 @@ main {
     border-radius: 5px; padding: 4px 8px; font-size: 12px; white-space: nowrap;
     font-family: "JuliaMono", "SF Mono", monospace; box-shadow: 0 3px 12px rgba(0,0,0,0.5);
 }
-/* highlight the hovered token a touch */
-.cmp-text .tok:hover { background: rgba(255,255,255,0.10); }
