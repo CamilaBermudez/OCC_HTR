@@ -76,7 +76,13 @@ def scholarly_for_line(ocr_folded, raw_concat, folded_concat, f2raw, bounds, min
         return "", None, int(a.score) if a else 0
     rs, re_ = f2raw[a.dest_start], f2raw[a.dest_end - 1] + 1
     text = raw_concat[rs:re_].strip()
-    no = next((disp for (ls, le, disp) in bounds if ls <= rs < le), None)
+    # line number = the scholarly line the span OVERLAPS most (not where it starts —
+    # a span can begin with a leftover char from the previous line's last word).
+    no, best_ov = None, 0
+    for ls, le, disp in bounds:
+        ov = min(re_, le) - max(rs, ls)
+        if ov > best_ov:
+            no, best_ov = disp, ov
     return text, no, int(a.score)
 
 
