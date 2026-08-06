@@ -4861,3 +4861,37 @@ glyphs. Takeaway: pad was masking the tokenizer entirely; on stretch the custom
 char-BPE is a safe swap (≥ RoBERTa's 50k BPE) — adopt it for ViT+RoBERTa going forward.
 Still below the overall leader kraken 600-real+aug (0.9710). Artefact:
 `tests/ocr/evaluations/med4k_stretchtok_val300/`.
+
+**(#4) Targeted minim synthetic added to the kraken 600-real+aug leader.** Hypothesis
+(user): our synthetic hurts; if anything helps it should be samples dense in the minim
+combos the models fail on (§6.8.1). Categorized `data/raw/medical_texts` by minim
+substrings (mn/nm/nn/mm/in/ni/iu/ui/un/nu/im/mi/uu/iii/nin/uin/min/inu/uni;
+`minim_cat_20260806`), generated **100** minim-heavy lines
+(`run_medieval_text_generation`), composited on parchment (`run_augment_images`),
+label-corrected (100/100), and added on TOP of the 0.9710 recipe (600 real + ketos
+`--augment`, 80/20; the 100 medical-derived stems route to train via
+`--aug-unrouted-to-train`). Two variants: default rendering and the new §6.5.22-#2
+**letter-spacing jitter** (`--spacing-jitter 2.0`).
+
+| kraken (300-val) | char-acc | vs 0.9710 baseline |
+|---|---|---|
+| 600-real + ketos aug (no synth, §6.5.21) | **0.9710** | — |
+| + 100 minim, no jitter (`finetune_..._194410`, best ep 31) | 0.9632 | −0.78 |
+| + 100 minim, jitter 2.0 (`finetune_..._200125`, best ep 26) | 0.9641 | −0.69 |
+
+**Findings:** (1) **even content-targeted minim synthetic hurts kraken** — both below the
+real-only+aug baseline. Combined with #3 (synthetic augmentation hurts ViT+RoBERTa),
+the pattern is architecture-independent: **adding our synthetic to the 600 real lines
+is net-negative; real + built-in (ketos/kraken-style) augmentation is best.** (2) The
+letter-spacing jitter is **marginally less harmful** (+0.09 over no-jitter) but within
+noise and still below baseline — de-regularising minim spacing helps a little, not
+enough to flip the sign. Artefacts:
+`tests/ocr/evaluations/kraken_600_plus100minim{,_jit}_val300/`.
+
+**Overall leaderboard after §6.5.22–23 (300-val char-acc):** kraken 600-real+ketos-aug
+**0.9710** (leader) > frozen catmus 0.9603 > **ViT+RoBERTa stretch+BPE-150 0.9545**
+(best TrOCR) > medical-4000 stretch 0.9487. Program conclusion on synthetic data: it
+helped only as *external-corpus text content* fed to the pretrained ViT+RoBERTa
+(medical-4000); as *augmentation of the annotated lines* it is net-negative for every
+architecture, and the strongest single model overall uses **no synthetic renders at
+all** — just real lines + on-the-fly image augmentation.
