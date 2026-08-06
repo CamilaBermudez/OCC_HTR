@@ -4805,3 +4805,35 @@ VIEWER_MODEL_TRANSCRIPTION=./data/processed/transcription/<run> make frontend
 - Don't try to use transformers 5.13.x for TrOCR pretrained model
   loading. Rebroadcast of the fix from earlier: pin
   `transformers==5.12.1`.
+
+### 6.5.23 Augmentation-style + tokenizer-on-stretch + targeted-minim probes (2026-08-06)
+
+Three follow-ups to §6.5.22, all on the standard 300-val (transcribe → evaluate_ocr).
+
+**(#3) kraken-style augmentation vs our font re-renders — ViT+RoBERTa.** Question:
+the kraken 600-real fine-tune won with ketos's *image-level* augmentation (§6.5.21,
+0.9710); does that augmentation STYLE help ViT+RoBERTa more than our pipeline's
+font re-renders? Built a static pool by importing kraken's own
+`DefaultAugmenter` (`scripts/data_augmentation/run_kraken_style_augment.py`,
+exact ketos Compose: PixelDropout + one-of blur + one-of optical/elastic/rotate,
+p=0.5) and materialising 5 variants/real-crop = 3000 (`kraken_style_600x5_20260806`).
+Trained ViT+RoBERTa (stretch) on 600 real + 3000 kraken-style
+(`vitroberta_krakenstyle_600x5`).
+
+| ViT+RoBERTa (300-val), all 600 real + … | char-acc | vs real-only |
+|---|---|---|
+| real-only (Dataset C, §6.3.12) | 0.9371 | — |
+| + 3000 **our font re-renders** (Dataset D) | 0.9161 | −2.10 |
+| + 3000 **kraken-style image-aug** (#3, this run) | **0.9234** | −1.37 |
+| + 3000 renders + 4000 **medical text** (medical-4000, stretch) | 0.9487 | +1.16 |
+
+Two findings — both support the "our synthetic hurts" hypothesis: (1) **augmenting
+the 600 crops hurts ViT+RoBERTa regardless of style** — font-renders (−2.1) and
+kraken-style (−1.4) both land *below* real-only (0.9371). The strong pretrained
+encoder gains little from re-rendering/perturbing the same 600 texts. (2) At matched
+600+3000, **kraken-style beats our font-renders (+0.73)** — ketos image-perturbation
+is the less-harmful augmentation, but still net-negative. Only **new external text**
+(the +4000 medical slot) turns it positive (0.9487). Implication: for ViT+RoBERTa,
+spend the synthetic budget on new *corpus content*, not on augmenting the annotated
+lines; if augmenting, kraken-style ⟶ our font-render pipeline. Artefact:
+`tests/ocr/evaluations/krakenstyle_600x5_val300/`.
