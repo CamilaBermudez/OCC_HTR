@@ -630,7 +630,28 @@ function bindEvents() {
 
 // ---------- Tab 4: model comparison + confidence ----------
 let _compareInited = false;
-let _compareObserver = null;
+let _focusRaf = 0;
+
+// focus the card whose centre is nearest the carousel centre (robust at the ends,
+// where cards can't reach the exact middle and "most-visible" ties on the wrong one)
+function updateCompareFocus(car) {
+    const cr = car.getBoundingClientRect();
+    const centerY = cr.top + cr.height / 2;
+    let best = null;
+    let bestD = Infinity;
+    for (const c of car.querySelectorAll(".cmp-card")) {
+        const r = c.getBoundingClientRect();
+        const d = Math.abs(r.top + r.height / 2 - centerY);
+        if (d < bestD) {
+            bestD = d;
+            best = c;
+        }
+    }
+    car.querySelectorAll(".cmp-card.focus").forEach((c) => {
+        if (c !== best) c.classList.remove("focus");
+    });
+    if (best) best.classList.add("focus");
+}
 
 function setupCompareTooltip() {
     let tip = $("#cmp-tooltip");
@@ -656,11 +677,19 @@ function setupCompareTooltip() {
     car.addEventListener("mouseleave", () => {
         tip.style.display = "none";
     });
-    // click a card to bring it into focus (centers it; the observer then focuses it)
+    // click a card to bring it into focus (centers it; scroll updates focus)
     car.addEventListener("click", (e) => {
         const card = e.target.closest(".cmp-card");
         if (!card || card.classList.contains("focus")) return;
         card.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    // focus follows scroll (rAF-throttled)
+    car.addEventListener("scroll", () => {
+        if (_focusRaf) return;
+        _focusRaf = requestAnimationFrame(() => {
+            _focusRaf = 0;
+            updateCompareFocus(car);
+        });
     });
 }
 
@@ -758,7 +787,6 @@ function renderCompareCard(page, line) {
 async function loadComparePage(page) {
     const car = $("#compare-carousel");
     car.textContent = "Loading…";
-    if (_compareObserver) _compareObserver.disconnect();
     let data;
     try {
         data = await fetchJson(`/api/compare/${page}`);
@@ -768,28 +796,8 @@ async function loadComparePage(page) {
     }
     car.innerHTML = "";
     for (const line of data.lines) car.appendChild(renderCompareCard(page, line));
-    // focus = the most-visible card as you scroll
-    const ratios = new Map();
-    _compareObserver = new IntersectionObserver(
-        (entries) => {
-            entries.forEach((e) => ratios.set(e.target, e.intersectionRatio));
-            let best = null;
-            let bestR = -1;
-            ratios.forEach((r, el) => {
-                if (r > bestR) {
-                    bestR = r;
-                    best = el;
-                }
-            });
-            car.querySelectorAll(".cmp-card.focus").forEach((c) => {
-                if (c !== best) c.classList.remove("focus");
-            });
-            if (best && bestR > 0) best.classList.add("focus");
-        },
-        { root: car, threshold: [0, 0.25, 0.5, 0.75, 1] }
-    );
-    car.querySelectorAll(".cmp-card").forEach((c) => _compareObserver.observe(c));
     car.scrollTop = 0;
+    requestAnimationFrame(() => updateCompareFocus(car));
 }
 
 async function init() {
