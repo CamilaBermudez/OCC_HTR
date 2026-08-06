@@ -4144,9 +4144,16 @@ model travels with the predictions (`src/ocr/{trocr_transcribe,transcribe_line_c
   off-by-one index align; scholarly ≈1:1 with physical lines) + catmus text/per-char
   conf + ViT text/per-token conf + mismatch flags (each model vs scholarly and vs
   the other, on FOLDED text so editorial spacing isn't flagged — only substantive
-  letter diffs). 13,677 lines; scholarly matched 13,659 (mean sim 90). **Next:**
-  Phase 2 carousel tab (serve line_compare JSON + kept crops; scroll-snap, heat-
-  underline + hover, boxed mismatches, lazy per-page).
+  letter diffs). 13,677 lines; scholarly matched 13,659 (mean sim 90).
+- ✅ **Phase 2 — the tab** (`frontend/`, Tab 4 "Model compare"). Backend:
+  `/api/compare/{pages, <page>, <page>/image/<stem>}` + `config.line_compare_dir`
+  (`VIEWER_LINE_COMPARE`). Frontend: vertical **scroll-snap carousel** of kept
+  crops; most-visible card = focus (full size), others dim+shrink
+  (IntersectionObserver max-ratio); focused card = crop + 3 rows (scholarly plain /
+  catmus per-char / ViT per-token) with a **confidence heat-underline** (green→red)
+  + exact **prob on hover**; **boxed** where a model disagrees with scholarly,
+  marked where it disagrees with the other model. Lazy per-page load. **Feature
+  complete** — `make frontend`, open Tab 4.
 
 **Data sources** (all resolvable via `VIEWER_*` env vars — see
 [frontend/config.py](frontend/config.py)):
