@@ -21,7 +21,7 @@ import json
 import sys
 from pathlib import Path
 
-from rapidfuzz import fuzz
+from rapidfuzz.fuzz import partial_ratio_alignment
 
 sys.path.insert(0, ".")
 from frontend.manuscript_data import _parse_scholarly  # noqa: E402
@@ -49,14 +49,35 @@ def char_mismatch(model_text: str, ref_text: str) -> list[int]:
     return mism
 
 
-def best_scholarly(text: str, sch_folded: list[str]) -> tuple[int, int]:
-    fc, _ = fold(text)
-    best, bi = -1, -1
-    for k, ft in enumerate(sch_folded):
-        s = int(fuzz.ratio(fc, ft))
-        if s > best:
-            best, bi = s, k
-    return bi, best
+def build_scholarly_index(sp: dict[int, str]):
+    """Concatenate a page's scholarly lines into one continuous text so a physical
+    line can be matched to a SPAN (not a whole edition line — those don't align to
+    manuscript line breaks: the edition sometimes keeps a whole sentence as one
+    'line' spanning several physical lines). Returns
+    (raw_concat, folded_concat, folded->raw index map, [(raw_start, raw_end, disp_no)])."""
+    keys = sorted(sp)
+    raw_parts, bounds, pos = [], [], 0
+    for key in keys:
+        t = sp[key]
+        bounds.append((pos, pos + len(t), key + 1))  # +1 => aligned-file display no
+        raw_parts.append(t)
+        pos += len(t) + 1  # +1 for the joining space
+    raw_concat = " ".join(raw_parts)
+    folded, f2raw = fold(raw_concat)
+    return raw_concat, folded, f2raw, bounds
+
+
+def scholarly_for_line(ocr_folded, raw_concat, folded_concat, f2raw, bounds, min_score=55):
+    """Best-matching scholarly SPAN for one physical line. Returns (text, disp_no, score)."""
+    if not ocr_folded or not folded_concat:
+        return "", None, 0
+    a = partial_ratio_alignment(ocr_folded, folded_concat)
+    if a is None or a.score < min_score or a.dest_end <= a.dest_start:
+        return "", None, int(a.score) if a else 0
+    rs, re_ = f2raw[a.dest_start], f2raw[a.dest_end - 1] + 1
+    text = raw_concat[rs:re_].strip()
+    no = next((disp for (ls, le, disp) in bounds if ls <= rs < le), None)
+    return text, no, int(a.score)
 
 
 def seg_of(stem: str) -> int:
@@ -99,20 +120,19 @@ def main() -> None:
         vit_path = args.vit_dir / f"{page}.json"
         vit = json.loads(vit_path.read_text())["lines"] if vit_path.exists() else {}
         sp = scholarly.get(page, {})
-        sch_nos = sorted(sp)
-        sch_txt = [sp[n] for n in sch_nos]
-        sch_folded = [fold(t)[0] for t in sch_txt]
+        raw_concat, folded_concat, f2raw, bounds = (
+            build_scholarly_index(sp) if sp else ("", "", [], [])
+        )
 
         out_lines = []
         for stem in sorted(cat, key=seg_of):
             c = cat[stem]
             v = vit.get(stem, {"text": "", "tokens": []})
             ctext = c["text"]
-            # scholarly by content match (against catmus, our trusted reference)
-            si, ssim = best_scholarly(ctext, sch_folded) if sch_folded else (-1, 0)
-            stext = sch_txt[si] if si >= 0 else ""
-            # scholarly line number as the aligned file shows it (stored 0-based -> +1)
-            sno = (sch_nos[si] + 1) if si >= 0 else None
+            # scholarly = best-matching SPAN in the continuous scholarly text
+            stext, sno, ssim = scholarly_for_line(
+                fold(ctext)[0], raw_concat, folded_concat, f2raw, bounds
+            )
 
             # ViT display text = concatenation of its token surfaces (keeps token↔char exact)
             vtoks = v.get("tokens", [])
