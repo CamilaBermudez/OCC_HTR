@@ -720,6 +720,17 @@ function compareRow(label, cls, contentNode) {
 function renderCompareCard(page, line) {
     const card = document.createElement("div");
     card.className = "cmp-card";
+    // header: both line IDs (OCR/segmentation vs scholarly-edition numbering differ)
+    const head = document.createElement("div");
+    head.className = "cmp-head";
+    const schId =
+        line.scholarly.no != null
+            ? `scholarly line ${line.scholarly.no}`
+            : "no scholarly match";
+    head.innerHTML =
+        `<span class="cmp-id">OCR line ${line.seg}</span>` +
+        `<span class="cmp-id cmp-id-sch">${schId}</span>`;
+    card.appendChild(head);
     const img = document.createElement("img");
     img.className = "cmp-img";
     img.loading = "lazy";

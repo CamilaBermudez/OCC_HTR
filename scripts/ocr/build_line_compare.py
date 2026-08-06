@@ -111,6 +111,8 @@ def main() -> None:
             # scholarly by content match (against catmus, our trusted reference)
             si, ssim = best_scholarly(ctext, sch_folded) if sch_folded else (-1, 0)
             stext = sch_txt[si] if si >= 0 else ""
+            # scholarly line number as the aligned file shows it (stored 0-based -> +1)
+            sno = (sch_nos[si] + 1) if si >= 0 else None
 
             # ViT display text = concatenation of its token surfaces (keeps token↔char exact)
             vtoks = v.get("tokens", [])
@@ -139,7 +141,7 @@ def main() -> None:
                     "stem": stem,
                     "seg": seg_of(stem),
                     "image": f"{args.crops_rel}/{page}/{stem}.png",
-                    "scholarly": {"text": stext, "match_sim": ssim},
+                    "scholarly": {"text": stext, "match_sim": ssim, "no": sno},
                     "catmus": {"text": ctext, "chars": chars},
                     "vit": {"text": vtext, "tokens": tokens},
                 }
