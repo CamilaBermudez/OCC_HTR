@@ -4837,3 +4837,27 @@ is the less-harmful augmentation, but still net-negative. Only **new external te
 spend the synthetic budget on new *corpus content*, not on augmenting the annotated
 lines; if augmenting, kraken-style ⟶ our font-render pipeline. Artefact:
 `tests/ocr/evaluations/krakenstyle_600x5_val300/`.
+
+**(Extra) BPE-150 tokenizer on STRETCH — the resize that wasn't handicapping it.**
+Run B tested the custom tokenizer on pad (the worse resize) and found it neutral
+(0.9248 vs 0.9253). Re-ran on stretch (the winner) — same medical-4000 pool, seed 42,
+val_fraction 0.2, only the tokenizer swapped vs the stretch retrain
+(`vitroberta_medical4000_stretch_tok`, tokenizer.json ships the injected Metaspace
+decoder → round-trips on plain load).
+
+| ViT+RoBERTa medical-4000 (300-val) | tokenizer | resize | char-acc |
+|---|---|---|---|
+| Run A | RoBERTa 50k | pad | 0.9248 |
+| Run B | BPE-150 | pad | 0.9253 |
+| original (`_145651`) | RoBERTa 50k | stretch | 0.9487 |
+| stretch retrain (seed 42) | RoBERTa 50k | stretch | 0.9527 |
+| **stretch + BPE-150** | **BPE-150** | **stretch** | **0.9545** |
+
+Clean same-seed tokenizer ablation on stretch: **0.9527 → 0.9545 = +0.18** — within the
+±0.4 run-to-run noise band (§6.5.22 control), so **neutral-to-marginally-positive**, NOT
+the win the token-level eval_cer (internal 0.978) suggests. But it is the **best TrOCR
+char-acc in the program**, doesn't hurt, and removes the byte-splitting of medieval
+glyphs. Takeaway: pad was masking the tokenizer entirely; on stretch the custom
+char-BPE is a safe swap (≥ RoBERTa's 50k BPE) — adopt it for ViT+RoBERTa going forward.
+Still below the overall leader kraken 600-real+aug (0.9710). Artefact:
+`tests/ocr/evaluations/med4k_stretchtok_val300/`.
