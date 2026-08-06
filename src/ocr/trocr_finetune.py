@@ -328,24 +328,76 @@ def _load_custom_tokenizer(tokenizer_dir: Path, logger: logging.Logger):
     return tok
 
 
-def _reinit_vocab_layers(model, tokenizer, logger: logging.Logger) -> None:
+def _warm_start_embeddings(
+    new_emb, old_emb, tokenizer, pretrained_model_id: str, logger: logging.Logger
+) -> int:
+    """Copy pretrained rows for custom tokens whose surface text matches a
+    single pretrained token (a safe head-start; see Q&A on the custom-BPE run).
+
+    For each custom token, recover its surface string (Metaspace ``▁`` -> space),
+    encode it with the pretrained tokenizer, and if it maps to exactly ONE
+    pretrained token, copy that token's embedding into the new matrix. Single
+    Latin chars and space-prefixed variants match; multi-byte medieval glyphs
+    (which the byte-level BPE splits into >1 token) and most merges don't, and
+    keep their random init. Best-effort: any failure leaves random init intact.
+    Returns the number of rows warm-started.
+    """
+    from transformers import AutoTokenizer
+
+    try:
+        src_tok = AutoTokenizer.from_pretrained(pretrained_model_id)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Warm-start skipped (could not load %s: %s)", pretrained_model_id, e)
+        return 0
+    specials = set(tokenizer.all_special_ids)
+    n = 0
+    for i in range(len(tokenizer)):
+        if i in specials:
+            continue
+        piece = tokenizer.convert_ids_to_tokens(i)
+        if piece is None:
+            continue
+        surface = piece.replace("▁", " ")  # Metaspace marker -> space
+        if not surface:
+            continue
+        src_ids = src_tok(surface, add_special_tokens=False).input_ids
+        if len(src_ids) == 1 and src_ids[0] < old_emb.shape[0]:
+            new_emb[i] = old_emb[src_ids[0]]
+            n += 1
+    logger.info(
+        "Warm-started %d/%d custom-vocab embeddings from %s (surface-string match)",
+        n,
+        len(tokenizer),
+        pretrained_model_id,
+    )
+    return n
+
+
+def _reinit_vocab_layers(
+    model, tokenizer, pretrained_model_id: str | None, logger: logging.Logger
+) -> None:
     """Swap a pretrained decoder onto a new (smaller) custom vocabulary.
 
     Only the **vocab-tied** layers are reset: the token-embedding matrix and
     the LM head are resized to ``len(tokenizer)`` and re-initialised from the
     decoder's own init distribution. The custom tokenizer's ids do NOT
     correspond to the pretrained tokenizer's, so there is no per-token mapping
-    to preserve — every row is fresh. Everything else (the whole ViT encoder,
-    and the decoder's self-attention, cross-attention, FFN, layernorms) keeps
-    its pretrained weights. See spec §6.5.22 / Q&A on the custom-BPE run.
+    to preserve — every row starts fresh, then a surface-string warm-start
+    (:func:`_warm_start_embeddings`) copies pretrained rows for the tokens that
+    DO have an identical single-token surface (mostly the Latin chars).
+    Everything else (the whole ViT encoder, and the decoder's self-attention,
+    cross-attention, FFN, layernorms) keeps its pretrained weights. spec §6.5.22.
     """
     import torch.nn as nn
 
     new_vocab = len(tokenizer)
+    old_emb = model.decoder.get_input_embeddings().weight.data.clone()
     model.decoder.resize_token_embeddings(new_vocab)
     std = getattr(model.decoder.config, "initializer_range", 0.02)
     emb = model.decoder.get_input_embeddings()
     nn.init.normal_(emb.weight, mean=0.0, std=std)
+    if pretrained_model_id is not None:
+        _warm_start_embeddings(emb.weight.data, old_emb, tokenizer, pretrained_model_id, logger)
     out = model.decoder.get_output_embeddings()
     if out is not None and out.weight is not emb.weight:  # untied LM head
         nn.init.normal_(out.weight, mean=0.0, std=std)
@@ -447,7 +499,9 @@ def _build_model(
         # custom char-BPE. This OVERRIDES the special-id block just above with
         # the custom tokenizer's ids. spec §6.5.22.
         if reinit_vocab:
-            _reinit_vocab_layers(model, tokenizer, logging.getLogger("trocr_finetune"))
+            _reinit_vocab_layers(
+                model, tokenizer, pretrained_model_id, logging.getLogger("trocr_finetune")
+            )
     else:
         assert (
             encoder_id is not None and decoder_id is not None
