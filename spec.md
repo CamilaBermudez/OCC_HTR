@@ -3061,6 +3061,34 @@ full_annotated` (600), 80/20 — via `run_trocr_finetune.py`:
 Eval both on the 300-val + a fresh top-k/error pass to see whether pad fixes the
 spacing/stretch errors and the corpus tokenizer fixes the abbreviation drops.
 
+**Tokenizer analysis (2026-08-06) → vocab 150.** Corpus =
+`data/processed/tokenizer_corpora/medical4000_plus_catmus` (medical-4000 labels +
+600 real GT + **the full catmus transcription**). Character floor = **95 unique
+chars**; **31 appear ONLY in catmus** (the abbreviation/medical glyphs the synthetic
+labels lack: ℥ ꝓ ꝗ ꝯ ꝰ ꝵ, superscript combining marks ◌ͣ◌ͤ◌ͧ, ÷ ¬ ħ …) — hence
+including catmus is essential. Char-level BPE with the full alphabet **forced into
+`initial_alphabet`** (so no byte-splitting → no U+FFFD, unlike RoBERTa's byte-BPE)
+gives **round-trip floor CER 0.0000 and 0 UNK at every size ≥ 100**; size is a pure
+sequence-compression trade-off:
+
+| vocab | floor | tok/line | tok/char |
+|---|---|---|---|
+| 100 | 0 | 37.8 | 1.03 (≈char) |
+| **130** | 0 | 26.2 | 0.71 |
+| **150** | 0 | 23.4 | 0.64 |
+| 200 | 0 | 19.7 | 0.54 |
+| 300 | 0 | 16.7 | 0.45 |
+
+Elbow at ~130–150; beyond ~175 each +25 vocab buys <2 tok/line and adds
+corpus-specific (overfit-prone) merges. **Chosen 150** = 95-char alphabet + ~51
+high-frequency generalizable merges (`es`/`de`/`qu`…), ~37 % shorter than
+char-level, 0 loss. Built:
+`data/processed/tokenizer/occitan_char_bpe_150_20260806/`. Fixed
+`src/tokenizer/BPE_tokenizer.py` char-mode (was `Split(isolated)` → no merges, no
+decoder; now Metaspace + forced alphabet). **NB the Metaspace decoder doesn't
+survive save/reload (serialized as null); the consumer must re-set
+`decoder = Metaspace()` after load** — else decode inserts spurious spaces.
+
 ## 6.6 Line-level alignment for the viewer (2026-07-31)
 
 The manuscript viewer keys everything by **segmentation-line index** and pairs

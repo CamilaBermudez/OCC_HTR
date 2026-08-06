@@ -3,8 +3,9 @@ from pathlib import Path
 
 from tokenizers import Tokenizer
 from tokenizers.decoders import ByteLevel as ByteLevelDecoder
+from tokenizers.decoders import Metaspace as MetaspaceDecoder
 from tokenizers.models import BPE
-from tokenizers.pre_tokenizers import ByteLevel, Split
+from tokenizers.pre_tokenizers import ByteLevel, Metaspace
 from tokenizers.processors import TemplateProcessing
 from tokenizers.trainers import BpeTrainer
 from transformers import PreTrainedTokenizerFast
@@ -79,16 +80,27 @@ def train_occitan_htr_tokenizer(
 
     tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
 
+    initial_alphabet: list[str] = []
     if type == "byte":
         tokenizer.pre_tokenizer = ByteLevel()
         tokenizer.decoder = ByteLevelDecoder()
     elif type == "char":
-        tokenizer.pre_tokenizer = Split(pattern="", behavior="isolated")
+        # char-level BPE: Metaspace keeps character boundaries (no byte-splitting
+        # of multi-byte medieval glyphs -> no U+FFFD) and is reversible; forcing
+        # every corpus character into initial_alphabet guarantees full coverage
+        # (0 round-trip loss). Merges then add high-frequency subwords on top.
+        tokenizer.pre_tokenizer = Metaspace()
+        tokenizer.decoder = MetaspaceDecoder()
+        chars: set[str] = set()
+        for p in corpus_files:
+            chars |= set(p.read_text(encoding="utf-8"))
+        initial_alphabet = sorted(c for c in chars if c not in "\n\r")
 
     trainer = BpeTrainer(
         vocab_size=vocab_size,
         show_progress=True,
         special_tokens=["[PAD]", "[UNK]", "[CLS]", "[EOS]"],
+        initial_alphabet=initial_alphabet,
     )
 
     tokenizer.train([str(p) for p in corpus_files], trainer)
