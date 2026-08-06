@@ -4137,8 +4137,16 @@ model travels with the predictions (`src/ocr/{trocr_transcribe,transcribe_line_c
   ~17.5 min). **71 pages / 13,677 lines** at
   `data/processed/transcription/catmus_conf_fullms/` (`{stem:{text, chars:[[c,p],…]}}`).
 - Both over the identical kept crops; scholarly aligned file already covers all 71
-  pages. **Next:** per-page comparison JSON (align scholarly + catmus + ViT, mark
-  mismatch spans) → Phase 2 carousel tab.
+  pages.
+- ✅ **Phase 1 — per-page comparison JSON** (`scripts/ocr/build_line_compare.py` →
+  `data/processed/line_compare/<page>.json`, gitignored/regenerable in ~2.4s). Per
+  line: kept-crop image path + scholarly (content-matched per page — robust to the
+  off-by-one index align; scholarly ≈1:1 with physical lines) + catmus text/per-char
+  conf + ViT text/per-token conf + mismatch flags (each model vs scholarly and vs
+  the other, on FOLDED text so editorial spacing isn't flagged — only substantive
+  letter diffs). 13,677 lines; scholarly matched 13,659 (mean sim 90). **Next:**
+  Phase 2 carousel tab (serve line_compare JSON + kept crops; scroll-snap, heat-
+  underline + hover, boxed mismatches, lazy per-page).
 
 **Data sources** (all resolvable via `VIEWER_*` env vars — see
 [frontend/config.py](frontend/config.py)):
