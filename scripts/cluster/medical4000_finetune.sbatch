@@ -17,17 +17,21 @@ set -uo pipefail
 source "$HOME/cayn/scripts/cluster/env.sh"
 cd "$PROJECT_ROOT"
 STAT="$WS/status"; mkdir -p "$STAT"
-NAME="vitroberta_medical4000_${TAG:-pad}"
+DATA="$WS/data/processed"
+# Pool + labels are overridable so this sbatch serves any ViT+RoBERTa pool
+# (medical-4000 default; kraken-style pool for the §6.5.22 style comparison).
+POOL="${POOL:-$DATA/synthetic_samples/augmented_images/aug_20260723_v3_medical_4000}"
+LABELS="${LABELS:-$DATA/synthetic_samples/img_labels/labels_20260723_v3_medical_4000/labels.json}"
+NAME="${NAME:-vitroberta_medical4000_${TAG:-pad}}"
 echo "RUNNING $(date -Is) job=${SLURM_JOB_ID:-?} node=$(hostname)" > "$STAT/$NAME.status"
 
-DATA="$WS/data/processed"
 extra=(); [ -n "${TOKENIZER:-}" ] && extra+=(--tokenizer "$TOKENIZER")
 
 python scripts/ocr/run_trocr_finetune.py \
   --pretrained-model-id microsoft/trocr-base-handwritten \
   --real-folder "$DATA/annotated_samples/OCR/full_annotated" \
-  --augmented-folder "$DATA/synthetic_samples/augmented_images/aug_20260723_v3_medical_4000" \
-  --labels-json "$DATA/synthetic_samples/img_labels/labels_20260723_v3_medical_4000/labels.json" \
+  --augmented-folder "$POOL" \
+  --labels-json "$LABELS" \
   --output-base-dir "$WS/models/$NAME" \
   --val-fraction 0.2 --epochs 15 --batch-size 64 --device cuda \
   --resize-mode "${RESIZE:-pad}" "${extra[@]}"

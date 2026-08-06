@@ -200,6 +200,15 @@ def main():
         required=False,
         help="Subdirectory under output-dir. Default: medieval_text_<timestamp>.",
     )
+    parser.add_argument(
+        "--spacing-jitter",
+        type=float,
+        default=0.0,
+        help="Random extra gap (± px) between grapheme clusters on plain-text lines "
+        "so inter-letter spacing isn't machine-regular (spec §6.5.22 #2). 0 = off "
+        "(exact font advance). Try 1.5–3.0 at font_size 24. Combining marks stay "
+        "attached to their base letter.",
+    )
 
     args = parser.parse_args()
 
@@ -249,6 +258,7 @@ def main():
         max_abbreviation_per_word=args.max_abbreviation_per_word,
         enable_pattern_stamps=args.enable_pattern_stamps,
         p_end_decor=args.p_end_decor,
+        spacing_jitter=args.spacing_jitter,
         base_seed=args.base_seed,
         categories_filter=categories_filter,
         max_samples=args.max_samples,

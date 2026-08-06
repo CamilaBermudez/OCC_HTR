@@ -20,11 +20,74 @@ import os
 import random
 import re
 import subprocess
+import unicodedata
 from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from tqdm import tqdm
+
+
+def _grapheme_clusters(s: str) -> list[str]:
+    """Split into grapheme clusters so a base char keeps its combining marks.
+
+    A codepoint with non-zero combining class (e.g. U+0308 in ``q̈`` = q + ◌̈)
+    attaches to the preceding cluster instead of starting a new one. This is what
+    lets the letter-spacing renderer move whole glyphs without tearing a medieval
+    diacritic off its base letter.
+    """
+    clusters: list[str] = []
+    for ch in s:
+        if clusters and unicodedata.combining(ch):
+            clusters[-1] += ch
+        else:
+            clusters.append(ch)
+    return clusters
+
+
+def _render_text_with_spacing(
+    text: str,
+    font: "ImageFont.FreeTypeFont",
+    margin: int,
+    fg: tuple[int, int, int],
+    bg: tuple[int, int, int],
+    jitter: float,
+    rng: random.Random,
+) -> Image.Image:
+    """Render ``text`` with a random extra gap between grapheme clusters.
+
+    Real scribes did not space letters evenly; a fixed font advance is a giveaway
+    of synthetic origin and (per spec §6.8.1) minim runs (m/n/i/u) are exactly where
+    the models fail — jittering the inter-letter gap makes those runs less
+    machine-regular. Each gap is ``rng.uniform(-jitter, jitter)`` px; the pen still
+    advances by the font's own per-cluster width, so kerning within a cluster is
+    preserved. Vertical metrics come from the full-string bbox so the baseline is
+    unchanged.
+    """
+    clusters = _grapheme_clusters(text)
+    dummy = Image.new("RGB", (1, 1))
+    measure = ImageDraw.Draw(dummy)
+    bbox = measure.textbbox((0, 0), text, font=font)
+    top, text_h = bbox[1], bbox[3] - bbox[1]
+
+    advances = [font.getlength(c) for c in clusters]
+    # gap[0] = 0 (no gap before the first cluster); jitter every subsequent gap.
+    xs: list[float] = []
+    x = 0.0
+    for i, adv in enumerate(advances):
+        if i > 0:
+            x += rng.uniform(-jitter, jitter)
+        xs.append(x)
+        x += adv
+
+    img_w = int(round(x)) + 2 * margin
+    img_h = text_h + 2 * margin
+    img = Image.new("RGB", (max(img_w, 1), max(img_h, 1)), bg)
+    draw = ImageDraw.Draw(img)
+    for cluster, xoff in zip(clusters, xs, strict=True):
+        draw.text((margin + xoff, margin - top), cluster, fill=fg, font=font)
+    return img
+
 
 # Round letters that trigger rotunda r when followed by 'r'. Standard
 # medieval set: letters whose right-side bowl curves outward.
@@ -608,6 +671,7 @@ def render_text_to_image(
     p_end_decor: float = 0.0,
     p_capital_e: float = 0.0,
     fg_red: tuple[int, int, int] = RUBRIC_RED,
+    spacing_jitter: float = 0.0,
     rng: random.Random | None = None,
 ) -> Image.Image:
     """Render ``text`` as a sepia-on-cream image sized to fit (with margin).
@@ -646,6 +710,12 @@ def render_text_to_image(
 
     # Fast path: a single plain text token in fg only — no stamps, no red.
     if len(tokens) == 1 and tokens[0][0] == "text" and tokens[0][2] == fg:
+        if spacing_jitter > 0:
+            # Letter-spacing jitter only applies to plain-text lines; stamped /
+            # rubric lines keep the exact-advance paths below (jitter there would
+            # desync the stamp cursor). Most lines are plain text, so coverage is
+            # high. See spec §6.5.22 follow-up (#2).
+            return _render_text_with_spacing(text, font, margin, fg, bg, spacing_jitter, rng)
         dummy = Image.new("RGB", (1, 1))
         draw = ImageDraw.Draw(dummy)
         bbox = draw.textbbox((0, 0), text, font=font)
@@ -791,6 +861,7 @@ def generate_medieval_text_dataset(
     base_seed: int = 42,
     categories_filter: set[str] | None = None,
     max_samples: int | None = None,
+    spacing_jitter: float = 0.0,
     logs_dir: str | Path | None = None,
 ) -> Path:
     input_json = Path(input_json)
@@ -1035,6 +1106,7 @@ def generate_medieval_text_dataset(
                 end_decor_stamps=end_decor_stamps or None,
                 p_end_decor=effective_p_end_decor,
                 p_capital_e=effective_p_e,
+                spacing_jitter=spacing_jitter,
                 rng=rng,
             )
         except Exception as exc:
