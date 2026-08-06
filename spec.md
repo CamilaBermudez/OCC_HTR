@@ -3117,9 +3117,36 @@ val_fraction 0.2, seed 42):
   custom tokenizer, 98/150 warm-started. Confirmed at build: vocab 150,
   `decoder_start=2 pad=0 eos=3`, pretrained body kept.
 
-Both entered training cleanly. TODO: harvest `final_metrics.json`, eval both on the
-300-val + fresh top-k/error pass, log here. NB Run B's saved tokenizer.json will have
-the null Metaspace decoder → **re-attach `Metaspace()` at eval/transcription time**.
+Both entered training cleanly. Special-token IDs verified on the BPE-150 vocab:
+`decoder_start=[CLS]=2`, `pad=[PAD]=0`, `eos=[EOS]=3` (overriding the pretrained
+checkpoint's RoBERTa IDs, which are meaningless in a 150-token vocab and would give
+NaN loss / non-terminating generation if leaked through).
+
+**Training trajectory (internal 1525-line val, generation-time CER).** Both climb
+smoothly; the key finding is that **Run B recovers from its re-init'd vocab layers
+and catches Run A within ~4 epochs**:
+
+| epoch | Run A (pad) char-acc | Run B (pad+BPE-150) char-acc |
+|---|---|---|
+| 1 | — | 0.203 |
+| 2 | 0.887 | 0.194 |
+| 3 | 0.904 | 0.793 |
+| 4 | 0.909 | 0.886 |
+| 5 | 0.914 | 0.907 |
+| 6 | 0.919 | 0.915 |
+| 7 | 0.925 | … |
+
+Run B's epochs 1–2 sit at ~0.20 (CER ~0.80) — expected: the LM head + 52/150 random
+embeddings emit noise until the fresh head learns the vocab; the pretrained encoder +
+decoder body then let it snap up **0.19 → 0.79 → 0.89 in two epochs**. This is the
+healthy "pretrained body + fresh head" signature, not a failure mode (flat/NaN loss
+would be). By epoch 6 the two runs are within 0.4 pt — the custom tokenizer costs
+only a couple of warm-up epochs, no final-quality penalty visible yet.
+
+TODO (auto-harvested by the completion monitor): `final_metrics.json` for both, then
+eval on the 300-val + fresh top-k/error pass, logged here. NB Run B's saved
+tokenizer.json has the null Metaspace decoder → **re-attach `Metaspace()` at
+eval/transcription time**.
 
 ## 6.6 Line-level alignment for the viewer (2026-07-31)
 
