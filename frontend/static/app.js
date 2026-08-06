@@ -656,6 +656,12 @@ function setupCompareTooltip() {
     car.addEventListener("mouseleave", () => {
         tip.style.display = "none";
     });
+    // click a card to bring it into focus (centers it; the observer then focuses it)
+    car.addEventListener("click", (e) => {
+        const card = e.target.closest(".cmp-card");
+        if (!card || card.classList.contains("focus")) return;
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
 }
 
 async function initCompare() {

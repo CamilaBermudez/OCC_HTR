@@ -492,6 +492,7 @@ main {
 }
 .cmp-card {
     scroll-snap-align: center;
+    cursor: pointer;
     width: min(1000px, 94%);
     background: var(--panel); border: 1px solid var(--panel-border); border-radius: 8px;
     padding: 12px 16px;
@@ -499,7 +500,7 @@ main {
     transition: opacity 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
 }
 .cmp-card.focus {
-    opacity: 1; transform: scale(1);
+    opacity: 1; transform: scale(1); cursor: default;
     border-color: var(--accent); box-shadow: 0 6px 26px rgba(0,0,0,0.45);
 }
 .cmp-head { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
