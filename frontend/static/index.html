@@ -13,6 +13,7 @@
             <button class="tab-btn active" data-tab="tab-transcription">Transcription</button>
             <button class="tab-btn" data-tab="tab-alignment">3-way alignment</button>
             <button class="tab-btn" data-tab="tab-transcribe">Transcribe a page</button>
+            <button class="tab-btn" data-tab="tab-compare">Model compare</button>
         </nav>
         <div class="page-selector">
             <label for="page-select">Page</label>
@@ -121,6 +122,22 @@
                         line-by-line recognition (~30–60 s/page).</div>
                 </div>
             </div>
+        </section>
+
+        <!-- ============ TAB 4: model comparison + confidence ============ -->
+        <section id="tab-compare" class="tab-panel">
+            <div class="compare-toolbar">
+                <label for="compare-page">Page</label>
+                <select id="compare-page"></select>
+                <span class="compare-legend">
+                    <span class="lg-item">confidence
+                        <span class="heatbar"><i></i><i></i><i></i><i></i><i></i></span>
+                        low→high</span>
+                    <span class="lg-item"><span class="lg-box">abc</span> = differs from scholarly / other model</span>
+                    <span class="lg-item lg-hint">scroll to move focus · hover a character for its probability</span>
+                </span>
+            </div>
+            <div id="compare-carousel" class="compare-carousel"></div>
         </section>
     </main>
 

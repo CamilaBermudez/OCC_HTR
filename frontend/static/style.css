@@ -459,3 +459,68 @@ main {
 #upload-new:hover { color: var(--text, #e5e5e5); border-color: var(--accent, #ffb84d); }
 .upload-status { color: var(--muted, #9fb3c4); margin-left: auto; }
 .upload-hint { padding: 16px; color: var(--muted, #9fb3c4); font-size: 13px; line-height: 1.5; }
+
+/* ---------- Tab 4: model comparison + confidence ---------- */
+#tab-compare.active { display: flex; flex-direction: column; padding: 0; gap: 0; }
+.compare-toolbar {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--panel-border);
+}
+.compare-toolbar label { color: var(--muted); font-size: 13px; }
+#compare-page {
+    background: var(--bg); color: var(--text); border: 1px solid var(--panel-border);
+    border-radius: 4px; padding: 4px 8px; font-size: 13px; min-width: 200px;
+}
+.compare-legend { display: flex; gap: 18px; align-items: center; color: var(--muted); font-size: 12px; flex-wrap: wrap; }
+.lg-item { display: flex; align-items: center; gap: 6px; }
+.lg-hint { font-style: italic; opacity: 0.8; }
+.heatbar { display: inline-flex; gap: 0; }
+.heatbar i { width: 12px; height: 10px; display: inline-block; }
+.heatbar i:nth-child(1){ background: hsl(0,70%,45%); }
+.heatbar i:nth-child(2){ background: hsl(30,70%,45%); }
+.heatbar i:nth-child(3){ background: hsl(60,70%,45%); }
+.heatbar i:nth-child(4){ background: hsl(90,70%,45%); }
+.heatbar i:nth-child(5){ background: hsl(120,70%,45%); }
+.lg-box { outline: 2px solid var(--accent-strong); border-radius: 3px; padding: 0 3px; color: var(--text); }
+
+.compare-carousel {
+    flex: 1; overflow-y: auto; scroll-snap-type: y proximity;
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    padding: 38vh 16px;   /* top/bottom pad so first & last cards can center */
+}
+.cmp-card {
+    scroll-snap-align: center;
+    width: min(1000px, 94%);
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 8px;
+    padding: 12px 16px;
+    opacity: 0.32; transform: scale(0.95);
+    transition: opacity 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+.cmp-card.focus {
+    opacity: 1; transform: scale(1);
+    border-color: var(--accent); box-shadow: 0 6px 26px rgba(0,0,0,0.45);
+}
+.cmp-img {
+    display: block; max-width: 100%; height: auto;
+    background: #fff; border-radius: 4px; margin-bottom: 10px;
+    image-rendering: -webkit-optimize-contrast;
+}
+.cmp-rows {
+    display: grid; grid-template-columns: 104px 1fr; gap: 6px 14px;
+    font-family: "JuliaMono", "SF Mono", monospace; font-size: 14px;
+}
+.cmp-row { display: contents; }
+.cmp-label { color: var(--muted); text-align: right; user-select: none; font-size: 12px; padding-top: 3px; }
+.cmp-text { white-space: pre-wrap; word-break: break-word; line-height: 2.0; }
+.cmp-schol .cmp-text { color: var(--text); }
+.cmp-none { color: var(--muted); font-style: italic; }
+/* confidence heat underline (green=high → red=low), set inline per token */
+.cmp-text .tok { border-bottom: 3px solid transparent; padding-bottom: 1px; }
+/* substantive disagreement with scholarly → box */
+.cmp-text .tok.mism-schol {
+    outline: 2px solid var(--accent-strong); outline-offset: 1px;
+    border-radius: 3px; background: rgba(255, 149, 0, 0.12);
+}
+/* differs from the other model → dotted overline marker */
+.cmp-text .tok.mism-other { box-shadow: inset 0 2px 0 -1px var(--muted); }
+.cmp-card:not(.focus) .cmp-img { max-height: 46px; object-fit: cover; object-position: left; }

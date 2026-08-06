@@ -415,12 +415,15 @@ function activateTab(tabId) {
     });
     // Copy/Download only make sense on tab 1.
     $("#tab-actions").style.display = tabId === "tab-transcription" ? "flex" : "none";
-    // The corpus Page selector is irrelevant on the upload tab (you bring your
-    // own image), so hide it there.
-    $(".page-selector").style.display = tabId === "tab-transcribe" ? "none" : "flex";
-    // The corpus footer (page · segmented/scholarly line counts) is irrelevant
-    // on the upload tab too.
-    $("#status").style.display = tabId === "tab-transcribe" ? "none" : "";
+    // The corpus Page selector + footer are irrelevant on the upload and compare
+    // tabs (upload brings its own image; compare has its own page selector).
+    const ownControls = tabId === "tab-transcribe" || tabId === "tab-compare";
+    $(".page-selector").style.display = ownControls ? "none" : "flex";
+    $("#status").style.display = ownControls ? "none" : "";
+    if (tabId === "tab-compare") {
+        initCompare();
+        return; // no zoom pane on this tab
+    }
     // A pane that was previously ``display: none`` had clientWidth = 0
     // when its image loaded, so applyZoom used a bogus fit. Recompute
     // now that the pane is measurable again.
@@ -623,6 +626,126 @@ function bindEvents() {
             $("#tab-alignment").classList.toggle("show-editorial", editorialToggle.checked);
         });
     }
+}
+
+// ---------- Tab 4: model comparison + confidence ----------
+let _compareInited = false;
+let _compareObserver = null;
+
+async function initCompare() {
+    if (_compareInited) return;
+    _compareInited = true;
+    const sel = $("#compare-page");
+    try {
+        const { pages } = await fetchJson("/api/compare/pages");
+        sel.innerHTML = "";
+        pages.forEach((p) => {
+            const o = document.createElement("option");
+            o.value = p;
+            o.textContent = p;
+            sel.appendChild(o);
+        });
+        sel.addEventListener("change", () => loadComparePage(sel.value));
+        if (pages.length) loadComparePage(pages[0]);
+    } catch (e) {
+        $("#compare-carousel").textContent = "Failed to load comparison pages: " + e.message;
+    }
+}
+
+// confidence -> hue (red≈low .. green≈high)
+function confColor(p) {
+    const h = Math.max(0, Math.min(120, p * 120));
+    return `hsl(${h}, 70%, 45%)`;
+}
+
+// build confidence spans; items = [[text, prob, mismScholarly, mismOther], ...]
+function confSpans(items) {
+    const frag = document.createDocumentFragment();
+    for (const [text, prob, mSchol, mOther] of items) {
+        const sp = document.createElement("span");
+        sp.className = "tok";
+        sp.textContent = text;
+        sp.style.borderBottomColor = confColor(prob);
+        if (mSchol) sp.classList.add("mism-schol");
+        if (mOther) sp.classList.add("mism-other");
+        sp.title =
+            `p=${prob.toFixed(3)}` +
+            (mSchol ? " · ≠ scholarly" : "") +
+            (mOther ? " · ≠ other model" : "");
+        frag.appendChild(sp);
+    }
+    return frag;
+}
+
+function compareRow(label, cls, contentNode) {
+    const row = document.createElement("div");
+    row.className = "cmp-row " + cls;
+    const lab = document.createElement("div");
+    lab.className = "cmp-label";
+    lab.textContent = label;
+    const txt = document.createElement("div");
+    txt.className = "cmp-text";
+    txt.appendChild(contentNode);
+    row.append(lab, txt);
+    return row;
+}
+
+function renderCompareCard(page, line) {
+    const card = document.createElement("div");
+    card.className = "cmp-card";
+    const img = document.createElement("img");
+    img.className = "cmp-img";
+    img.loading = "lazy";
+    img.src = `/api/compare/${page}/image/${line.stem}`;
+    img.alt = line.stem;
+    card.appendChild(img);
+    const rows = document.createElement("div");
+    rows.className = "cmp-rows";
+    const sch = document.createElement("span");
+    sch.textContent = line.scholarly.text || "— (no scholarly match)";
+    if (!line.scholarly.text) sch.className = "cmp-none";
+    rows.appendChild(compareRow("scholarly", "cmp-schol", sch));
+    rows.appendChild(compareRow("catmus", "cmp-cat", confSpans(line.catmus.chars)));
+    rows.appendChild(compareRow("ViT+RoBERTa", "cmp-vit", confSpans(line.vit.tokens)));
+    card.appendChild(rows);
+    return card;
+}
+
+async function loadComparePage(page) {
+    const car = $("#compare-carousel");
+    car.textContent = "Loading…";
+    if (_compareObserver) _compareObserver.disconnect();
+    let data;
+    try {
+        data = await fetchJson(`/api/compare/${page}`);
+    } catch (e) {
+        car.textContent = "Failed to load page: " + e.message;
+        return;
+    }
+    car.innerHTML = "";
+    for (const line of data.lines) car.appendChild(renderCompareCard(page, line));
+    // focus = the most-visible card as you scroll
+    const ratios = new Map();
+    _compareObserver = new IntersectionObserver(
+        (entries) => {
+            entries.forEach((e) => ratios.set(e.target, e.intersectionRatio));
+            let best = null;
+            let bestR = -1;
+            ratios.forEach((r, el) => {
+                if (r > bestR) {
+                    bestR = r;
+                    best = el;
+                }
+            });
+            car.querySelectorAll(".cmp-card.focus").forEach((c) => {
+                if (c !== best) c.classList.remove("focus");
+            });
+            if (best && bestR > 0) best.classList.add("focus");
+        },
+        { root: car, threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+    car.querySelectorAll(".cmp-card").forEach((c) => _compareObserver.observe(c));
+    car.scrollTop = 0;
 }
 
 async function init() {

@@ -35,6 +35,11 @@ class Config:
     filtered_kept_dir: Path
     """Filtered kept line crops (the folder the annotators saw)."""
 
+    line_compare_dir: Path
+    """Per-page model-comparison JSON (scholarly vs catmus vs ViT + confidence +
+    mismatch), produced by ``scripts/ocr/build_line_compare.py`` (spec §7.4.1).
+    Drives Tab 4. Override ``VIEWER_LINE_COMPARE``; missing => tab shows nothing."""
+
     line_alignment_json: Path
     """Per-page content-based line alignment (model line -> scholarly line),
     produced by ``scripts/ocr/align_transcriptions.py``. Used to pair each
@@ -92,6 +97,12 @@ class Config:
                 os.environ.get(
                     "VIEWER_FILTERED_KEPT",
                     REPO_ROOT / "data/processed/filtered_images/20260618_160948/original/kept",
+                )
+            ),
+            line_compare_dir=Path(
+                os.environ.get(
+                    "VIEWER_LINE_COMPARE",
+                    REPO_ROOT / "data/processed/line_compare",
                 )
             ),
         )

@@ -128,6 +128,37 @@ def api_transcribe(
         tmp.unlink(missing_ok=True)
 
 
+# ---- Tab 4: model-comparison + confidence (spec §7.4.1) ----
+@app.get("/api/compare/pages")
+def api_compare_pages() -> dict:
+    """Pages that have a precomputed line-comparison JSON."""
+    d = get_repo().config.line_compare_dir
+    pages = sorted(p.stem for p in d.glob("[0-9]*.json")) if d.is_dir() else []
+    return {"pages": pages}
+
+
+@app.get("/api/compare/{page_key}")
+def api_compare_page(page_key: str) -> FileResponse:
+    """The per-line comparison JSON for one page (scholarly/catmus/ViT + conf + mismatch)."""
+    if "/" in page_key or ".." in page_key:
+        raise HTTPException(status_code=400, detail="bad page key")
+    path = get_repo().config.line_compare_dir / f"{page_key}.json"
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="no comparison for page")
+    return FileResponse(path, media_type="application/json")
+
+
+@app.get("/api/compare/{page_key}/image/{stem}")
+def api_compare_image(page_key: str, stem: str) -> FileResponse:
+    """The kept line-crop image for one physical line (the carousel photo)."""
+    if any(bad in (page_key + stem) for bad in ("/", "..", "\\")):
+        raise HTTPException(status_code=400, detail="bad path")
+    path = get_repo().config.filtered_kept_dir / page_key / f"{stem}.png"
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="no crop")
+    return FileResponse(path, media_type="image/png")
+
+
 # Static mount is LAST so ``/api/*`` routes take precedence. The SPA at
 # ``static/index.html`` is served for any other path. ``html=True`` makes
 # ``/`` return ``index.html`` implicitly.
