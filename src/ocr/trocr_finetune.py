@@ -305,6 +305,80 @@ class TrOCRLineDataset(Dataset):
         }
 
 
+def _load_custom_tokenizer(tokenizer_dir: Path, logger: logging.Logger):
+    """Load a custom HF tokenizer folder and re-attach its Metaspace decoder.
+
+    ``src/tokenizer/BPE_tokenizer.py`` builds a char-level BPE with a Metaspace
+    pre-tokenizer + decoder, but the Metaspace **decoder** serialises to
+    ``null`` in tokenizer.json (a tokenizers quirk). Loading it back therefore
+    gives a tokenizer that encodes correctly but decodes with spurious spaces
+    between every token. We re-attach ``Metaspace()`` on the backend tokenizer
+    so ``decode`` round-trips exactly (verified: 0 CER on the medieval samples).
+    """
+    from tokenizers.decoders import Metaspace as _MetaspaceDecoder
+    from transformers import AutoTokenizer
+
+    tok = AutoTokenizer.from_pretrained(str(tokenizer_dir))
+    tok.backend_tokenizer.decoder = _MetaspaceDecoder()
+    logger.info(
+        "Loaded custom tokenizer from %s (vocab=%d, re-attached Metaspace decoder)",
+        tokenizer_dir,
+        len(tok),
+    )
+    return tok
+
+
+def _reinit_vocab_layers(model, tokenizer, logger: logging.Logger) -> None:
+    """Swap a pretrained decoder onto a new (smaller) custom vocabulary.
+
+    Only the **vocab-tied** layers are reset: the token-embedding matrix and
+    the LM head are resized to ``len(tokenizer)`` and re-initialised from the
+    decoder's own init distribution. The custom tokenizer's ids do NOT
+    correspond to the pretrained tokenizer's, so there is no per-token mapping
+    to preserve — every row is fresh. Everything else (the whole ViT encoder,
+    and the decoder's self-attention, cross-attention, FFN, layernorms) keeps
+    its pretrained weights. See spec §6.5.22 / Q&A on the custom-BPE run.
+    """
+    import torch.nn as nn
+
+    new_vocab = len(tokenizer)
+    model.decoder.resize_token_embeddings(new_vocab)
+    std = getattr(model.decoder.config, "initializer_range", 0.02)
+    emb = model.decoder.get_input_embeddings()
+    nn.init.normal_(emb.weight, mean=0.0, std=std)
+    out = model.decoder.get_output_embeddings()
+    if out is not None and out.weight is not emb.weight:  # untied LM head
+        nn.init.normal_(out.weight, mean=0.0, std=std)
+    if out is not None and getattr(out, "bias", None) is not None:
+        nn.init.zeros_(out.bias)
+    model.config.vocab_size = new_vocab
+    model.config.decoder.vocab_size = new_vocab
+    # decoder_start / pad / eos must come from the NEW tokenizer, overriding the
+    # pretrained checkpoint's ids. Custom BPE specials: [PAD] [UNK] [CLS] [EOS];
+    # [CLS] is the decoder-start (bos), [EOS] the stop token.
+    dec_start = tokenizer.cls_token_id
+    if dec_start is None:
+        dec_start = tokenizer.bos_token_id
+    pad = tokenizer.pad_token_id
+    eos = tokenizer.eos_token_id
+    assert dec_start is not None and eos is not None and pad is not None, (
+        "Custom tokenizer must expose cls/bos, eos and pad tokens; got "
+        f"cls={dec_start} eos={eos} pad={pad}"
+    )
+    for cfg in (model.config, model.generation_config):
+        cfg.decoder_start_token_id = dec_start
+        cfg.pad_token_id = pad
+        cfg.eos_token_id = eos
+    logger.info(
+        "Re-initialised vocab-tied layers to custom vocab=%d "
+        "(decoder_start=%d pad=%d eos=%d); pretrained encoder + decoder body kept",
+        new_vocab,
+        dec_start,
+        pad,
+        eos,
+    )
+
+
 def _build_model(
     tokenizer,
     max_length: int,
@@ -315,6 +389,7 @@ def _build_model(
     pretrained_model_id: str | None = None,
     encoder_id: str | None = None,
     decoder_id: str | None = None,
+    reinit_vocab: bool = False,
 ):
     """Build a ``VisionEncoderDecoderModel`` for generation.
 
@@ -366,6 +441,13 @@ def _build_model(
             cfg.decoder_start_token_id = dec_start
             cfg.pad_token_id = pad
             cfg.eos_token_id = eos
+
+        # Custom-vocab experiment: replace the vocab-tied layers (embeddings +
+        # LM head) so the pretrained ViT+RoBERTa decoder is retargeted onto the
+        # custom char-BPE. This OVERRIDES the special-id block just above with
+        # the custom tokenizer's ids. spec §6.5.22.
+        if reinit_vocab:
+            _reinit_vocab_layers(model, tokenizer, logging.getLogger("trocr_finetune"))
     else:
         assert (
             encoder_id is not None and decoder_id is not None
@@ -510,6 +592,7 @@ def finetune_trocr(
     dataloader_num_workers: int = 0,
     device: str = "auto",
     resize_mode: str = DEFAULT_RESIZE_MODE,
+    custom_tokenizer: str | Path | None = None,
     logs_dir: str | Path | None = None,
     task_name: str = "trocr_finetune",
     log_config: bool = True,
@@ -580,6 +663,12 @@ def finetune_trocr(
     output_base_dir = Path(output_base_dir)
     augmented_folder = Path(augmented_folder) if augmented_folder else None
     labels_json = Path(labels_json) if labels_json else None
+    custom_tokenizer = Path(custom_tokenizer) if custom_tokenizer else None
+    assert custom_tokenizer is None or pretrained_model_id is not None, (
+        "custom_tokenizer is only supported with pretrained_model_id (it retargets "
+        "the pretrained decoder's vocab); the from-scratch branch already accepts "
+        "any decoder tokenizer via decoder_id."
+    )
     use_augmented = augmented_folder is not None and labels_json is not None
     assert not (augmented_folder is None) ^ (labels_json is None), (
         "augmented_folder and labels_json must be provided together, "
@@ -608,6 +697,7 @@ def finetune_trocr(
             "use_augmented": use_augmented,
             "max_aug_samples": max_aug_samples,
             "pretrained_model_id": pretrained_model_id,
+            "custom_tokenizer": str(custom_tokenizer) if custom_tokenizer else None,
             "model_source": (
                 "pretrained_trocr" if pretrained_model_id else "encoder_decoder_pretrained"
             ),
@@ -667,9 +757,13 @@ def finetune_trocr(
     # processor + tokenizer + model into the same checkpoint; the
     # encoder-decoder-pretrained path loads them separately.
     if pretrained_model_id is not None:
-        logger.info("Loading image processor + tokenizer: %s", pretrained_model_id)
         image_processor = AutoImageProcessor.from_pretrained(pretrained_model_id)
-        tokenizer = AutoTokenizer.from_pretrained(pretrained_model_id)
+        if custom_tokenizer is not None:
+            logger.info("Loading image processor: %s", pretrained_model_id)
+            tokenizer = _load_custom_tokenizer(custom_tokenizer, logger)
+        else:
+            logger.info("Loading image processor + tokenizer: %s", pretrained_model_id)
+            tokenizer = AutoTokenizer.from_pretrained(pretrained_model_id)
     else:
         logger.info("Loading image processor: %s", encoder_id)
         image_processor = AutoImageProcessor.from_pretrained(encoder_id)
@@ -707,6 +801,7 @@ def finetune_trocr(
         pretrained_model_id=pretrained_model_id,
         encoder_id=None if pretrained_model_id else encoder_id,
         decoder_id=None if pretrained_model_id else decoder_id,
+        reinit_vocab=custom_tokenizer is not None,
     )
 
     # fp16 is a CUDA-only feature in Trainer. On MPS or CPU we stick to

@@ -174,6 +174,17 @@ def main():
         "is the old behaviour that distorts the line to fill the square. "
         "Transcription auto-reads this from the saved model. See spec §6.5.18.",
     )
+    parser.add_argument(
+        "--tokenizer",
+        required=False,
+        help="Optional path to a custom HuggingFace tokenizer folder (the "
+        "hf_tokenizer/ dir produced by src/tokenizer/BPE_tokenizer.py). When "
+        "set with --pretrained-model-id, the pretrained decoder's token "
+        "embeddings + LM head are re-initialised to this tokenizer's vocab "
+        "(all other decoder + encoder weights stay pretrained). Use for the "
+        "custom char-BPE experiment (spec §6.5.22). The Metaspace decoder is "
+        "re-attached on load (it serialises as null).",
+    )
     parser.add_argument("--logs-dir", required=False)
     parser.add_argument(
         "--no-config-log",
@@ -222,6 +233,7 @@ def main():
         dataloader_num_workers=args.dataloader_num_workers,
         device=args.device,
         resize_mode=args.resize_mode,
+        custom_tokenizer=Path(args.tokenizer) if args.tokenizer else None,
         logs_dir=logs_dir,
         log_config=not args.no_config_log,
     )
