@@ -98,6 +98,9 @@ def main() -> None:
     ops = Counter()  # replace/insert/delete
     sub_in_topk = {k: 0 for k in K_LIST}  # substitutions with GT char in pred top-k
     n_sub = 0
+    confusions = Counter()  # (GT char -> predicted char) substitution pairs
+    deleted = Counter()  # GT chars the model dropped
+    inserted = Counter()  # extra chars the model added
 
     for crop in crops:
         gt = crop.with_name(crop.stem + ".gt.txt").read_text(encoding="utf-8").strip()
@@ -111,14 +114,17 @@ def main() -> None:
             if op == "replace":
                 ops["replace"] += 1
                 n_sub += 1
+                confusions[(gt[j], pred[i])] += 1
                 cand = topk_sets[i] if i < len(topk_sets) else []
                 for k in K_LIST:
                     if gt[j] in cand[:k]:
                         sub_in_topk[k] += 1
             elif op == "insert":
                 ops["insert"] += 1  # GT char missing from pred (deletion by model)
+                deleted[gt[j]] += 1
             elif op == "delete":
                 ops["delete"] += 1  # pred char with no GT (insertion by model)
+                inserted[pred[i]] += 1
 
     # matches = GT chars correctly produced; framed = GT positions that HAVE a
     # prediction frame (matches + substitutions). Deletions (68) have no frame.
@@ -145,6 +151,11 @@ def main() -> None:
         },
         # err->top-k: among substitution errors, GT char in top-k
         "err_topk": {f"top{k}": round(sub_in_topk[k] / n_sub, 4) if n_sub else 0 for k in K_LIST},
+        "top_confusions": [
+            {"gt": g, "pred": p, "n": c} for (g, p), c in confusions.most_common(30)
+        ],
+        "top_deleted_gt_chars": [{"char": ch, "n": c} for ch, c in deleted.most_common(15)],
+        "top_inserted_chars": [{"char": ch, "n": c} for ch, c in inserted.most_common(15)],
         "note": "err->top-k over substitution errors only; the ~49% of errors that "
         "are CTC ins/del have no per-frame top-k.",
     }

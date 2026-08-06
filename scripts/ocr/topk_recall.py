@@ -43,6 +43,13 @@ def main() -> None:
     ap.add_argument("--max-topk", type=int, default=10)
     ap.add_argument("--output", type=Path, required=True)
     ap.add_argument("--examples", type=int, default=25, help="error examples to dump")
+    ap.add_argument(
+        "--resize-mode",
+        choices=["pad", "stretch"],
+        default=None,
+        help="override resize (else resize_mode.txt, else pad). Models trained "
+        "with the plain processor default need 'stretch'.",
+    )
     args = ap.parse_args()
 
     from transformers import AutoImageProcessor, AutoTokenizer, VisionEncoderDecoderModel
@@ -63,6 +70,8 @@ def main() -> None:
     mode_file = args.model_dir / "resize_mode.txt"
     if mode_file.is_file():
         resize_mode = mode_file.read_text(encoding="utf-8").strip() or "pad"
+    if args.resize_mode:
+        resize_mode = args.resize_mode
 
     pad_id = tokenizer.pad_token_id
     eos_id = tokenizer.eos_token_id
