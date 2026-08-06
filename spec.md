@@ -2930,6 +2930,25 @@ thesis: for kraken/CATMuS the winning move is to NOT fine-tune** — use it froz
 as confirmatory-negatives (T4 = 12–19h for a guaranteed-worse number). Per-line
 CSV: `tests/ocr/evaluations/kraken_tiers_vs_val300/`.
 
+**⚠ Real-split discrepancy (documented 2026-08-06).** The cluster tier-kraken cells
+(`kraken_cell.sbatch`) ran at **`real_train_frac 0.6 / 0.4`** (360 train / 240 val),
+whereas **every other kraken run** — including the leak-fixed baselines
+(`_20260718_193601` 0.9018, `_20260719_085411` 0.8994) — and **all TrOCR runs**
+(`val_fraction 0.2`, 27/30; the 3 exceptions used 0.05, the local pipeline-validation
+grid) used **80/20** (480 train). The 0.6/0.4 came from the Makefile *default*, which
+the real runs had overridden; the tier cells picked it up by mistake. Effect: the
+tier kraken trained on 360 vs 480 real lines — so the tier numbers sit slightly
+lower than an 80/20 run would, but the **collapse trend (more synthetic → worse) is
+robust to the split**, so the tiers were NOT re-run (they're a confirmed negative;
+frozen catmus wins regardless). New kraken work uses 80/20.
+
+**Real-only + ketos-augment (2026-08-06, in progress).** catmus fine-tuned on the
+**600 annotated only** with ketos's internal augmentation (`--no-synth-train
+--augment`, base catmus, `--resize union`, lrate 1e-5, lag 5, **80/20** = 480/120),
+CPU, `models/ocr/finetuned/finetune_20260806_123435/`. Tests whether real-only +
+built-in augment (no synthetic renders at all) beats the synthetic-tier kraken /
+approaches frozen catmus. Eval on 300-val when it early-stops.
+
 **Swin+BERT Stage-2 T1→T2 = FLAT (~0.78–0.80).** Tripling the Stage-2 data
 (7k→21k) did not move the real 300-val (it even dipped slightly), while the
 synthetic-val kept climbing (0.908→0.921) — the model overfits more synthetic
@@ -3018,6 +3037,29 @@ to local at `models/ocr/finetuned/<label>_20260731/best_model` (e.g.
 `stage1_swinbert_cometa266k`, `vitroberta_T1_{1font,mf}`,
 `swinbert_stage2_T1_1font`) via `gcloud scp --recurse --compress` (run in the
 background — a 1.1 GB pull exceeds the 2-min tool timeout).
+
+### 6.5.22 medical-4000 reruns — padding + custom BPE tokenizer (2026-08-06, in progress)
+
+Motivated by §6.8.1 (minim + abbreviation errors) and the discovery that the best
+fine-tune **medical-4000 was trained with `stretch`** resize (no `resize_mode.txt`;
+byte-level RoBERTa BPE also **byte-splits** medieval combining chars → U+FFFD, see
+§7.4.1). Two reruns on the **identical medical-4000 dataset** — augmented pool
+`aug_20260723_v3_medical_4000` (7000 = 3000 anno + 4000 medical) + `--real-folder
+full_annotated` (600), 80/20 — via `run_trocr_finetune.py`:
+
+- **Run A — padding.** `--resize-mode pad` (aspect-preserving letterbox, §6.5.18)
+  instead of stretch. Isolates the resize effect vs medical-4000's 0.9487 (stretch).
+- **Run B — padding + custom tokenizer.** A **char/BPE tokenizer trained on the
+  actual corpus + the CATMuS-transcription character set** (so every abbreviation
+  glyph is in the alphabet — no byte-splitting), replacing RoBERTa's 50k BPE.
+  `scripts/tokenizer/run_BPE_tokenizer.py`. **Vocab size chosen by a floor analysis**
+  (`analyze_tokenizer_floor.py`-style round-trip CER + fragmentation vs size);
+  expected ~130–150. NB the custom vocab forces re-init of the decoder's
+  token-embeddings + LM head (only the vocab-tied layers; rest starts pretrained),
+  so `run_trocr_finetune` gains a `--tokenizer` path (code change).
+
+Eval both on the 300-val + a fresh top-k/error pass to see whether pad fixes the
+spacing/stretch errors and the corpus tokenizer fixes the abbreviation drops.
 
 ## 6.6 Line-level alignment for the viewer (2026-07-31)
 
@@ -3451,6 +3493,48 @@ accuracy is not the char-accuracy of §6.5.21 and cross-arch absolute counts
 aren't directly comparable — the *rates* and the recovery story are. Only
 ViT+RoBERTa **T1** exists (T2–T4 never trained — VM stopped, §6.5.21); Swin+BERT
 has T1+T2.
+
+#### 6.8.1 medical-4000 top-k + character-level error analysis (2026-08-06)
+
+**medical-4000 (`trocr_20260724_145651`, the best fine-tune) top-k row.** NB it has
+no `resize_mode.txt` and was trained with the plain-processor **stretch**; the
+top-k script defaults to `pad`, which distorts its input → garbage (top-1 7 %, all
+`</s>`). With `--resize-mode stretch` (added to `topk_recall.py`):
+
+| model | CER | WER | top-1 | top-3 rec | top-5 rec | top-10 rec | err→3 | err→5 | err→10 |
+|---|---|---|---|---|---|---|---|---|---|
+| **ViT+RoBERTa medical-4000** | 0.051 | 0.249 | 86.4 % | 93.9 % | 95.3 % | 97.0 % | 55.3 % | 65.8 % | **78.1 %** |
+| ViT+RoBERTa T1 1font (ref) | 0.087 | 0.316 | 82.1 % | 91.1 % | 93.1 % | 95.1 % | 50.1 % | 61.3 % | 72.8 % |
+
+Beats T1 on every column incl. error-recovery (78 % of its top-1 errors have the
+truth in top-10). Artefact `tests/ocr/evaluations/topk/vitroberta_medical4000.json`.
+
+**Character-level errors (300-val), catmus (CTC) vs medical-4000 — the actionable
+part for synthetic-sample design.** Both models' #1 error by far is **minim
+confusion** (the vertical-stroke letters n/m/u/i/r swapped for each other):
+
+| | catmus (CTC) | ViT medical-4000 |
+|---|---|---|
+| minims | n→u ×49, m→u ×31, m→i ×26, m→n ×18, r→i ×11 | n→u ×16, i→u ×10, u→n ×10, m→n ×7, n→m ×7 |
+| letter-shape | c→e, c→t | c→t ×6, t→c, c→e, o→e, h→b |
+| spacing (ins/del space) | del ×43, **inserts spurious `i` ×52** | del space ×70, insert space ×84 |
+| abbrev marks | **over-inserts** tilde ×9, ⁊→t ×6 | **drops** tilde (deletes ◌̃ ×10) |
+
+Raw counts: `tests/ocr/evaluations/{kraken_topk/catmus_topk.json,topk/vitroberta_medical4000.json}`
+(catmus via `kraken_topk_recall.py`, now records confusion pairs; ViT via a
+char-align of its 300-val predictions — its *token*-level errors are mostly
+subword-boundary artefacts like `e`→`e`, `de`→`del`, so char-level is the honest view).
+
+**Implications for the synthetic samples.** (1) **Minims are the #1 lever** —
+disambiguation is *linguistic* (which minim-run is a real word), not visual, so
+enrich the synthetic **corpus** with real minim-heavy Occitan vocabulary and make
+the **render** reproduce the manuscript's minim spacing/joins rather than clean,
+over-separated minims. (2) **Match the manuscript's word-spacing** — both models
+mis-segment words heavily; if renders use cleaner inter-word spacing than the
+hand, add realistic run-together/ambiguous spacing. (3) **Re-calibrate abbreviation
+marks** — catmus over-produces tildes, ViT drops them; tune combining-mark/⁊
+frequency in the synthetic labels to match the manuscript. (4) c/t/e/o shape
+confusion is secondary. → motivates the padding + custom-tokenizer reruns (§6.5.22).
 
 ## 6.9 PaddleOCR evaluated (recognizer + detector) — negative (2026-08-03)
 
