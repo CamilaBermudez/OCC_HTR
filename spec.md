@@ -4944,3 +4944,30 @@ explains the whole §6.5.23 pattern: our aug is harsh (0.13) ⟹ synthetic hurts
 `--augment` is gentle (mild blur/rotate) ⟹ it *helps* (the 0.9710 leader); kraken-style
 offline was the least-harmful ViT+RoBERTa aug (§6.5.23 #3). Artefacts: scratch legibility
 audit; next step = augmentation-intensity ablation (Phase 1).
+
+**Phase 1 — augmentation-component ablation (2026-08-07).** Leave-one-out on the *real*
+`apply_augmentation_techniques` Compose (verbatim copy, per-image seeds, verified to
+reproduce ALL_ON = 0.1071 on the 100 raw merged-font minim renders; raw baseline 0.0555):
+
+| removed stage | catmus CER | recovery vs ALL_ON |
+|---|---|---|
+| — (ALL_ON) | 0.1071 | — |
+| **page warp** (ElasticTransform + Affine) | **0.0651** | **−0.042 (#1 culprit)** |
+| scan-capture (GaussianBlur + GaussNoise + PlasmaBrightnessContrast) | 0.0845 | −0.023 (#2) |
+| aging (aged_parchment + ink_bleed + creases) | 0.0967 | −0.010 |
+| ink-degrade (Morphological + PixelDropout) | 0.1048 | ~0 |
+| tonal (HueSaturationValue) | 0.1071 | 0 |
+| composite_on_parchment | 0.1203 | *worse* (composite helps legibility) |
+
+At the ~37 px line height the **elastic warp distorts thin strokes** and **GaussianBlur
+softens edges** until t/r and the minims collapse — the t→r symptom. A **gentle** config
+(warp α 15/40→8, p 0.7→0.3, rotate ±2.5→±1.5; blur p 1.0→0.5; GaussNoise halved; plasma
+p 0.7→0.4; composite/aging kept) reads **0.0594 — real-level** (raw 0.0555, real 0.0525),
+vs the current 0.1071. Diagnostic images:
+`tests/ocr/evaluations/legibility_diagnosis_20260807/`.
+
+**Phase-1 conclusion + next step.** The damage is **over-aggressive geometric+scan
+augmentation**, not fonts, letters, stamps, or style — so **no style-transfer model is
+warranted**. Recommended fix: dial warp + scan down to the gentle setting (target
+augmented CER ≈ 0.06), regenerate the pools, and retrain kraken (600 + gently-augmented
+minim) and ViT+RoBERTa to test whether *legible* synthetic finally stops hurting / helps.
