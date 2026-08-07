@@ -4895,3 +4895,52 @@ helped only as *external-corpus text content* fed to the pretrained ViT+RoBERTa
 (medical-4000); as *augmentation of the annotated lines* it is net-negative for every
 architecture, and the strongest single model overall uses **no synthetic renders at
 all** — just real lines + on-the-fly image augmentation.
+
+### 6.5.24 WHY synthetic hurts — legibility diagnosis (2026-08-07)
+
+§6.5.23 showed synthetic augmentation of the 600 lines is net-negative for every
+architecture. Diagnostic question (user): is it the style, the letterforms, or the
+composited glyph stamps? Method: run **frozen catmus** (reads real at CER 0.0525) over
+synthetic samples and compare CER + confusion modes — a legibility probe that needs no
+training.
+
+**Step 1 — synthetic is 2.6–4× less legible than real** (300-line samples, aug pools):
+
+| sample | catmus CER |
+|---|---|
+| real reference | 0.0525 |
+| synth anno-renders (re-renders of the real texts) | 0.1356 |
+| synth minim (augmented) | 0.1286 |
+| synth medical (augmented) | 0.2082 |
+
+Anno-renders use the *same text* as real, so it's the rendering, not the content
+(consistent with Dataset D, §6.3.12). Dominant confusion on synthetic: **t→r ×235**
+(absent on real, whose errors are natural minim n→u/m→u), plus stamp bleed
+(e→E/¶/⁊, l→ł).
+
+**Step 2 — isolate font vs augmentation (raw vs augmented, same 100 minim lines):**
+
+| condition | catmus CER |
+|---|---|
+| raw render, **merged font** (default), no stamps/aug | **0.0555** (≈ real) |
+| raw render, Missaali font | 0.0392 |
+| raw render, xenipp3U font | 0.0674 |
+| **augmented** merged (parchment+aging+warp) | **0.1263** (2.3× its raw) |
+| **augmented** Missaali | **0.1828** (4.7× its raw) |
+
+**Conclusion: the AUGMENTATION pipeline is the primary culprit, not the font.** Raw
+renders of every font read at ~real level (0.04–0.067); `run_augment_images`
+(ink-degradation + parchment composite + page-warp + scan-capture) degrades them to
+0.13–0.18. Visual check confirms it **fades the ink to low contrast and thins strokes**,
+so marginal glyphs (t/r/i/n/u) collapse — that's the t→r. A font swap does NOT help
+(Missaali is cleaner raw but degrades *worse* under augmentation, 0.18). The earlier
+"it's the font" read was wrong; the raw-vs-aug control overturned it.
+
+**Implications.** (1) **Style transfer is the wrong tool** — the images are the right
+style, over-degraded; a GAN would restyle faded text. (2) The fix is cheap: **tune the
+augmentation down** (retain contrast, gentler fade/aging/warp) until augmented synthetic
+reads ≈ real (~0.05–0.07), then retest whether legible synthetic stops hurting. (3) This
+explains the whole §6.5.23 pattern: our aug is harsh (0.13) ⟹ synthetic hurts; kraken's
+`--augment` is gentle (mild blur/rotate) ⟹ it *helps* (the 0.9710 leader); kraken-style
+offline was the least-harmful ViT+RoBERTa aug (§6.5.23 #3). Artefacts: scratch legibility
+audit; next step = augmentation-intensity ablation (Phase 1).
