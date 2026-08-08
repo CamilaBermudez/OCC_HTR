@@ -4971,3 +4971,29 @@ augmentation**, not fonts, letters, stamps, or style — so **no style-transfer 
 warranted**. Recommended fix: dial warp + scan down to the gentle setting (target
 augmented CER ≈ 0.06), regenerate the pools, and retrain kraken (600 + gently-augmented
 minim) and ViT+RoBERTa to test whether *legible* synthetic finally stops hurting / helps.
+
+**Phase 2 — does fixing legibility stop synthetic from hurting? (2026-08-08).** Baked
+the gentle preset into `apply_augmentation_techniques(gentle=True)` /
+`batch_augment_directory` / `run_augment_images --gentle` (default path unchanged).
+Regenerated the 100 minim pool with `--gentle` (catmus legibility 0.0579, vs 0.1286
+harsh, ~real 0.0525) and retrained kraken identically to §6.5.23-#4 (600 real + 100
+minim + ketos `--augment`, 80/20, unrouted→train).
+
+| kraken (300-val) | char-acc | vs 0.9710 baseline |
+|---|---|---|
+| 600-real + ketos aug (no synth) | **0.9710** | — |
+| + 100 minim, HARSH aug (no jitter) | 0.9632 | −0.78 |
+| + 100 minim, HARSH aug + jitter | 0.9641 | −0.69 |
+| **+ 100 minim, GENTLE aug** | **0.9682** | **−0.28** |
+
+**Fixing augmentation legibility recovered +0.50 of the −0.78 penalty**, closing the
+diagnostic loop end-to-end: synthetic hurt *because the augmentation over-degraded it*
+(§6.5.24 Phase 0/1), and dialing warp+scan down (`gentle`) mostly removes the harm.
+Legible synthetic is now **≈ neutral** for kraken (−0.28, within run-to-run noise), not
+damaging — but it does not turn net-positive at n=100, so real + built-in ketos aug
+(0.9710) stays the simplest best for the CTC model. **Actionable outcome:** use
+`--gentle` for any future synthetic pools; the harm was a fixable augmentation bug, not
+a fonts/letters/style problem, so **no style-transfer model is needed.** Open follow-up
+(cluster): regenerate the ViT+RoBERTa anno-render pool with `--gentle` and retrain — on
+that arch harsh re-renders hurt −2.1 (Dataset D), so gentle may flip it positive, and
+external medical text already helps (medical-4000 0.9487 / stretch+BPE-150 0.9545).
