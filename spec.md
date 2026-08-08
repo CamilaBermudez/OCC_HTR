@@ -4997,3 +4997,37 @@ a fonts/letters/style problem, so **no style-transfer model is needed.** Open fo
 (cluster): regenerate the ViT+RoBERTa anno-render pool with `--gentle` and retrain — on
 that arch harsh re-renders hurt −2.1 (Dataset D), so gentle may flip it positive, and
 external medical text already helps (medical-4000 0.9487 / stretch+BPE-150 0.9545).
+
+**Phase 2b — gentle vs harsh on ViT+RoBERTa (2026-08-08).** Regenerated the full
+medical-4000 composition (600 real + 3000 anno re-renders + 4000 medical renders) as
+fresh raw renders, then augmented the SAME raw two ways — `--gentle` and default
+(harsh) — for a clean augmentation-intensity ablation. Trained both stretch + BPE-150
+on the H200 (jobs 29415135/29415136).
+
+| ViT+RoBERTa medical-4000, stretch + BPE-150 (300-val) | char-acc | CER |
+|---|---|---|
+| **gentle** aug (`vitroberta_med4k_gentle`) | 0.9530 | 0.0470 |
+| **harsh** aug, same raw (`vitroberta_med4k_harsh`) | 0.9531 | 0.0469 |
+| original harsh pool (§6.5.23 extra) | 0.9545 | 0.0455 |
+| ref: real-only / Dataset D (anno-only harsh) | 0.9371 / 0.9161 | |
+
+**Gentle = harsh (Δ0.01, noise).** Unlike kraken (gentle +0.50, Phase 2), **ViT+RoBERTa
+is robust to augmentation intensity** — its pretrained encoder (34M handwriting lines)
+handles the faded/warped synthetic that a frozen catmus reads at CER 0.13. So the
+architectures split:
+
+- **kraken (CTC, medieval-only):** sensitive to augmentation legibility — over-harsh
+  aug is what made synthetic hurt; `--gentle` mostly fixes it; but real + built-in
+  ketos aug (0.9710) is still the simplest best.
+- **ViT+RoBERTa (pretrained):** insensitive to augmentation intensity; the Dataset-D
+  harm (−2.1) was **lack of new content** (re-rendering the same 600 texts), not
+  legibility. What helps it is **new external text** (the +4000 medical slot lifts it
+  from 0.9371 real-only to ~0.953 at any aug intensity; medical-4000 = 0.9487/0.9545).
+
+**Investigation closed.** "Synthetic hurts" was two different mechanisms by arch, and
+**neither is a style/letterform problem — so no style-transfer model is warranted.**
+Practical guidance: for kraken use real + gentle/ketos aug; for ViT+RoBERTa spend the
+synthetic budget on new corpus *content*, not augmentations of the annotated lines.
+Program leaders unchanged: kraken 600-real+aug **0.9710** overall; ViT+RoBERTa
+stretch+BPE-150 **0.9545** best TrOCR. Models: `models/ocr/finetuned/vitroberta_med4k_{gentle,harsh}/`;
+artefacts `tests/ocr/evaluations/vitroberta_med4k_{gentle,harsh}_val300/`.
