@@ -73,6 +73,15 @@ def main():
         help="When --sample is set, how many source images to process. "
         "Ignored when --sample is not set. Default: 5.",
     )
+    parser.add_argument(
+        "--gentle",
+        action="store_true",
+        help="Legibility-preserving augmentation preset (spec §6.5.24): keeps "
+        "parchment composite + aging but dials page-warp and scan-capture WAY "
+        "down (the effects that over-degrade ~37px lines to CER 0.107). Output "
+        "reads at ~real legibility (0.059). Use when synthetic augmentation was "
+        "hurting the model.",
+    )
 
     args = parser.parse_args()
 
@@ -117,6 +126,7 @@ def main():
         seed=args.seed,
         logs_dir=str(logs_dir),
         sample_size=args.sample_size if args.sample else None,
+        gentle=args.gentle,
     )
 
 

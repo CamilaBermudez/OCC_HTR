@@ -837,7 +837,9 @@ def apply_page_creases(image, **kwargs):
     return img.clip(0, 255).astype(np.uint8)
 
 
-def apply_augmentation_techniques(input_image, parchment_files, bleed_source_files=None, seed=None):
+def apply_augmentation_techniques(
+    input_image, parchment_files, bleed_source_files=None, seed=None, gentle=False
+):
     """
     The pipeline:
       1. Ink degradation — morphological erosion/dilation + PixelDropout.
@@ -871,6 +873,49 @@ def apply_augmentation_techniques(input_image, parchment_files, bleed_source_fil
     bound_composite = functools.partial(composite_on_parchment, parchment_files=parchment_files)
     # Bind a (possibly empty) bleed-source list into apply_ink_bleed.
     bound_ink_bleed = functools.partial(apply_ink_bleed, bleed_source_files=bleed_source_files)
+
+    if gentle:
+        # Legibility-preserving preset (spec §6.5.24 Phase 1/2). The default
+        # pipeline over-degrades at the ~37 px line height — page-warp (elastic
+        # + rotate) and scan-capture (blur/noise) collapse thin strokes so a
+        # frozen catmus reads the output at CER 0.107 vs 0.055 for the raw
+        # render (real is 0.052). Training on that hurts every architecture
+        # (§6.5.23). This preset keeps the *realistic* substrate effects
+        # (composite + aging, which don't hurt / composite even helps) but
+        # dials warp and scan WAY down: elastic alpha 15/40->8 & p 0.7->0.3,
+        # rotate ±2.5->±1.5, blur p 1.0->0.5, GaussNoise halved, plasma
+        # p 0.7->0.4, erosion p 0.85->0.6. Measured output CER 0.059 ~ real.
+        transform_gentle = A.ReplayCompose(
+            [
+                A.Morphological(scale=(1, 1), operation="dilation", p=0.25),
+                A.Morphological(scale=(1, 2), operation="erosion", p=0.6),
+                A.Lambda(image=bound_composite, name="composite_on_parchment", p=1.0),
+                A.Lambda(image=apply_aged_parchment_effects, name="aged_parchment", p=0.5),
+                A.Lambda(image=bound_ink_bleed, name="ink_bleed", p=0.10),
+                A.HueSaturationValue(
+                    hue_shift_limit=(0, 8),
+                    sat_shift_limit=(-15, 5),
+                    val_shift_limit=(-10, 0),
+                    p=0.5,
+                ),
+                A.ElasticTransform(alpha=8, sigma=3, border_mode=cv2.BORDER_REPLICATE, p=0.3),
+                A.Affine(
+                    translate_percent={"x": (-0.01, 0.01), "y": (-0.01, 0.01)},
+                    scale=1.0,
+                    rotate=(-1.5, 1.5),
+                    border_mode=cv2.BORDER_REPLICATE,
+                    p=0.7,
+                ),
+                A.GaussianBlur(blur_limit=(3, 3), p=0.5),
+                A.GaussNoise(std_range=(0.006, 0.014), p=0.7),
+                A.PlasmaBrightnessContrast(
+                    brightness_range=(-0.08, 0.05), contrast_range=(-0.05, 0.08), p=0.4
+                ),
+            ],
+        )
+        if seed is not None:
+            transform_gentle.set_random_seed(seed)
+        return transform_gentle(image=input_image)
 
     transform_real_bg = A.ReplayCompose(
         [
@@ -969,6 +1014,7 @@ def batch_augment_directory(
     seed: int | None = None,
     logs_dir: str | Path | None = None,
     sample_size: int | None = None,
+    gentle: bool = False,
 ):
     """Apply the augmentation pipeline to every image in `input_dir`.
     Each call uses a derived per-image-per-variant seed, so the entire
@@ -1044,6 +1090,7 @@ def batch_augment_directory(
         "sample_size": sample_size,
         "parchment_dir": str(parchment_files[0].parent) if parchment_files else None,
         "n_parchment_files": len(parchment_files),
+        "gentle": gentle,
     }
     logger.info(f"Config: {json.dumps(config_summary)}")
 
@@ -1064,7 +1111,11 @@ def batch_augment_directory(
             call_seed = None if seed is None else seed + i * n_augmentations + j
             try:
                 out = apply_augmentation_techniques(
-                    img, parchment_files, bleed_source_files=bleed_source_files, seed=call_seed
+                    img,
+                    parchment_files,
+                    bleed_source_files=bleed_source_files,
+                    seed=call_seed,
+                    gentle=gentle,
                 )
             except Exception as exc:
                 logger.error(f"Augmentation failed for {img_path.name} variant {j}: {exc}")
