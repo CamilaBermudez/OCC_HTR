@@ -413,8 +413,9 @@ ones):**
 - **Kraken baseline-shift ablations** (§6.5.1): re-run leak-fixed kraken on
   the historical 500-stem pool and with `val_fraction=0.2` to isolate the
   0.96→0.90 drop.
-- **Optional extensions:** Stage-1 on full 266k COMETA; Stage-1 on the
-  medical corpus instead of COMETA (§6.5.4).
+- **Optional extensions:** ~~Stage-1 on full 266k COMETA~~ **DONE (2026-08-01): 0.7866,
+  plateaued vs 120k — §6.5.2/§6.3.10**; Stage-1 on the medical corpus instead of
+  COMETA (§6.5.4).
 
 ### 6.1 Permanent 300-val benchmark (historical baseline, pre-correction)
 
@@ -687,7 +688,7 @@ pretrained).
 | Variant | Stage 1 data | Stage 1 tarball | Stage 1 wall clock (L4) |
 |---|---|---|---|
 | **30k COMETA** (in progress) | 30,000 pairs subsampled from `aug_20260613_220436` with seed=42 → `aug_20260714_cometa_30k` | ~6 GB (split-uploaded 500 MB × 13 parts after direct scp stalled) | ~2 h |
-| **266k COMETA** (deferred; 53 GB upload stalled repeatedly, currently paused) | full `aug_20260613_220436` | ~53 GB | ~3 h (5 epochs) |
+| **266k COMETA** (deferred on the L4 — 53 GB upload stalled — **later completed on the H200 cluster, 2026-08-01**; see Stage 1b row below and §6.5.2) | full `aug_20260613_220436` | ~53 GB | ~3 h (5 epochs) |
 
 **Results — hypothesis confirmed, magnitude smaller on 300-val than on val-fold.**
 
@@ -696,7 +697,16 @@ pretrained).
 | **Stage 1a** — pretrain | `trocr_20260714_144423` | 30 000 COMETA re-renders (subsampled from `aug_20260613_220436` seed=42 → `aug_20260714_cometa_30k`); **no manuscript real lines** | 2h 12m (15 epochs) | **0.8589** | **0.7109** | **0.5918** | **0.2888** |
 | **Stage 2b** — fine-tune | `trocr_20260714_185946` | 600 real + Dataset B'' | 10 min (6 epochs, early-stopped) | **0.8350** | **0.6640** | **0.6080** | **0.3306** |
 | **Stage 2a** — fine-tune | `trocr_20260714_213457` | 600 real + Dataset A'' | 10 min (6 epochs, early-stopped) | **0.8775** | **0.7500** | **0.6053** | **0.3087** |
-| Stage 1b — 266 k COMETA pretrain | *(deferred; upload still stalling)* | full `aug_20260613_220436` | — | — | — | — | — |
+| **Stage 1b** — 266 k COMETA pretrain | `stage1_swinbert266k` (H200, 2026-08-01) | full `aug_20260613_220436` (266,478 renders) | — | — | — | **0.7866** | **0.5168** |
+
+**Stage 1b (266k) — COMETA scaling has plateaued.** The full-corpus Stage-1
+(0.7866 char-acc on the 300-val, `tests/ocr/evaluations/stage1_swinbert266k_vs_val300_20260801/`)
+is **statistically identical to the 120k Stage-1** (0.7868, §6.5.2) and only ~1 pp
+below the best Swin+BERT Stage-2 tier — i.e. **more COMETA pretraining data past ~120k
+buys nothing** for the from-scratch cross-attention. Confirms the §6.5.2 hypothesis and
+the "Stage-1 does ~all the lift, then saturates" reading. (30k Stage-1a = 0.5918, so
+the curve is 30k 0.59 → 120k 0.787 → 266k 0.787.) Swin+BERT remains far below
+ViT+RoBERTa regardless — the architecture, not the Stage-1 data volume, is the ceiling.
 
 **Val-fold vs 300-val gap (important reading).** All three staged
 rows show a large val-fold → 300-val drop (Stage 1a: −27 pp; Stage 2a:
@@ -1498,7 +1508,8 @@ can, better with more COMETA. Artefacts: overfit runs +
 **Ablation dimensions to vary (menu — not all run yet).** Dimensions worth
 sweeping (on the cheap overfit probe or the full pipeline):
 - **Cross-attention init** — random (from-scratch) vs pretrained ✓ done.
-- **Stage-1 volume** — COMETA 90k vs 120k ✓ done; 30k / 266k pending.
+- **Stage-1 volume** — COMETA 30k / 90k / 120k / **266k (full)** ✓ all done; curve
+  plateaus at ~120k (30k 0.59 → 120k 0.787 → 266k 0.787, §6.5.2).
 - **Decoding strategy** — greedy search vs beam search (beam width) vs sampling
   (top-k / top-p / temperature), plus `no_repeat_ngram_size` and
   `length_penalty`. Current default = beam search, 4 beams, deterministic
@@ -1650,10 +1661,14 @@ Goal: test whether more task-domain pretraining data improves Stage 1
 pretraining does ~34 pp of the from-scratch lift; the open question is
 whether 90–120k pushes it further and shrinks the val-fold→300-val gap.
 
-**FULL-266k run IN PROGRESS (2026-07-30).** Extending the curve to the
-**entire COMETA corpus** (88,828 distinct texts × 3 augs = 266,478 renders —
-the complete corpus, not a subsample). Tests whether the 30k→90k→120k gain
-(+14, +2.9 pp, diminishing) keeps rising or has plateaued.
+**FULL-266k run COMPLETE (2026-08-01) → PLATEAUED at 0.7866.** Extended the curve to
+the **entire COMETA corpus** (88,828 distinct texts × 3 augs = 266,478 renders — the
+complete corpus, not a subsample). Result on the 300-val: **char-acc 0.7866** (word-acc
+0.5168, `tests/ocr/evaluations/stage1_swinbert266k_vs_val300_20260801/`) — **identical
+to 120k (0.7868)**, so the 30k→90k→120k gain (+14, +2.9 pp, diminishing) has fully
+plateaued: past ~120k, more COMETA pretraining buys nothing. Scaling curve (300-val
+char-acc): **30k 0.5918 → 120k 0.7868 → 266k 0.7866.** Confirms Stage-1 saturates the
+from-scratch cross-attention; the Swin+BERT ceiling is architectural, not data-limited.
 
 **Approach — RENDER ON THE VM, not upload (pivot 2026-07-30).** Uploading the
 53 GB pre-rendered pool proved impractical: the residential link ran at
