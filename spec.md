@@ -5046,3 +5046,41 @@ synthetic budget on new corpus *content*, not augmentations of the annotated lin
 Program leaders unchanged: kraken 600-real+aug **0.9710** overall; ViT+RoBERTa
 stretch+BPE-150 **0.9545** best TrOCR. Models: `models/ocr/finetuned/vitroberta_med4k_{gentle,harsh}/`;
 artefacts `tests/ocr/evaluations/vitroberta_med4k_{gentle,harsh}_val300/`.
+
+### 6.5.25 ViT+RoBERTa tiers re-run on STRETCH + BPE-150 (2026-08-10)
+
+The T1–T4 grid (§6.5.21) was trained with **pad** + default RoBERTa tokenizer, but
+§6.5.22–23 showed **stretch beats pad ~+2.7 pp** and BPE-150 is a safe swap. Re-ran the
+tiers with **stretch + BPE-150** (tier pools via `build_tier.sh`, 1font,
+`medical4000_finetune.sbatch RESIZE=stretch TOKENIZER=…bpe_150`), stopping up the tier
+ladder as soon as more data stopped helping.
+
+| tier (stretch + BPE-150) | data | **300-val char-acc** | pad grid (ref) |
+|---|---|---|---|
+| **T1** | med4k+anno3k (7k) | **0.9557** | 0.913 |
+| **T2** | med12k+anno9k (21k) | 0.9541 | 0.9298 |
+| T3 / T4 | — | **not run** (T2 ≤ T1 → no value) | 0.919 / 0.878 |
+
+**Findings.** (1) **Stretch + BPE-150 is a large, real win — +4.3 pp at T1** (0.913 →
+0.9557); reproduces the medical-4000 stretch+BPE-150 number (0.9545) on the clean tier
+pool. The whole ViT+RoBERTa grid was on the wrong resize. (2) **Synthetic volume
+plateaus/peaks at T1 (~0.955)** on stretch — T2 (21k) ≤ T1 (7k), same shape as the pad
+line (peaked at T2, then declined). More augmented volume ≠ better; content type
+matters more than volume (consistent with §6.5.23–24). **Stopped at T2** per plan;
+T3/T4 skipped. (3) **ViT+RoBERTa ceiling ≈ 0.955**, still below kraken 600-real+aug
+**0.9710** (char) — though ViT trails kraken on word-acc too. New adopted TrOCR config:
+**stretch + BPE-150 at ~T1 volume (0.9557)**. Artefacts:
+`tests/ocr/evaluations/vitroberta_T{1,2}_stretch_bpe_val300/`.
+
+**Top-k / rerankability of the two leaders (300-val, §6.8 method).**
+
+| model (unit) | CER | WER | top-1 | top-3/5/10 rec | err→top-3/5/10 |
+|---|---|---|---|---|---|
+| kraken 0.9710 (char, CTC) | 0.029 | 0.180 | 98.6% | 99.7 / 99.8 / 99.9% | 75.2 / 85.9 / 91.3% |
+| ViT+RoBERTa stretch+BPE-150 (token, char-BPE) | 0.046 | 0.232 | 93.0% | 98.2 / 98.9 / 99.3% | 74.2 / 84.3 / 90.1% |
+
+Both leaders' errors are **highly rerankable (~90% of top-1 errors have GT in top-10**,
+vs 78% for medical-4000) → motivates an LM/lexicon reranker. Caveats: units differ
+(char vs char-BPE vs 50k-subword, so top-1 not like-for-like); kraken's err→top-k
+covers only its 149 **substitution** errors, not its 53 deletions + 119 insertions
+(reranker-unfixable). Artefacts: `tests/ocr/evaluations/{kraken_topk,topk}/`.

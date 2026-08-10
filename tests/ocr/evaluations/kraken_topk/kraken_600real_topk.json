@@ -1,0 +1,296 @@
+{
+  "model": "models/ocr/finetuned/finetune_20260806_123435/model_best.mlmodel",
+  "level": "character (CTC) \u2014 NOT token-level; compare err->top-k structure only",
+  "n_lines": 300,
+  "gt_chars": 10997,
+  "cer_from_alignment": 0.0292,
+  "errors": {
+    "substitutions": 149,
+    "model_deletions": 53,
+    "model_insertions": 119
+  },
+  "top1_char": 0.9864,
+  "topk_recall_all_framed": {
+    "top1": 0.9864,
+    "top2": 0.995,
+    "top3": 0.9966,
+    "top5": 0.9981,
+    "top10": 0.9988
+  },
+  "err_topk": {
+    "top1": 0.0,
+    "top2": 0.6309,
+    "top3": 0.7517,
+    "top5": 0.8591,
+    "top10": 0.9128
+  },
+  "top_confusions": [
+    {
+      "gt": "n",
+      "pred": "u",
+      "n": 22
+    },
+    {
+      "gt": "u",
+      "pred": "n",
+      "n": 10
+    },
+    {
+      "gt": "t",
+      "pred": "c",
+      "n": 7
+    },
+    {
+      "gt": "c",
+      "pred": "e",
+      "n": 6
+    },
+    {
+      "gt": "n",
+      "pred": "m",
+      "n": 5
+    },
+    {
+      "gt": "m",
+      "pred": "n",
+      "n": 4
+    },
+    {
+      "gt": "r",
+      "pred": "i",
+      "n": 4
+    },
+    {
+      "gt": "m",
+      "pred": "u",
+      "n": 4
+    },
+    {
+      "gt": "c",
+      "pred": "t",
+      "n": 3
+    },
+    {
+      "gt": "i",
+      "pred": "m",
+      "n": 3
+    },
+    {
+      "gt": "c",
+      "pred": "o",
+      "n": 3
+    },
+    {
+      "gt": "C",
+      "pred": "\u00b6",
+      "n": 3
+    },
+    {
+      "gt": "x",
+      "pred": "y",
+      "n": 2
+    },
+    {
+      "gt": "r",
+      "pred": ".",
+      "n": 2
+    },
+    {
+      "gt": "o",
+      "pred": "s",
+      "n": 2
+    },
+    {
+      "gt": ":",
+      "pred": ".",
+      "n": 2
+    },
+    {
+      "gt": "\u00f1",
+      "pred": "n",
+      "n": 2
+    },
+    {
+      "gt": "i",
+      "pred": "u",
+      "n": 2
+    },
+    {
+      "gt": "\u0303",
+      "pred": "\u0308",
+      "n": 2
+    },
+    {
+      "gt": "u",
+      "pred": "a",
+      "n": 2
+    },
+    {
+      "gt": "m",
+      "pred": "i",
+      "n": 2
+    },
+    {
+      "gt": "u",
+      "pred": "i",
+      "n": 2
+    },
+    {
+      "gt": "f",
+      "pred": "t",
+      "n": 2
+    },
+    {
+      "gt": "n",
+      "pred": "a",
+      "n": 1
+    },
+    {
+      "gt": "b",
+      "pred": "d",
+      "n": 1
+    },
+    {
+      "gt": "t",
+      "pred": "r",
+      "n": 1
+    },
+    {
+      "gt": "l",
+      "pred": "a",
+      "n": 1
+    },
+    {
+      "gt": "e",
+      "pred": "r",
+      "n": 1
+    },
+    {
+      "gt": "u",
+      "pred": "d",
+      "n": 1
+    },
+    {
+      "gt": "a",
+      "pred": " ",
+      "n": 1
+    }
+  ],
+  "top_deleted_gt_chars": [
+    {
+      "char": " ",
+      "n": 27
+    },
+    {
+      "char": "u",
+      "n": 6
+    },
+    {
+      "char": "e",
+      "n": 3
+    },
+    {
+      "char": "n",
+      "n": 3
+    },
+    {
+      "char": "i",
+      "n": 3
+    },
+    {
+      "char": "\u0303",
+      "n": 3
+    },
+    {
+      "char": "\u204a",
+      "n": 2
+    },
+    {
+      "char": "C",
+      "n": 1
+    },
+    {
+      "char": "p",
+      "n": 1
+    },
+    {
+      "char": ".",
+      "n": 1
+    },
+    {
+      "char": "\u00b6",
+      "n": 1
+    },
+    {
+      "char": "r",
+      "n": 1
+    },
+    {
+      "char": "'",
+      "n": 1
+    }
+  ],
+  "top_inserted_chars": [
+    {
+      "char": " ",
+      "n": 87
+    },
+    {
+      "char": "i",
+      "n": 9
+    },
+    {
+      "char": "u",
+      "n": 4
+    },
+    {
+      "char": "\u0303",
+      "n": 3
+    },
+    {
+      "char": "r",
+      "n": 3
+    },
+    {
+      "char": "l",
+      "n": 2
+    },
+    {
+      "char": ".",
+      "n": 2
+    },
+    {
+      "char": "a",
+      "n": 1
+    },
+    {
+      "char": "\u204a",
+      "n": 1
+    },
+    {
+      "char": "t",
+      "n": 1
+    },
+    {
+      "char": "2",
+      "n": 1
+    },
+    {
+      "char": "\u0363",
+      "n": 1
+    },
+    {
+      "char": "b",
+      "n": 1
+    },
+    {
+      "char": "E",
+      "n": 1
+    },
+    {
+      "char": "m",
+      "n": 1
+    }
+  ],
+  "note": "err->top-k over substitution errors only; the ~49% of errors that are CTC ins/del have no per-frame top-k."
+}

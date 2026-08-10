@@ -1,0 +1,498 @@
+{
+ "model_dir": "models/ocr/finetuned/vitroberta_medical4000_stretch_tok",
+ "n_lines": 300,
+ "n_positions": 6878,
+ "n_top1_errors": 485,
+ "top1_acc": 0.9295,
+ "topk_recall": {
+  "1": 0.9295,
+  "2": 0.9721,
+  "3": 0.9818,
+  "5": 0.989,
+  "10": 0.993
+ },
+ "error_recovery": {
+  "1": 0.0,
+  "2": 0.6041,
+  "3": 0.7423,
+  "5": 0.8433,
+  "10": 0.901
+ },
+ "examples": [
+  {
+   "line": "05_garde_001_line_47",
+   "pos": 0,
+   "gt_token": "n",
+   "pred_top1": "l",
+   "gt_rank": ">10",
+   "top10": [
+    "l",
+    "h",
+    "i",
+    "si",
+    "k",
+    "f",
+    "b",
+    "q",
+    "ti",
+    "di"
+   ]
+  },
+  {
+   "line": "05_garde_001_line_47",
+   "pos": 2,
+   "gt_token": "m",
+   "pred_top1": "in",
+   "gt_rank": 2,
+   "top10": [
+    "in",
+    "m",
+    "s",
+    "i",
+    "i",
+    "an",
+    "si",
+    "x",
+    "en",
+    "̃"
+   ]
+  },
+  {
+   "line": "05_garde_001_line_47",
+   "pos": 11,
+   "gt_token": "en",
+   "pred_top1": "e",
+   "gt_rank": 3,
+   "top10": [
+    "e",
+    "ad",
+    "en",
+    "a",
+    "c",
+    "es",
+    "del",
+    "d",
+    "E",
+    "el"
+   ]
+  },
+  {
+   "line": "05_garde_001_line_47",
+   "pos": 21,
+   "gt_token": ".",
+   "pred_top1": ",",
+   "gt_rank": 3,
+   "top10": [
+    ",",
+    "'",
+    ".",
+    ";",
+    ".",
+    ":",
+    "/",
+    "z",
+    "a",
+    ". e"
+   ]
+  },
+  {
+   "line": "06_f_001v_002_line_107",
+   "pos": 22,
+   "gt_token": "au",
+   "pred_top1": "am",
+   "gt_rank": 2,
+   "top10": [
+    "am",
+    "au",
+    "ay",
+    "an",
+    "a",
+    "⁊",
+    "ad",
+    "ap",
+    "al",
+    "aqu"
+   ]
+  },
+  {
+   "line": "06_f_001v_002_line_107",
+   "pos": 23,
+   "gt_token": "n",
+   "pred_top1": "y",
+   "gt_rank": 2,
+   "top10": [
+    "y",
+    "n",
+    "x",
+    "h",
+    "i",
+    "[EOS]",
+    "g",
+    "m",
+    "p",
+    "Y"
+   ]
+  },
+  {
+   "line": "06_f_001v_002_line_42",
+   "pos": 15,
+   "gt_token": "u",
+   "pred_top1": "am",
+   "gt_rank": 3,
+   "top10": [
+    "am",
+    "i",
+    "u",
+    "em",
+    "I",
+    "a",
+    "L",
+    "tr",
+    "w",
+    "a"
+   ]
+  },
+  {
+   "line": "07_f_002v_003_line_138",
+   "pos": 0,
+   "gt_token": "del",
+   "pred_top1": "l",
+   "gt_rank": ">10",
+   "top10": [
+    "l",
+    "gu",
+    "s",
+    "L",
+    "qu",
+    "t",
+    "G",
+    "di",
+    "U",
+    "S"
+   ]
+  },
+  {
+   "line": "07_f_002v_003_line_138",
+   "pos": 2,
+   "gt_token": "de",
+   "pred_top1": "del",
+   "gt_rank": 2,
+   "top10": [
+    "del",
+    "de",
+    "d",
+    "or",
+    "u",
+    "le",
+    "el",
+    "ol",
+    "al",
+    "b"
+   ]
+  },
+  {
+   "line": "07_f_002v_003_line_138",
+   "pos": 3,
+   "gt_token": "am",
+   "pred_top1": "l",
+   "gt_rank": 7,
+   "top10": [
+    "l",
+    "i",
+    "h",
+    "k",
+    "r",
+    "f",
+    "am",
+    "x",
+    "R",
+    "a"
+   ]
+  },
+  {
+   "line": "07_f_002v_003_line_71",
+   "pos": 1,
+   "gt_token": "h",
+   "pred_top1": "l",
+   "gt_rank": 4,
+   "top10": [
+    "l",
+    "le",
+    "la",
+    "h",
+    "L",
+    "b",
+    "k",
+    "el",
+    "T",
+    "ar"
+   ]
+  },
+  {
+   "line": "07_f_002v_003_line_71",
+   "pos": 3,
+   "gt_token": "c",
+   "pred_top1": "t",
+   "gt_rank": 2,
+   "top10": [
+    "t",
+    "c",
+    "t",
+    "ti",
+    "̃",
+    "m",
+    "",
+    "d",
+    "C",
+    "co"
+   ]
+  },
+  {
+   "line": "07_f_002v_003_line_71",
+   "pos": 4,
+   "gt_token": "a",
+   "pred_top1": "ar",
+   "gt_rank": 2,
+   "top10": [
+    "ar",
+    "a",
+    "an",
+    "at",
+    "am",
+    "ad",
+    "er",
+    "a",
+    "ap",
+    "as"
+   ]
+  },
+  {
+   "line": "08_f_003v_004_line_111",
+   "pos": 8,
+   "gt_token": "c",
+   "pred_top1": "t",
+   "gt_rank": 2,
+   "top10": [
+    "t",
+    "c",
+    "r",
+    "m",
+    "n",
+    "x",
+    "u",
+    "v",
+    "en",
+    "er"
+   ]
+  },
+  {
+   "line": "08_f_003v_004_line_111",
+   "pos": 10,
+   "gt_token": "u",
+   "pred_top1": "n",
+   "gt_rank": 2,
+   "top10": [
+    "n",
+    "u",
+    "h",
+    "N",
+    "r",
+    "in",
+    "m",
+    "t",
+    "i",
+    "u"
+   ]
+  },
+  {
+   "line": "08_f_003v_004_line_111",
+   "pos": 14,
+   "gt_token": "c",
+   "pred_top1": "cu",
+   "gt_rank": 2,
+   "top10": [
+    "cu",
+    "c",
+    "tr",
+    "t",
+    "ti",
+    "co",
+    "ci",
+    "t",
+    "en",
+    "C"
+   ]
+  },
+  {
+   "line": "08_f_003v_004_line_111",
+   "pos": 15,
+   "gt_token": "r",
+   "pred_top1": "a",
+   "gt_rank": 2,
+   "top10": [
+    "a",
+    "r",
+    "ti",
+    "n",
+    "u",
+    "er",
+    "ci",
+    "e",
+    "or",
+    "ar"
+   ]
+  },
+  {
+   "line": "08_f_003v_004_line_111",
+   "pos": 20,
+   "gt_token": "tr",
+   "pred_top1": "t",
+   "gt_rank": 2,
+   "top10": [
+    "t",
+    "tr",
+    "m",
+    "ti",
+    "cu",
+    "qu",
+    "co",
+    "u",
+    "d",
+    "n"
+   ]
+  },
+  {
+   "line": "08_f_003v_004_line_143",
+   "pos": 4,
+   "gt_token": "de",
+   "pred_top1": "d",
+   "gt_rank": 2,
+   "top10": [
+    "d",
+    "de",
+    "n",
+    "r",
+    "del",
+    "u",
+    "N",
+    "t",
+    "tr",
+    "a"
+   ]
+  },
+  {
+   "line": "08_f_003v_004_line_143",
+   "pos": 11,
+   "gt_token": "el",
+   "pred_top1": "e",
+   "gt_rank": 2,
+   "top10": [
+    "e",
+    "el",
+    "E",
+    "e",
+    "le",
+    "s",
+    ". e",
+    "es",
+    "¶",
+    "L"
+   ]
+  },
+  {
+   "line": "08_f_003v_004_line_176",
+   "pos": 1,
+   "gt_token": "e",
+   "pred_top1": "e",
+   "gt_rank": 4,
+   "top10": [
+    "e",
+    "es",
+    "er",
+    "e",
+    "em",
+    "o",
+    "es",
+    "el",
+    "en",
+    "z"
+   ]
+  },
+  {
+   "line": "08_f_003v_004_line_176",
+   "pos": 13,
+   "gt_token": "au",
+   "pred_top1": "en",
+   "gt_rank": 2,
+   "top10": [
+    "en",
+    "au",
+    "on",
+    "e",
+    "an",
+    "n",
+    "r",
+    "u",
+    "a",
+    "in"
+   ]
+  },
+  {
+   "line": "08_f_003v_004_line_189",
+   "pos": 13,
+   "gt_token": "l",
+   "pred_top1": "le",
+   "gt_rank": 2,
+   "top10": [
+    "le",
+    "l",
+    "de",
+    "la",
+    ". e",
+    "¶",
+    "L",
+    "ᷤ",
+    "̾",
+    "ł"
+   ]
+  },
+  {
+   "line": "08_f_003v_004_line_53",
+   "pos": 15,
+   "gt_token": "n",
+   "pred_top1": "",
+   "gt_rank": 3,
+   "top10": [
+    "",
+    "[EOS]",
+    "n",
+    "ro",
+    "ci",
+    "co",
+    "au",
+    "m",
+    "v",
+    "w"
+   ]
+  },
+  {
+   "line": "09_f_004v_005_line_171",
+   "pos": 0,
+   "gt_token": "ci",
+   "pred_top1": "ti",
+   "gt_rank": 2,
+   "top10": [
+    "ti",
+    "ci",
+    "di",
+    "tr",
+    "si",
+    "r",
+    ":",
+    ".",
+    "t",
+    ";"
+   ]
+  }
+ ]
+}
