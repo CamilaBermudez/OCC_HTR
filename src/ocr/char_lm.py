@@ -79,6 +79,13 @@ class CharNGramLM:
             n += 1
         return total / n if (per_char and n) else total
 
+    def logcond(self, text: str, ch: str) -> float:
+        """log P(ch | the last order-1 chars of text). Incremental scoring for a
+        left-to-right beam search — cheaper than re-scoring the whole prefix."""
+        s = _BOS * (self.order - 1) + text
+        ctx = s[len(s) - (self.order - 1) :]
+        return math.log(self._cond(ctx, ch))
+
     def save(self, path: str | Path) -> None:
         Path(path).write_bytes(
             pickle.dumps(

@@ -5139,3 +5139,32 @@ vs 78% for medical-4000) → motivates an LM/lexicon reranker. Caveats: units di
 (char vs char-BPE vs 50k-subword, so top-1 not like-for-like); kraken's err→top-k
 covers only its 149 **substitution** errors, not its 53 deletions + 119 insertions
 (reranker-unfixable). Artefacts: `tests/ocr/evaluations/{kraken_topk,topk}/`.
+
+**LM rescoring — FIRST RESULT, positive (2026-08-11).** Char n-gram LM (order 6,
+`src/ocr/char_lm.py`) rescoring kraken's per-position top-k candidates
+(`scripts/ocr/kraken_lm_rescore.py`, beam 8, top-5), 300-val:
+
+| λ | char-acc | word-acc |
+|---|---|---|
+| 0.0 (= baseline) | 0.9708 | 0.8196 |
+| **0.2 (best)** | **0.9743** | **0.8367** |
+| 0.5 | 0.9734 | 0.8362 |
+| 1.0 | 0.9673 | 0.8143 |
+| 2.0 / 4.0 | 0.945 / 0.904 | 0.744 / 0.656 |
+
+**λ=0 reproduces the kraken baseline** (0.9710/0.8201 → 0.9708/0.8196, negligible drift
+from the per-position candidate extraction) — harness verified. At **λ=0.2 both metrics
+rise: char +0.35 pp, word +1.71 pp** — the LM fixes minim substitutions the recogniser
+had wrong-but-rerankable (§6.8). Overshooting λ collapses it (2.0→0.94), reproducing the
+lexicon's failure mode → confirms diagnosis. **600+medical ≈ 600** (0.9744/0.8371) — the
+normalized medical corpus adds nothing; the tiny clean diplomatic 600-GT corpus suffices.
+kraken+LM (0.9743 char) now **leads catmus on char** and closes most of the word gap
+(catmus 0.8512).
+
+Why this succeeded where the blind lexicon swap (§6.10) failed: LM over the recogniser's
+**own alternatives** (not a 1-best swap), **diplomatic** corpus, **contextual** n-gram,
+small **λ**. **Caveats:** (1) rescopes only **substitutions** (per-position); ins/del
+untouched — a real CTC prefix-beam (KenLM+pyctcdecode) is the upgrade. (2) **λ was swept
+on the 300-val test** (optimistic) — for a final number, tune λ on a held-out dev split
+(LM-train 500 / λ-dev 100 / test 300-val), though the gain is broad across λ=0.2–0.5, not
+a knife-edge. Next: proper λ-tuning + the full CTC lattice; then TrOCR N-best rescoring.
