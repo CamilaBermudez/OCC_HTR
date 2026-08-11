@@ -3894,6 +3894,61 @@ of the time. So the recoverable headroom is real, but it lives in the
 alternatives (cf. Medusa 0.9505), never by a blind dictionary swap on the final
 text. Confirms the "winning approach" recommendation with kraken's own numbers.
 
+## 6.13 LM rescoring / post-correction — design & plan (2026-08-11)
+
+Motivated by the top-k headroom (§6.8/§6.12): **~90 % of both leaders' top-1 errors
+have the truth in top-10** (kraken 0.9710, ViT+RoBERTa stretch+BPE-150 0.9545). The
+recogniser is a *visual* model with little/no language prior (kraken/CTC has none), so
+its 1-best is often a **visually-plausible non-word**; a reranker adds the missing
+**language prior** and picks the candidate that is *also* plausible Occitan.
+
+**What "LM" means here.** Not an encoder — a **character n-gram model** (KenLM, 6–8-gram)
+estimating `P(char | preceding chars)` from counts. It's *contextual*, so it tolerates
+line-cut word fragments (a hard lexicon can't). A small neural char-LM is a later
+upgrade; n-gram is the right first tool for low-resource medieval Occitan. Score at
+rescoring time = `visual_score + λ·LM_score`.
+
+**Two rescoring granularities (see §6.8 discussion):**
+- **N-best full-line rescoring** — LM scores the recogniser's N complete hypotheses
+  (TrOCR beam search gives these free); can only pick a line beam search already
+  produced. Natural for **autoregressive TrOCR**.
+- **Top-k / lattice per-position** — assemble the line from per-position top-k
+  candidates, LM-guided; much larger search space (≈kᴸ), can reach readings no single
+  beam had, but risks incoherence without a good LM. Natural for **CTC/kraken** (its
+  per-frame posteriors *are* a lattice; `pyctcdecode`/`ctcdecode` do KenLM shallow
+  fusion natively). **NB** the §6.8 top-k numbers are **teacher-forced = an oracle-context
+  upper bound**; a deployed reranker (no GT prefix) recovers *less* than the 90 %.
+
+**Plan:** kraken CTC+LM lattice first (its natural form, and it targets kraken's weak
+spot — word-acc 0.8201 < catmus 0.8512); then TrOCR N-best vs lattice, compared.
+
+**What NOT to do — the blind lexicon swap is settled-negative (§6.10).** A DOM-lexicon
+1-best swap was already swept (fuzzy 88–99) and is **monotonically harmful** (0.9603→
+0.9489 char, 0.8512→0.8051 word); the only non-hurting setting makes zero corrections.
+So the lexicon is **not** a "cheap first probe" — skip it. Its failure also pins the
+**critical design constraint below.**
+
+**Sources & the diplomatic-style constraint (the crux).** The recogniser output and the
+300-val GT are **diplomatic** (keep `⁊ ¶ ꝑ` tildes); the lexicon swap failed largely
+because DOM is **normalized/expanded** — correcting toward it moves *away* from the
+diplomatic GT. So the **LM must be trained on diplomatic-style text**, else it
+reintroduces the same mismatch:
+- ✅ diplomatic: the **catmus full-manuscript transcription** (`catmus_conf_fullms`,
+  model output but right style + large) and the **480 train annotated GT** (high-quality,
+  val held out). These are the LM corpus.
+- ❌ do NOT use as LM corpus: `transcription_Chirurquia.txt` (533 KB but **normalized** —
+  0 abbreviation marks) or the **DOM dictionary** (normalized/expanded). DOM may serve
+  only as a *soft* lattice constraint, never the corpus or a 1-best swap.
+- **Leakage:** hold the **300-val** text/pages out of the LM corpus (an LM trained on the
+  val reading trivially "helps").
+
+**Evaluation.** Build the LM/lexicon from *all* diplomatic Occitan sources (above);
+**measure on the 300-val** — the only set with trustworthy human GT aligned to our line
+crops — as the headline, with the wider annotated set (600 minus val) + scholarly
+edition via §6.6 alignment as noisier confirmation. The catmus full-ms transcription is
+a *model output*, usable to build the prior but **not** as eval GT. Report gains against
+the oracle-ceiling caveat above.
+
 ## 7. Infrastructure
 
 ### 7.1 Local laptop
