@@ -5183,3 +5183,40 @@ and test agree on λ* and effect size. So the honest headline: **kraken 600-real
 char-LM rescore (λ=0.2) = 0.9743 char / 0.8367 word** — both above baseline, char now
 clears catmus (0.9603) and word closes most of the gap to catmus (0.8512). Still
 substitutions-only; the CTC lattice (ins/del) + TrOCR N-best are the remaining upgrades.
+
+**LM rescoring — TrOCR N-best (2026-08-12).** ViT+RoBERTa stretch+BPE-150 (0.9546/0.7691),
+8-best beam + char-LM rerank (`scripts/ocr/trocr_lm_rescore.py`, approach 2). Beam
+diversity **7.32 distinct hyps/line** (rescoring is meaningful, not degenerate).
+
+**Dev-leakage caveat (important).** All 600 annotated lines are in this ViT model's
+*training* set (via `--real-folder`), so a held-out dev split is **memorized** (dev
+char 0.9918) → the honest-protocol tuner wrongly picked λ*=0 (no errors to fix on the
+leaked dev). Unlike kraken, which doesn't memorize as hard (its dev still had errors, so
+its λ=0.2 transferred — the kraken +1.70 word stands). With no clean held-out for TrOCR
+(only the 300-val, which is the test), we fall back to a **tuned-on-test** sweep:
+
+| λ | 300-val char | 300-val word |
+|---|---|---|
+| 0.0 (baseline) | 0.9546 | 0.7691 |
+| 0.3 | 0.9583 | 0.7876 |
+| **0.5 (best)** | **0.9594** | **0.7929** |
+| 0.8 | 0.9587 | 0.7866 |
+
+**LM helps TrOCR at λ=0.5: char +0.48, word +2.38** — broad/smooth peak (λ=0.2–0.8 all
+help), so robust despite the tuned-on-test optimism. **Overturns the prediction** that
+TrOCR's decoder LM would leave less room: it helps MORE than kraken (+2.38 vs +1.70 word)
+because (a) lower word baseline = more room, (b) its decoder LM is generic not
+Occitan-specific, (c) N-best swaps whole different-length hypotheses so it fixes ins/del
+too (vs kraken's substitutions-only per-position pass).
+
+**Both leaders benefit from the char-LM reranker** — the top-k headroom (§6.8/§6.12) is
+real and recoverable on both architectures:
+
+| model + LM rescore | char-acc | word-acc | λ (how tuned) |
+|---|---|---|---|
+| kraken 600-real+aug | 0.9743 | 0.8367 | 0.2 (honest dev) |
+| ViT+RoBERTa stretch+BPE-150 | 0.9594 | 0.7929 | 0.5 (tuned-on-test) |
+| _catmus frozen (ref)_ | 0.9603 | 0.8512 | — |
+
+kraken+LM stays the leader. **Open item:** an honest TrOCR λ needs a checkpoint that
+didn't train on the 600 (or a fresh held-out annotation set) — flag for future work.

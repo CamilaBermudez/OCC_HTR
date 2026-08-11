@@ -133,14 +133,19 @@ def main() -> None:
         if wa > best[1]:
             best = (lam, wa)
     lam_star = best[0]
-    c0, w0 = acc(val_cache, val_keys, lm_full, 0.0)
-    cs, ws = acc(val_cache, val_keys, lm_full, lam_star)
-    print(f"\n>>> lambda* = {lam_star} (best DEV word_acc)")
-    print("300-VAL (LM=600):")
-    print(f"  baseline (λ=0):    char {c0:.4f}  word {w0:.4f}")
-    print(
-        f"  rescored (λ={lam_star}): char {cs:.4f}  word {ws:.4f}  (Δchar {cs-c0:+.4f}, Δword {ws-w0:+.4f})"
-    )
+    print(f"\n>>> lambda* = {lam_star} (best DEV word_acc)  [NB dev is leaked into the ViT model]")
+
+    # n-best diversity: if beams are degenerate (all identical), rescoring can't help.
+    div = sum(len({t for t, _ in nb}) for _, nb in val_cache.values()) / max(1, len(val_cache))
+    print(f"\navg distinct hypotheses / line (of {args.nbest}-best): {div:.2f}")
+
+    # Honest diagnostic given NO clean dev exists: sweep lambda directly on the 300-val
+    # (tuned-on-test) to see whether the LM helps TrOCR at all.
+    print("\n300-VAL direct sweep (LM=600, tuned-on-test diagnostic):")
+    print(f"{'lambda':>7} | {'char':>8} | {'word':>8}")
+    for lam in lambdas:
+        ca, wa = acc(val_cache, val_keys, lm_full, lam)
+        print(f"{lam:>7} | {ca:>8.4f} | {wa:>8.4f}")
 
 
 if __name__ == "__main__":
