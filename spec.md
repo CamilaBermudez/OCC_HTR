@@ -5168,3 +5168,18 @@ untouched — a real CTC prefix-beam (KenLM+pyctcdecode) is the upgrade. (2) **�
 on the 300-val test** (optimistic) — for a final number, tune λ on a held-out dev split
 (LM-train 500 / λ-dev 100 / test 300-val), though the gain is broad across λ=0.2–0.5, not
 a knife-edge. Next: proper λ-tuning + the full CTC lattice; then TrOCR N-best rescoring.
+
+**LM rescoring — honest λ-tuning (2026-08-11).** Re-ran with a clean protocol
+(`scripts/ocr/kraken_lm_tune.py`, shared prims in `src/ocr/kraken_lm.py`): split the
+600 annotated → **500 LM-train / 100 dev**; pick λ on the dev (LM never saw it); test on
+the 300-val at that fixed λ with the LM retrained on all 600.
+
+- **Dev sweep:** peak at λ=0.2–0.3 (dev word 0.8292→0.8467); **λ\*=0.2** selected on dev.
+- **300-val @ fixed λ\*=0.2:** baseline 0.9708/0.8196 → rescored **0.9743 char / 0.8367
+  word** (Δ **+0.35 char, +1.70 word**).
+
+**Identical to the tuned-on-test sweep** → the gain is real, not a tuning artifact; dev
+and test agree on λ* and effect size. So the honest headline: **kraken 600-real+aug +
+char-LM rescore (λ=0.2) = 0.9743 char / 0.8367 word** — both above baseline, char now
+clears catmus (0.9603) and word closes most of the gap to catmus (0.8512). Still
+substitutions-only; the CTC lattice (ins/del) + TrOCR N-best are the remaining upgrades.
