@@ -5292,3 +5292,26 @@ fixed (capital-preserving) labels, `med_stage1_12k_gentle_20260814` + `labels_20
 **Contingent / data:**
 9. Corpus-casing normalization — only if (A) shows over-capitalization.
 10. More real annotated lines — the consistent top lever; also yields a clean dev (point B6).
+
+**A — Two-stage RESULTS (2026-08-14).** stretch + BPE-150, gentle medical Stage-1
+(fixed capital-preserving labels) → 600-real Stage-2, on the 300-val:
+
+| config | char-acc | word-acc | CER | vs real-only |
+|---|---|---|---|---|
+| real-only control (`realonly_stretch_bpe`) | 0.9431 | 0.7161 | 0.0569 | — |
+| two-stage 3k (`twostage_3000_s2`) | 0.9477 | 0.7419 | 0.0523 | +0.46 / +2.58 |
+| two-stage 6k | 0.9475 | 0.7443 | 0.0525 | +0.44 / +2.82 |
+| two-stage 12k | **0.9494** | **0.7521** | 0.0506 | **+0.63 / +3.60** |
+| mixed medical-4000 (ref, old labels) | 0.9545 | 0.7676 | 0.0455 | +1.14 / +5.15 |
+
+**Findings.** (1) **Synthetic is leverage when STAGED** — two-stage beats real-only by
++0.63 char / +3.6 word (clean comparison: both stretch+BPE-150, only the synthetic
+pretrain differs). Resolves the "is synthetic useless?" concern for ViT+RoBERTa: no —
+staged, it helps. (2) **Staging SCALES** — 3k→6k→12k monotonic (0.9477→0.9494), the
+opposite of *mixing* which plateaued/declined past T1 (§6.5.25). (3) **But staging ≤
+mixing so far** — 12k two-stage 0.9494 < mixed medical-4000 0.9545 (~0.5 pp). (4) The
+capital-preserving labels did NOT over-capitalize (Stage-2 on real corrects Stage-1) —
+the two-stage improved. **Next:** since staging scales and mixing doesn't, push Stage-1
+LARGER (2–3 aug/line or more corpus → 24k/48k) — the trend says it may overtake mixing.
+Also re-run the mixed medical-4000 with the fixed labels for a label-clean comparison.
+Artefacts: `tests/ocr/evaluations/{realonly_stretch_bpe,ts3k,ts6k,ts12k}_val300/`.
