@@ -39,23 +39,18 @@ from pathlib import Path
 # fold those to lowercase rather than forcing the output layer to grow.
 #
 # Override or extend via `correct_labels(substitutions=...)`.
+# Diplomatic normalization ONLY — match the real 600 GT convention (spec §6.5.26):
+# u/v and i/j collapse (real uses u:1274/v:2, i:1040/j:0), but CAPITALS ARE PRESERVED
+# (real uses E:71, C:35, D/F/I/L/M/R/S/U…). The old map also lowercased
+# T/A/E/S/O/H/M/D/Q/F and I→i, U→u, which deleted capitals the GT expects → the model
+# never learned to emit them (label had 0 'E' vs 71 in real). Capital v/j normalize to
+# capital u/i (V→U, J→I), not to lowercase. Long-s / rotunda-r are handled at render time
+# (labelled s/r, matching real ſ:0 ꝛ:0). No abbreviation expansion — label = image.
 DEFAULT_SUBSTITUTIONS: dict[str, str] = {
     "v": "u",
-    "V": "u",
     "j": "i",
-    "J": "i",
-    "I": "i",
-    "U": "u",
-    "T": "t",
-    "A": "a",
-    "E": "e",
-    "S": "s",
-    "O": "o",
-    "H": "h",
-    "M": "m",
-    "D": "d",
-    "Q": "q",
-    "F": "f",
+    "V": "U",
+    "J": "I",
 }
 
 
