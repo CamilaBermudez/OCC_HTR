@@ -5248,3 +5248,47 @@ aug/line** (`--gentle`, the §6.5.24 legibility fix — not the over-degrading d
 Pool: `med_stage1_12k_gentle_20260814`. Caveat carried forward: synthetic labels use
 generation-specific conventions (lowercasing, abbrev choices) not fully matched to the
 diplomatic real GT — a separate data-cleanliness lever, not addressed here. IN PROGRESS.
+
+**Label-convention fix agreed (2026-08-14, option A).** Grounding the §6.13/§6.5.26
+concern in the distribution: the ONLY real synth↔real label mismatch is
+**capitalization**. Real 600 GT = 0.55% capitals (E:71, C:35, scattered D/F/I/L/M/R/S/U);
+specials (⁊:25, ¶:44, tildes:30, ł:1) and u/v→u, i/j→i already match; long-s/rotunda-r
+already labelled s/r. The old `label_correction` map lowercased capitals **in the label
+only** (E→e…) while the image kept them → *inconsistent*, and the model never learned to
+emit the capitals the GT uses. **Fix = option A:** map now normalizes only u/v & i/j
+(`{v→u, j→i, V→U, J→I}`) and **preserves all capitals**, so label = image (the diplomatic
+convention), no abbreviation expansion. Re-labelled the 12k pool → `labels_20260814_132342`.
+Observation to check empirically (not preempt): the medical corpus capitalizes in the
+*modern* convention (1.19% vs manuscript 0.55%, sentence-initial A/D) — if the two-stage
+model over-capitalizes on the 300-val, lowercase the corpus's modern casing then; the
+manuscript's true capitals are rubricated initials (Capitol-C / capital-E stamps), not
+sentence-case. (Rejected option B = lowercase image+label: consistent but drops real's
+C/E; A keeps them.)
+
+### 6.5.27 Planned experiment queue (2026-08-14)
+
+Pending (VPN-gated launches + local):
+
+**A — Two-stage ViT+RoBERTa (does synthetic *staging* beat *mixing*?)** stretch + BPE-150,
+fixed (capital-preserving) labels, `med_stage1_12k_gentle_20260814` + `labels_20260814_132342`:
+1. Real-only control (Stage-2 from vanilla TrOCR, no Stage-1) — isolates Stage-1's lift.
+2. Two-stage Stage-1 = **3k** gentle medical → Stage-2 = 600 real.
+3. Two-stage Stage-1 = **6k** → Stage-2.
+4. Two-stage Stage-1 = **12k** → Stage-2.
+   Eval each on the 300-val; compare vs real-only + mixed medical-4000 (0.9545). Sub-check:
+   over-capitalization on 300-val (label-convention validation).
+
+**B — Reranker completion (spec §6.13):**
+5. kraken **CTC lattice** (KenLM + pyctcdecode) — full per-frame prefix-beam + LM, fixes
+   ins/del (the ~172 errors the substitutions-only pass can't reach). Eval 300-val.
+6. **Honest TrOCR λ:** retrain ViT on **500** real (hold out **100** as clean dev), tune λ
+   on the 100, test on the intact 300-val — makes the +2.38 word an honest number.
+7. Apply the tuned reranker to the winning model (production reranker).
+
+**C — Deliverable:**
+8. **Full-manuscript transcription** with the best model (+ reranker), via the §6.6
+   line-alignment + viewer infra.
+
+**Contingent / data:**
+9. Corpus-casing normalization — only if (A) shows over-capitalization.
+10. More real annotated lines — the consistent top lever; also yields a clean dev (point B6).
