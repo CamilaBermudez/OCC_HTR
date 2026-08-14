@@ -185,6 +185,13 @@ def main():
         "custom char-BPE experiment (spec §6.5.22). The Metaspace decoder is "
         "re-attached on load (it serialises as null).",
     )
+    parser.add_argument(
+        "--no-real",
+        action="store_true",
+        help="Train on the augmented pool ONLY (no real lines) — for a synthetic-only "
+        "Stage-1 pretrain in the clean two-stage recipe (spec §6.5.26). Overrides "
+        "--real-folder.",
+    )
     parser.add_argument("--logs-dir", required=False)
     parser.add_argument(
         "--no-config-log",
@@ -194,11 +201,14 @@ def main():
 
     args = parser.parse_args()
 
-    real_folder = (
-        Path(args.real_folder)
-        if args.real_folder
-        else project_root / "data/processed/annotated_samples/OCR/full_annotated"
-    )
+    if args.no_real:
+        real_folder = None
+    else:
+        real_folder = (
+            Path(args.real_folder)
+            if args.real_folder
+            else project_root / "data/processed/annotated_samples/OCR/full_annotated"
+        )
     output_base_dir = (
         Path(args.output_base_dir)
         if args.output_base_dir

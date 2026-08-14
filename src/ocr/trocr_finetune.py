@@ -622,7 +622,7 @@ def _compute_metrics_factory(tokenizer):
 
 
 def finetune_trocr(
-    real_folder: str | Path,
+    real_folder: str | Path | None,
     output_base_dir: str | Path,
     *,
     augmented_folder: str | Path | None = None,
@@ -713,7 +713,7 @@ def finetune_trocr(
     )
 
     project_root = Path(os.environ.get("PROJECT_ROOT", "."))
-    real_folder = Path(real_folder)
+    real_folder = Path(real_folder) if real_folder else None
     output_base_dir = Path(output_base_dir)
     augmented_folder = Path(augmented_folder) if augmented_folder else None
     labels_json = Path(labels_json) if labels_json else None
@@ -776,10 +776,27 @@ def finetune_trocr(
         (run_dir / "config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
         logger.info("Configuration: %s", json.dumps(config, indent=2))
 
-    real_triples = _gather_real_pairs(real_folder, logger)
-    assert real_triples, f"No usable (png, gt) pairs in {real_folder}"
+    # real_folder is optional: omit it for a synthetic-only Stage-1 pretrain
+    # (spec §6.13/§6.5.26 clean two-stage). At least one source must be present.
+    real_triples = _gather_real_pairs(real_folder, logger) if real_folder else []
+    assert (
+        real_triples or use_augmented
+    ), "Need at least one training source: real_folder and/or augmented_folder+labels_json"
 
-    if use_augmented:
+    if use_augmented and not real_triples:
+        aug_triples = _gather_augmented_pairs(augmented_folder, labels_json, logger)
+        assert aug_triples, f"augmented_folder yielded 0 usable pairs ({augmented_folder})"
+        if max_aug_samples is not None and len(aug_triples) > max_aug_samples:
+            aug_rng = random.Random(seed)
+            aug_triples = aug_rng.sample(aug_triples, max_aug_samples)
+            logger.info("Subsampled augmented pool to %d pairs (seed=%d)", max_aug_samples, seed)
+        all_triples = aug_triples
+        logger.info(
+            "Synthetic-only pool: %d aug pairs across %d source stems (no real lines)",
+            len(all_triples),
+            len({t[2] for t in all_triples}),
+        )
+    elif use_augmented:
         aug_triples = _gather_augmented_pairs(augmented_folder, labels_json, logger)
         assert aug_triples, (
             f"augmented_folder + labels_json set but yielded 0 usable pairs "

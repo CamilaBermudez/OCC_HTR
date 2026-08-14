@@ -5220,3 +5220,31 @@ real and recoverable on both architectures:
 
 kraken+LM stays the leader. **Open item:** an honest TrOCR λ needs a checkpoint that
 didn't train on the 600 (or a fresh held-out annotation set) — flag for future work.
+
+### 6.5.26 Clean two-stage ViT+RoBERTa — synthetic pretrain → real fine-tune (2026-08-14)
+
+**Motivation (user).** Every prior ViT+RoBERTa synthetic run *mixed* synthetic+real in
+one stage (the tiers), and adding synthetic there plateaued/hurt (§6.5.23–25). But the
+"synthetic-as-leverage" recipe that worked for from-scratch Swin+BERT was **staged**:
+synthetic *pretrain* (Stage-1) → real *fine-tune* (Stage-2), which did +36 pp there
+(§6.3.10). We never ran the clean staged version for the *pretrained* ViT+RoBERTa. This
+tests whether **staging beats mixing** — i.e. whether large gentle synthetic, used as a
+domain-adaptive continue-pretrain, then a small real fine-tune, beats the mixed
+medical-4000 (stretch+BPE-150 = **0.9545**).
+
+**Design** (user's recipe + two refinements): medical corpus (12,012 lines), **1 GENTLE
+aug/line** (`--gentle`, the §6.5.24 legibility fix — not the over-degrading default),
+**stretch + BPE-150** (the winner config). Stage-1 pretrains on medical synthetic ONLY
+(no real); Stage-2 fine-tunes on the 600 real. Vary Stage-1 size **3k / 6k / 12k** (via
+`--max-aug-samples` on the one 12k pool) to see the scaling.
+- **Stage-1:** `run_trocr_finetune --no-real --augmented-folder <med gentle> --tokenizer
+  BPE-150 --resize-mode stretch` (code: `real_folder` is now optional + `--no-real`).
+- **Stage-2:** `--pretrained-model-id <stage1 best_model> --real-folder full_annotated
+  --resize-mode stretch` (no `--tokenizer`: the Stage-1 checkpoint already carries
+  BPE-150 + trained vocab).
+- **Controls:** real-only fine-tune (~0.9371) and mixed medical-4000 stretch+BPE-150
+  (0.9545). Two-stage must clear 0.9545 to show "staging > mixing".
+
+Pool: `med_stage1_12k_gentle_20260814`. Caveat carried forward: synthetic labels use
+generation-specific conventions (lowercasing, abbrev choices) not fully matched to the
+diplomatic real GT — a separate data-cleanliness lever, not addressed here. IN PROGRESS.
