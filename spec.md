@@ -5315,3 +5315,12 @@ the two-stage improved. **Next:** since staging scales and mixing doesn't, push 
 LARGER (2–3 aug/line or more corpus → 24k/48k) — the trend says it may overtake mixing.
 Also re-run the mixed medical-4000 with the fixed labels for a label-clean comparison.
 Artefacts: `tests/ocr/evaluations/{realonly_stretch_bpe,ts3k,ts6k,ts12k}_val300/`.
+
+**A' — Scale-up + label-clean mixed (2026-08-14, launched).** Since staging SCALES
+(§6.5.27 A), push Stage-1 bigger and settle the label question:
+- **Two-stage 24k** (2 gentle aug/line) and **48k** (4 aug/line) from the same 12k
+  medical corpus — does the scaling curve overtake mixed 0.9545?
+- **Label-clean mixed medical-4000**: rebuild the mixed pool (600 real + 3000 anno
+  gentle + 4000 medical gentle) with the FIXED capital-preserving labels, stretch+BPE-150
+  — isolates the label effect vs the old harsh+lowercased 0.9545 (ViT is aug-intensity
+  robust, §6.5.24 Phase 2b, so gentle≈harsh → the diff is labels).
