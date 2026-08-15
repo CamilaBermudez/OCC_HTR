@@ -72,6 +72,13 @@ def main() -> None:
     ap.add_argument("--model-dir", type=Path, required=True)
     ap.add_argument("--val-dir", type=Path, required=True)
     ap.add_argument("--annotated-dir", type=Path, required=True)
+    ap.add_argument(
+        "--dev-dir",
+        type=Path,
+        default=None,
+        help="If given, use this folder as the held-out dev split (ViT-unseen). LM-train is "
+        "then ALL of --annotated-dir. Makes lambda* honest (no ViT leakage into dev).",
+    )
     ap.add_argument("--lambdas", default="0,0.1,0.2,0.3,0.5,0.8,1.2")
     ap.add_argument("--nbest", type=int, default=8)
     ap.add_argument("--n-dev", type=int, default=100)
@@ -91,12 +98,6 @@ def main() -> None:
     proc = AutoImageProcessor.from_pretrained(args.model_dir)
     tok = AutoTokenizer.from_pretrained(args.model_dir)
 
-    # split the 600 -> LM-train / dev
-    crops = sorted(args.annotated_dir.glob("*.png"))
-    rng = random.Random(42)
-    rng.shuffle(crops)
-    dev_crops, train_crops = crops[: args.n_dev], crops[args.n_dev :]
-
     def texts_of(cc):
         out = []
         for c in cc:
@@ -105,8 +106,22 @@ def main() -> None:
                 out.append(t)
         return out
 
-    lm_train = CharNGramLM(order=6).train(texts_of(train_crops))
-    lm_full = CharNGramLM(order=6).train(texts_of(crops))
+    crops = sorted(args.annotated_dir.glob("*.png"))
+    if args.dev_dir is not None:
+        # Honest split: dev is a purpose-built ViT-unseen folder; LM-train = ALL of annotated-dir.
+        dev_crops = sorted(args.dev_dir.glob("*.png"))
+        train_crops = crops
+        leaked = False
+        lm_train = CharNGramLM(order=6).train(texts_of(train_crops))
+        lm_full = CharNGramLM(order=6).train(texts_of(crops) + texts_of(dev_crops))
+    else:
+        # Legacy: carve dev out of annotated-dir (leaks into a ViT that trained on all 600).
+        rng = random.Random(42)
+        rng.shuffle(crops)
+        dev_crops, train_crops = crops[: args.n_dev], crops[args.n_dev :]
+        leaked = True
+        lm_train = CharNGramLM(order=6).train(texts_of(train_crops))
+        lm_full = CharNGramLM(order=6).train(texts_of(crops))
 
     def build_cache(crop_list):
         cache, keys = {}, []
@@ -133,7 +148,21 @@ def main() -> None:
         if wa > best[1]:
             best = (lam, wa)
     lam_star = best[0]
-    print(f"\n>>> lambda* = {lam_star} (best DEV word_acc)  [NB dev is leaked into the ViT model]")
+    tag = "[NB dev is leaked into the ViT model]" if leaked else "[dev is ViT-unseen — honest]"
+    print(f"\n>>> lambda* = {lam_star} (best DEV word_acc)  {tag}")
+
+    if not leaked:
+        # Honest headline: fixed lambda* (chosen on ViT-unseen dev), LM retrained on all real-non-val.
+        c0, w0 = acc(val_cache, val_keys, lm_full, 0.0)
+        cs, ws = acc(val_cache, val_keys, lm_full, lam_star)
+        print(
+            f"\n300-VAL (HONEST, LM={len(texts_of(train_crops)) + len(dev_crops)}, fixed lambda*={lam_star}):"
+        )
+        print(f"  baseline (lambda=0):     char {c0:.4f}  word {w0:.4f}")
+        print(
+            f"  rescored (lambda={lam_star}):  char {cs:.4f}  word {ws:.4f}"
+            f"   (dchar {cs - c0:+.4f}, dword {ws - w0:+.4f})"
+        )
 
     # n-best diversity: if beams are degenerate (all identical), rescoring can't help.
     div = sum(len({t for t, _ in nb}) for _, nb in val_cache.values()) / max(1, len(val_cache))

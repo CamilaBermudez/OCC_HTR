@@ -5221,6 +5221,58 @@ real and recoverable on both architectures:
 kraken+LM stays the leader. **Open item:** an honest TrOCR λ needs a checkpoint that
 didn't train on the 600 (or a fresh held-out annotation set) — flag for future work.
 
+**LM rescoring — honest TrOCR λ, open item CLOSED (2026-08-15).** Built the missing
+ViT-unseen checkpoint: fine-tuned a fresh ViT+RoBERTa on **500 real only**
+(`train500_20260815`, stretch+BPE-150, `vit_real500_stretch_bpe`), holding out
+**`dev100_20260815`** (100 real lines the ViT never saw) + the usual 300-val. Honest
+protocol via `scripts/ocr/trocr_lm_rescore.py --dev-dir` (new flag): LM-train on the 500,
+pick λ on the ViT-unseen dev100, retrain LM on all 600 non-val, report 300-val at fixed λ.
+
+- **Dev sweep (ViT-unseen):** monotone up to λ=0.8 (dev word 0.7182→0.7474); **λ\*=0.8**.
+- **300-val @ fixed λ\*=0.8:** baseline 0.9384/0.7059 → rescored **0.9466 char / 0.7409
+  word** (Δ **+0.82 char, +3.50 word**). Beam diversity 6.86 distinct hyps/line.
+- **Dev-selected λ\* matches the tuned-on-test optimum** (direct 300-val sweep peaks
+  λ=0.5–0.8 at ≈0.746 word) → the gain is real, not a tuning artifact.
+
+So the honest headline stands and is in fact **stronger** than the earlier tuned-on-test
+number (+3.50 vs +2.38 word): the char-LM genuinely helps TrOCR. NB the ViT-500 baseline
+(0.7059 word) is below the ViT-600 (0.7691) because it trained on 100 fewer real lines —
+the *absolute* rescored 0.7409 is not comparable to the 600-model row above; the honest
+result is the **+3.50-word delta under a clean dev**. Confirms the top-k headroom is real.
+
+**LM rescoring — CTC-lattice / prefix-beam (2026-08-15, spec §6.13 B5).** Implemented a
+pure-Python **CTC prefix-beam search over kraken's per-frame posteriors** with char-LM
+shallow fusion (`src/ocr/kraken_lm.py::ctc_beam_search`, driver `scripts/ocr/kraken_ctc_lm.py`).
+Unlike the per-position rescorer (substitutions only), it decodes *frames*, so a path can
+emit a glyph where greedy read blank (deletion) or blank where greedy read a glyph
+(insertion) — it reaches all three error types, no KenLM/pyctcdecode C++ dependency.
+Honest protocol (LM-train 500 / dev100 held out / 300-val), kraken 0.9710 leader:
+
+- **Dev sweep:** peak λ=0.1 (dev word 0.8146→0.8467); **α\*=0.1**.
+- **300-val @ fixed α\*=0.1:** CTC-beam baseline 0.9704/0.8153 → +char-LM **0.9735 char /
+  0.8279 word** (Δ **+0.32 char, +1.26 word**).
+
+**The CTC lattice works but does NOT beat the simpler per-position substitution rescorer**
+(0.9743/0.8367, +1.70 word). Reason: the kraken model's residual errors are
+**substitution-dominated** (minim confusions m/n/u/i, §6.8), which the per-position pass
+already fixes; the ins/del headroom the lattice additionally unlocks is small, and the raw
+CTC prefix-beam decode is itself a hair below kraken's native greedy (0.9704 vs 0.9710).
+Net: no gain from the extra machinery — **confirms the §6.8 diagnosis** that the recoverable
+headroom is substitutions, not alignment. **Reranker leaders (final, honest):**
+
+| model + LM rescore | char-acc | word-acc | λ (how tuned) | mechanism |
+|---|---|---|---|---|
+| kraken 600-real+aug + per-position | **0.9743** | **0.8367** | 0.2 (honest dev) | substitutions |
+| kraken 600-real+aug + CTC-lattice | 0.9735 | 0.8279 | 0.1 (honest dev) | ins/del/subs |
+| ViT+RoBERTa (600) + N-best | 0.9594 | 0.7929 | 0.5 (tuned-on-test) | full-line |
+| ViT+RoBERTa (500) + N-best | 0.9466 | 0.7409 | 0.8 (**honest dev**) | full-line (Δ+3.50 word) |
+| _catmus frozen (ref)_ | 0.9603 | 0.8512 | — | — |
+
+**kraken 600-real+aug + per-position char-LM (0.9743 / 0.8367) is the reranking leader.**
+Both architectures benefit; the CTC lattice is validated-but-not-needed here. Artefacts:
+`scratchpad b5_ctc_lm.log`, `b6_honest_lambda.log`; models pulled local
+(`models/ocr/finetuned/vit_real500_stretch_bpe/`).
+
 ### 6.5.26 Clean two-stage ViT+RoBERTa — synthetic pretrain → real fine-tune (2026-08-14)
 
 **Motivation (user).** Every prior ViT+RoBERTa synthetic run *mixed* synthetic+real in
@@ -5353,3 +5405,29 @@ earlier "lowercasing is a drag" concern was overstated; it may still matter for 
 synthetic-ONLY Stage-1 but the two-stage already used fixed labels. **To beat mixing with
 staging, need MORE distinct medical text** (larger corpus), not more augmentation.
 Artefacts: `tests/ocr/evaluations/{ts24k,ts48k,mixedfix}_val300/`.
+
+**B — Per-stage decomposition (2026-08-15).** To isolate what each stage contributes, I
+evaluated the **Stage-1 checkpoints on their own** (synthetic-only, before any real
+fine-tune) on the 300-val, alongside the final Stage-2 numbers:
+
+| Stage-1 size | Stage-1-only (synth pretrain, no real) | Stage-2 final (+600 real) | Stage-2 lift |
+|---|---|---|---|
+| — (real-only, no Stage-1) | — | 0.9431 | — |
+| 3k | 0.6536 | 0.9477 | +0.2941 |
+| 6k | 0.6395 | 0.9475 | +0.3080 |
+| 12k | 0.6358 | **0.9494** | +0.3136 |
+
+(Stage-1-only char-acc; 300-val, `tests/ocr/evaluations/ts{3,6,12}k_s1_val300/`.)
+
+**Findings.** (1) **Stage-1-only is weak (~0.64) and DECLINES with more synthetic**
+(0.6536→0.6395→0.6358, monotone) — more distinct medical text makes the synthetic-only
+model drift *further* from the real 300-val (it fits the synthetic font/style harder).
+(2) **Yet the final rises** (0.9477→0.9494) — so **Stage-1-only quality does NOT predict
+final quality; they move in opposite directions.** Stage-1's value is not its own accuracy
+but the **initialization** it hands Stage-2: broader content exposure → a better starting
+point, even though that init reads the real val worse on its own. (3) **Stage-2 (the real
+fine-tune) does the heavy lifting** (+0.29–0.31 char), and the lift GROWS with Stage-1 size
+(+0.2941→+0.3136) — a larger/more-diverse pretrain gives the real fine-tune more to refine.
+(4) Decomposed against real-only (0.9431): the whole two-stage gain (+0.63 char at 12k)
+is Stage-1's contribution *as an init*, realized only after Stage-2. **Takeaway:** judge a
+synthetic pretrain by the fine-tuned result, never by its standalone accuracy.
