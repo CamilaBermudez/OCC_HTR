@@ -5299,6 +5299,36 @@ in-model honest tune (leaked dev sweep picks λ\*=0), so its own optimum λ=0.3 
 is only observable tuned-on-test. Either way the ViT leader reranked (≤0.9572) stays
 **below kraken+LM 0.9743** — kraken+per-position remains the overall reranking leader.
 
+**Rescoring mechanism taxonomy — the three approaches we ran (2026-08-15).** All three
+share one formula, **`score = visual_score + λ · LM_score`**, and differ only in *what unit*
+carries the visual score and gets LM-scored. Which are applicable depends on what the
+recogniser emits:
+
+- **kraken = CTC:** its net slices the line into vertical **frames** (left→right) and emits
+  a per-frame distribution over the char alphabet + a **blank**, i.e. a **[V labels × T
+  frames]** posterior matrix. Greedy read = argmax/frame → collapse repeats → drop blanks.
+- **TrOCR = autoregressive seq2seq:** generates the line token-by-token (BPE sub-words); no
+  frames, no blank, no per-frame matrix.
+
+| | granularity | LM scores | fixes | code | applies to |
+|---|---|---|---|---|---|
+| **P1 per-position top-k** | one char slot at a time | `char \| prefix` | **substitutions only** | `kraken_lm.py::line_candidates`+`rescore` | kraken (CTC) |
+| **P2 CTC prefix-beam ("lattice")** | whole line, frame-by-frame | `char \| prefix` (on each new char) | subs + **ins + del** | `kraken_lm.py::ctc_beam_search` | kraken (CTC) |
+| **P3 N-best full-line** | whole line, pick among N=8 | full candidate line | subs + ins + del | `trocr_lm_rescore.py::gen_nbest`+`pick` | **TrOCR (seq2seq)** |
+
+- **P1** reuses greedy's fixed positions and only re-ranks the top-5 chars *at each slot*
+  (peak frame) → can **swap** a char but never add/drop one. Fits the manuscript's
+  substitution-dominated errors (minim u↔n) exactly → **best result, +1.70 word**.
+- **P2** re-decodes the raw frame matrix, so output length is free → reaches ins/del too;
+  but kraken has few ins/del to fix and the beam prune is slightly lossy → **+1.26 word,
+  below P1** (also the source of the 0.9704-vs-native-0.9710 α=0 gap).
+- **P3** is the only one compatible with TrOCR (no frames/blanks for P1/P2). Beam search
+  returns 8 whole-line hypotheses; the LM scores each entire line; pick the argmax of
+  `ocr_seq_score + λ·LM(line)`. Length-flexible like P2, but swaps whole lines.
+
+**Decision: for kraken, P1 is the operating point** (0.9743/0.8367) — P2's extra alignment
+capability is unused because the errors are substitutions; for TrOCR, **P3** (the only fit).
+
 ### 6.5.26 Clean two-stage ViT+RoBERTa — synthetic pretrain → real fine-tune (2026-08-14)
 
 **Motivation (user).** Every prior ViT+RoBERTa synthetic run *mixed* synthetic+real in
