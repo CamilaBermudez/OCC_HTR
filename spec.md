@@ -5273,6 +5273,32 @@ Both architectures benefit; the CTC lattice is validated-but-not-needed here. Ar
 `scratchpad b5_ctc_lm.log`, `b6_honest_lambda.log`; models pulled local
 (`models/ocr/finetuned/vit_real500_stretch_bpe/`).
 
+**LM rescoring — transferring the honest λ to the 600-leader (2026-08-15).** The honest
+λ\*=0.8 was tuned on the *weaker* ViT-500's clean dev; the deployable best ViT is the
+600-data `mixed_med4k_fixed` (0.9546/0.7705 baseline). Applying the **pre-committed λ=0.8**
+to it on the 300-val (honest by transfer — the 300-val never fed the λ choice) gives
+**0.9559 char / 0.7778 word** (Δ **+0.13 char, +0.73 word**). Direct 300-val sweep for
+context:
+
+| λ | 300-val char | 300-val word | Δ word |
+|---|---|---|---|
+| 0.0 (baseline) | 0.9546 | 0.7705 | — |
+| **0.3 (this model's own optimum)** | **0.9572** | **0.7832** | **+1.27** |
+| 0.5 | 0.9568 | 0.7822 | +1.17 |
+| 0.8 (transferred from ViT-500) | 0.9559 | 0.7778 | +0.73 |
+| 1.2 | 0.9555 | 0.7749 | +0.44 |
+
+**Finding — λ is recogniser-strength-dependent (scales INVERSELY with model quality).**
+The stronger 600-model peaks at **λ≈0.3**, not 0.8: a higher, more confident baseline needs
+*less* LM correction, whereas the weaker ViT-500 wanted a bigger push (λ=0.8). So λ does
+**not** transfer cleanly across models of different strength — the transfer still helps
+(broad plateau, λ=0.3–0.8 all positive) but leaves ~0.5 word on the table vs the model's
+own optimum. **Honest deliverable options for the ViT leader:** (a) transferred λ=0.8 →
++0.73 word (fully honest, pre-committed); (b) the 600-model's memorised dev blocks an
+in-model honest tune (leaked dev sweep picks λ\*=0), so its own optimum λ=0.3 (+1.27 word)
+is only observable tuned-on-test. Either way the ViT leader reranked (≤0.9572) stays
+**below kraken+LM 0.9743** — kraken+per-position remains the overall reranking leader.
+
 ### 6.5.26 Clean two-stage ViT+RoBERTa — synthetic pretrain → real fine-tune (2026-08-14)
 
 **Motivation (user).** Every prior ViT+RoBERTa synthetic run *mixed* synthetic+real in
