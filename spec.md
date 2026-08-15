@@ -5329,6 +5329,62 @@ recogniser emits:
 **Decision: for kraken, P1 is the operating point** (0.9743/0.8367) — P2's extra alignment
 capability is unused because the errors are substitutions; for TrOCR, **P3** (the only fit).
 
+**Ensemble of the two leaders — oracle vs realizable (2026-08-15).** User asked whether
+combining kraken+P1 and TrOCR helps. `scripts/ocr/ensemble_oracle.py`, 300-val:
+
+| system | char | word |
+|---|---|---|
+| kraken P1 (λ=0.2) | **0.9743** | **0.8367** |
+| TrOCR 1-best | 0.9547 | 0.7720 |
+| ORACLE best-of-both (per line, GT-picked) | 0.9796 | 0.8687 |
+| LM-arbitrated (realizable, char-LM referee) | 0.9708 | 0.8323 |
+
+The two models **disagree on 73% of lines** and are genuinely **complementary — the oracle
+ceiling 0.9796/0.8687 is +0.53 char / +3.2 word over kraken alone.** BUT the *realizable*
+LM-arbitrated ensemble (**0.9708, BELOW kraken's 0.9743**) can't capture it: the char-LM is
+too weak an arbiter — it sometimes prefers TrOCR's *fluent-but-wrong* reading over kraken's
+correct one. **So a naive fusion regresses below the strong model even though the headroom
+is real.** Capturing the oracle gap needs a better per-line router than the LM — e.g.
+**confidence gating** (defer to whichever model is more confident). Whether that can work
+hinges on whether the models' confidences actually predict their errors → the calibration
+analysis (below) is the deciding test.
+
+**Does the model 'know when it doesn't know'? — confidence calibration (2026-08-15).**
+`scripts/ocr/confidence_analysis.py`, 300-val. Per-character confidence (kraken =
+peak-frame posterior; TrOCR = per-token softmax prob, char-expanded), aligned to GT to
+label each predicted char correct/error. (char_acc here is *per-predicted-char* accuracy
+used for the calibration labelling — ignores GT chars the model dropped entirely — so it
+reads a touch above the corpus CER; the calibration metrics are the point.)
+
+| model | conf✓ | conf✗ | AUROC char | ECE | AUROC line | ρ(conf,CER) |
+|---|---|---|---|---|---|---|
+| **kraken (CTC)** | 0.983 | **0.962** | **0.548** | 0.030 | 0.604 | −0.196 |
+| **TrOCR (ViT+RoBERTa)** | 0.985 | **0.809** | **0.899** | 0.019 | 0.770 | −0.519 |
+
+**The two models split cleanly — and opposite to their accuracy ranking:**
+- **kraken does NOT know when it's wrong.** Its confidence on errors (0.962) is almost as
+  high as on correct chars (0.983); **AUROC 0.548 ≈ coin-flip.** Classic CTC pathology: the
+  peak-frame posterior saturates near 1.0 even for a wrong minim (u↔n looks locally clean),
+  so it is **confidently wrong**. Its confidence is nearly useless as an error flag.
+- **TrOCR largely DOES know.** Confidence drops to 0.809 on errors vs 0.985 on correct;
+  **AUROC 0.899** (strong), ρ=−0.519 at line level. Its autoregressive softmax genuinely
+  reflects uncertainty. Both are well-calibrated in aggregate (ECE ≤0.03), but only TrOCR
+  is **discriminative** (aggregate calibration ≠ per-item error detection — kraken has low
+  ECE yet can't tell its own errors apart).
+
+**The stronger recogniser (kraken 0.9743) has the WORSE self-knowledge; the weaker one
+(TrOCR) has excellent self-knowledge.** Two consequences:
+1. **Ensemble routing** — symmetric "trust the more confident model" fails, because kraken
+   is confidently wrong. But TrOCR's confidence is *reliable*, enabling an **asymmetric
+   router:** keep kraken as the base, and only where **TrOCR is highly confident AND
+   disagrees** with kraken, switch to TrOCR — those are exactly the cases where the
+   calibrated model flags a likely kraken error. This could capture part of the 0.9796
+   oracle ceiling where the LM referee (0.9708) failed. Untested — flagged as next step.
+2. **Frontend confidence tab** — the viewer's "needs review" / confidence highlighting must
+   use **TrOCR's** confidence (or a calibrated signal), **NOT kraken's raw posterior**,
+   which would paint errors as high-confidence and mislead a human reviewer. Practical fix
+   for `frontend/`. Plot: `tests/ocr/evaluations/confidence_analysis/confidence_calibration.png`.
+
 ### 6.5.26 Clean two-stage ViT+RoBERTa — synthetic pretrain → real fine-tune (2026-08-14)
 
 **Motivation (user).** Every prior ViT+RoBERTa synthetic run *mixed* synthetic+real in
