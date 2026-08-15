@@ -16,13 +16,14 @@ set -uo pipefail
 source "$HOME/cayn/scripts/cluster/env.sh"
 cd "$PROJECT_ROOT"
 STAT="$WS/status"; mkdir -p "$STAT"
-NAME="realonly_stretch_bpe"
+NAME="${NAME:-realonly_stretch_bpe}"
 DATA="$WS/data/processed"
 TOK="$DATA/tokenizer/occitan_char_bpe_150_20260806/hf_tokenizer"
+REALDIR="${REALDIR:-annotated_samples/OCR/full_annotated}"
 echo "RUNNING $(date -Is) job=${SLURM_JOB_ID:-?} node=$(hostname)" > "$STAT/$NAME.status"
 python scripts/ocr/run_trocr_finetune.py \
   --pretrained-model-id microsoft/trocr-base-handwritten --tokenizer "$TOK" \
-  --real-folder "$DATA/annotated_samples/OCR/full_annotated" \
+  --real-folder "$DATA/$REALDIR" \
   --resize-mode stretch --val-fraction 0.2 --epochs 15 --batch-size 64 --device cuda \
   --output-base-dir "$WS/models/$NAME"
 rc=$?
