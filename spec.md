@@ -5324,3 +5324,32 @@ Artefacts: `tests/ocr/evaluations/{realonly_stretch_bpe,ts3k,ts6k,ts12k}_val300/
   gentle + 4000 medical gentle) with the FIXED capital-preserving labels, stretch+BPE-150
   — isolates the label effect vs the old harsh+lowercased 0.9545 (ViT is aug-intensity
   robust, §6.5.24 Phase 2b, so gentle≈harsh → the diff is labels).
+
+**A' RESULTS — scale-up + label-clean mixed (2026-08-15).** Completes §6.5.27 A.
+ViT+RoBERTa, stretch + BPE-150, 300-val:
+
+| config | char-acc | word-acc | CER |
+|---|---|---|---|
+| real-only control | 0.9431 | 0.7161 | 0.0569 |
+| two-stage 3k (content) | 0.9477 | 0.7419 | 0.0523 |
+| two-stage 6k (content) | 0.9475 | 0.7443 | 0.0525 |
+| two-stage 12k (content) | **0.9494** | 0.7521 | 0.0506 |
+| two-stage 24k (2× aug of 12k) | 0.9459 | 0.7399 | 0.0541 |
+| two-stage 48k (4× aug of 12k) | 0.9392 | 0.7214 | 0.0608 |
+| mixed medical-4000 (old: harsh+lowercased) | 0.9545 | 0.7676 | 0.0455 |
+| mixed medical-4000 (fixed: gentle+capitals) | **0.9549** | 0.7720 | 0.0451 |
+
+**Conclusions.** (1) **Synthetic is leverage, STAGED** — real-only 0.9431 → two-stage 12k
+0.9494 (+0.63 char / +3.6 word). (2) **Scaling axis = distinct CONTENT, not augmentation
+volume** — 3k→12k (more distinct medical lines) climbs 0.9477→0.9494 and plateaus at the
+12k-line corpus limit; **24k/48k = 2×/4× augmentation COPIES of the same 12k texts and
+DECLINE monotonically** (0.9459→0.9392) — more augmentation of the same content hurts
+(consistent with §6.5.24). My 24k/48k design conflated "more synthetic" with "more
+augmentation"; the real lever is more distinct text. (3) **Mixing still > staging** at
+these scales (0.9549 vs 0.9494, ~0.5 pp) — and NOT a label artifact: fixed-label mixed
+(0.9549) ≈ old-label mixed (0.9545). (4) **The capital-preserving label fix was ~neutral**
+on models that include real lines (real dilutes the synthetic label convention) — the
+earlier "lowercasing is a drag" concern was overstated; it may still matter for a
+synthetic-ONLY Stage-1 but the two-stage already used fixed labels. **To beat mixing with
+staging, need MORE distinct medical text** (larger corpus), not more augmentation.
+Artefacts: `tests/ocr/evaluations/{ts24k,ts48k,mixedfix}_val300/`.
