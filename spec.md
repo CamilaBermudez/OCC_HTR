@@ -5433,6 +5433,48 @@ reads a touch above the corpus CER; the calibration metrics are the point.)
    which would paint errors as high-confidence and mislead a human reviewer. Practical fix
    for `frontend/`. Plot: `tests/ocr/evaluations/confidence_analysis/confidence_calibration.png`.
 
+**Two leaders — model weight (2026-08-16).** Parameter count + on-disk size:
+
+| model | params | disk | arch |
+|---|---|---|---|
+| kraken `finetune_20260806_123435` | **4.08 M** | 16 MB | CTC (VGSL CRNN) |
+| TrOCR `mixed_med4k_fixed` | **282.6 M** | 1130 MB | ViT+RoBERTa seq2seq |
+
+The CTC leader is **~69× smaller** in parameters (and ~70× on disk) yet leads on accuracy —
+a strong efficiency argument for the kraken pipeline on this low-resource task.
+
+**Two leaders — ink-bleed robustness + bootstrap CIs (2026-08-16).** Same stratified
+methodology as §6.3.7 (`scripts/ocr/bootstrap_ocr_ci.py`, paired bootstrap 10 000×, seed 42):
+the 300-val is flagged for ink-bleed by percentile threshold in
+`tests/ocr/validation_300_manifest__with_bleed.csv` (`has_bleed_p{75,90,99}`), then per-model
+95 % CIs are computed on the bleed subset. Fresh 300-val transcriptions + per-line eval CSVs
+(`tests/ocr/evaluations/{krakenbest,mixedmed4k}_val300/`); CI dump
+`tests/ocr/evaluations/bleed_ci_2leaders_20260816/bleed_ci.txt`.
+
+| scope | n | kraken char-acc [95% CI] | TrOCR char-acc [95% CI] | Δ char (kraken−TrOCR) |
+|---|---|---|---|---|
+| overall | 300 | 97.10 [96.69, 97.48] | 95.49 [94.98, 95.98] | +1.60 ✓sig |
+| bleed p75 | 75 | 95.79 [94.72, 96.81] | 94.23 [93.01, 95.33] | +1.58 ✓sig |
+| bleed p90 | 30 | 94.61 [92.76, 96.35] | 93.30 [90.96, 95.34] | +1.33 (ns, P=0.91) |
+| bleed p99 | 3 | 93.72 [90.70, 97.06] | 84.84 [76.74, 94.12] | +8.77 ✓sig |
+
+**Findings.** (1) **Ink-bleed degrades both** models monotonically with severity (kraken
+97.1→95.8→94.6→93.7; TrOCR 95.5→94.2→93.3→84.8). (2) **kraken degrades more gracefully** —
+the gap *widens* with bleed severity (+1.60 overall → +8.77 at p99), i.e. **the CTC model is
+more robust to heavy ink-bleed** while the autoregressive TrOCR collapses hardest on the most
+degraded lines (consistent with the seq2seq decoder derailing under heavy noise — cf. the
+confidence finding above). (3) Caveat: p99 = only **3 lines** (very wide CIs); the trustworthy
+signal is p75/p90 (75/30 lines), where kraken keeps a small, mostly-significant edge (at p90 the
++1.33 is not significant, P=0.91). kraken is the more bleed-robust of the two leaders.
+
+**Two leaders — full-manuscript transcription (2026-08-16).** Transcribing the complete
+filtered-line corpus (**13 677 lines / 71 pages**, `data/processed/filtered_images/20260618_160948/original/kept`)
+with both leaders, output mirroring the catmus `finetune_400_full_corpus` layout (per-page dir +
+`<page>_full.txt`) so the viewer/eval tooling reads them identically. kraken via a new nested
+driver `scripts/ocr/kraken_full_corpus.py` (`krakenbest_full_corpus`, CPU ~1 h); TrOCR via
+`run_trocr_transcribe.py` (`mixedmed4k_full_corpus`, MPS greedy ~3 h — beam-4 projected ~11 h,
+greedy chosen for a bulk deliverable at negligible CER cost). [In progress at time of writing.]
+
 ### 6.5.26 Clean two-stage ViT+RoBERTa — synthetic pretrain → real fine-tune (2026-08-14)
 
 **Motivation (user).** Every prior ViT+RoBERTa synthetic run *mixed* synthetic+real in
