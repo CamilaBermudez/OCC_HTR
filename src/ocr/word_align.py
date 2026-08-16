@@ -145,6 +145,24 @@ def _align(
                 )
                 if cand > best:
                     best, op = cand, ("split", i - 1, j - 2)
+            # 2 sch <-> 2 ocr: a pure word-boundary shift ("e leysa" <-> "eley sa")
+            # where the two pairs are identical modulo whitespace. Without this the DP
+            # is forced into two 1-1 subs (e!=eley, leysa!=sa) -> two false
+            # "substitution" chips for what is one spacing difference. Scored just
+            # under two perfect matches so identical pairs still take the 1-1 path.
+            if (
+                i > 1
+                and j > 1
+                and dp[i - 2][j - 2] > neg
+                and not _is_punct(sch[i - 2])
+                and not _is_punct(sch[i - 1])
+                and not _is_punct(ocr[j - 2])
+                and not _is_punct(ocr[j - 1])
+                and _despace(sch[i - 2] + sch[i - 1]) == _despace(ocr[j - 2] + ocr[j - 1])
+            ):
+                cand = dp[i - 2][j - 2] + 2.0 - _MERGE_EPS
+                if cand > best:
+                    best, op = cand, ("shift2", i - 2, j - 2)
             dp[i][j], bt[i][j] = best, op
 
     # backtrace
@@ -176,6 +194,16 @@ def _align(
             # transcription difference — suppress it. A same-line split (la gremas
             # / lagremas) is a real word-boundary diff and is emitted.
             if owner_at(pj) != owner_at(pj + 1) and _despace(b) == _despace(o):
+                pass
+            else:
+                _emit(b, o, owner_at(pj), out)
+        elif kind == "shift2":
+            b, o = sch[pi] + " " + sch[pi + 1], ocr[pj] + " " + ocr[pj + 1]
+            # pure word-boundary shift ("e leysa" <-> "eley sa") -> one "spacing"
+            # diff (classify_region folds despace-equal to "spacing"), not two false
+            # substitutions. Suppress only when it is a manuscript line-wrap (the two
+            # OCR tokens sit on different model lines), matching the split rule.
+            if owner_at(pj) != owner_at(pj + 1):
                 pass
             else:
                 _emit(b, o, owner_at(pj), out)

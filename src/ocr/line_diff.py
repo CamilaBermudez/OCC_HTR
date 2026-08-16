@@ -120,11 +120,14 @@ def classify_region(base: str, ocr: str) -> DiffType:
     if _has_abbrev_mark(ocr):
         return "abbreviation"
     fb, fo = _fold(base), _fold(ocr)
-    # scribal contraction: a SHORT OCR function word is a subsequence of the
-    # scholarly form (del=de lo, dels=de los, al=a lo). Capped at 4 letters —
-    # without a brevigraph mark, a *content* word that merely drops letters
-    # (inscio<-inscisio) is a misread, not an abbreviation, so it must fall
-    # through to `substitution` and stay visible.
+    # scribal contraction: a SHORT OCR function word is a subsequence of a
+    # MULTI-WORD scholarly expansion (del=de lo, dels=de los, al=a lo). Two guards
+    # against false positives, since without a brevigraph mark the surface form is
+    # ambiguous: (1) capped at 4 letters — a *content* word that merely drops
+    # letters (inscio<-inscisio) is a misread; (2) the expansion must contain
+    # whitespace — a single-word base that the OCR shortened by a letter
+    # (meg<-mieg, a dropped `i`) is a misread, not a contraction. Both fall through
+    # to `substitution` and stay visible.
     if (
         fo
         and fb
@@ -132,6 +135,7 @@ def classify_region(base: str, ocr: str) -> DiffType:
         and len(fo) <= 4
         and len(fo) < len(fb)
         and 0.6 * len(fb) <= len(fo)
+        and any(ch.isspace() for ch in base)
         and _is_subseq(fo, fb)
     ):
         return "abbreviation"
@@ -205,9 +209,10 @@ def _diff_core(base: str, ocr: str, owner: list[int]) -> list[Diff]:
     """Character-level diff of one ``base`` string vs one ``ocr`` string.
 
     ``owner[k]`` = segmentation-line index of ``ocr[k]`` (for per-line attribution).
-    Non-equal char ranges are grown to whole words (only if they touch a word
-    char), merged within a word, a pure spacing-shift absorbed, then classified;
-    spacing + orthographic are suppressed.
+    Raw diff spans are first grouped into blocks (joined across whitespace-only
+    gaps); a block that is identical modulo whitespace is a pure spacing/word-break
+    shift and is dropped whole. The rest are grown to whole words, overlaps merged,
+    then classified; spacing + orthographic are suppressed.
     """
 
     def owner_at(pos: int) -> int | None:
@@ -216,13 +221,38 @@ def _diff_core(base: str, ocr: str, owner: list[int]) -> list[Diff]:
         return owner[min(pos, len(owner) - 1)]
 
     sm = difflib.SequenceMatcher(a=base, b=ocr, autojunk=False)
-    regions: list[list[int]] = []  # [base_start, base_end, ocr_start, ocr_end]
-    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+    ops = sm.get_opcodes()
+    # Group change opcodes into blocks joined across WHITESPACE-ONLY equal gaps, so a
+    # word-boundary shift whose halves are separated only by a moved space ("eley sa"
+    # <-> "e leysa", "un apostema" <-> "una postema") is judged as ONE unit on the
+    # RAW spans — before `_expand` grows each half to whole words and turns the shift
+    # into two false substitutions / an add+del. A block whose two sides are identical
+    # modulo whitespace is a pure spacing difference and dropped whole; the others are
+    # expanded to whole words and classified. despace-equality holds only when the
+    # non-space characters match in order, so genuine diffs are never dropped.
+    blocks: list[list[tuple[int, int, int, int]]] = []
+    cur: list[tuple[int, int, int, int]] = []
+    for tag, i1, i2, j1, j2 in ops:
         if tag == "equal":
+            if cur and not base[i1:i2].strip():
+                continue  # whitespace-only equal gap keeps the current block open
+            if cur:
+                blocks.append(cur)
+                cur = []
             continue
-        bs, be = _expand(base, i1, i2)
-        os_, oe = _expand(ocr, j1, j2)
-        regions.append([bs, be, os_, oe])
+        cur.append((i1, i2, j1, j2))
+    if cur:
+        blocks.append(cur)
+
+    regions: list[list[int]] = []  # [base_start, base_end, ocr_start, ocr_end]
+    for block in blocks:
+        b_s, o_s, b_e, o_e = block[0][0], block[0][2], block[-1][1], block[-1][3]
+        if _despace(base[b_s:b_e]) == _despace(ocr[o_s:o_e]):
+            continue  # pure spacing shift over the whole block -> not a real diff
+        for i1, i2, j1, j2 in block:
+            bs, be = _expand(base, i1, i2)
+            os_, oe = _expand(ocr, j1, j2)
+            regions.append([bs, be, os_, oe])
     regions.sort()
     merged: list[list[int]] = []
     for r in regions:
@@ -231,20 +261,9 @@ def _diff_core(base: str, ocr: str, owner: list[int]) -> list[Diff]:
             merged[-1][3] = max(merged[-1][3], r[3])
         else:
             merged.append(r)
-    # absorb an adjacent region only when the combined span is a pure spacing
-    # shift ("un apostema" vs "una postema") — never merges into a visible diff
-    absorbed: list[list[int]] = []
-    for r in merged:
-        if absorbed:
-            cb = base[absorbed[-1][0] : r[1]]
-            co = ocr[absorbed[-1][2] : r[3]]
-            if len(cb) <= 40 and _despace(cb) == _despace(co):
-                absorbed[-1][1], absorbed[-1][3] = r[1], r[3]
-                continue
-        absorbed.append(list(r))
 
     diffs: list[Diff] = []
-    for bs, be, os_, oe in absorbed:
+    for bs, be, os_, oe in merged:
         b, o = base[bs:be].strip(), ocr[os_:oe].strip()
         if not b and not o:
             continue
@@ -299,9 +318,10 @@ def is_editorial(d: Diff) -> bool:
     editor adds, and pure **orthographic** variation (u/v, i/j, long-s). A bare
     article added/dropped (``de``/``a`` + article) is also editorial spacing.
     Everything else — **substitution, addition, deletion, abbreviation (marked
-    brevigraphs AND `del`=`de lo` contractions), and word-boundary `spacing`
-    (`Esi`/`E si`, `la gremas`/`lagremas`)** — is a real transcription
-    difference and stays visible.
+    brevigraphs AND `del`=`de lo` contractions)** — is a real transcription
+    difference and stays visible. (Pure word-boundary ``spacing`` — ``Esi``/``E si``,
+    ``la gremas``/``lagremas`` — never reaches here: it is detected on the raw diff
+    spans and dropped in ``_diff_core`` before classification.)
     """
     if d.type in ("punctuation", "orthographic"):
         return True

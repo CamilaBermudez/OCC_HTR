@@ -3565,6 +3565,33 @@ spacing 8.4k, abbreviation 3.2k, add/del 0.6k), hidden 1.23/line (punctuation
 10.8k, orthographic 5.8k). Verified the four flagged lines via the viewer API.
 New frontend: cyan `diff-spacing` chip + legend entry.
 
+**Third viewer-review pass — 2:2 boundary shifts + abbrev tightening (2026-08-16).**
+Two miscategorisations the user spotted in the viewer, both fixed with regression tests
+(`tests/ocr/test_line_diff.py`, no pytest dep — plain asserts + `__main__` runner):
+- **A word-boundary shift split across two words showed as two `substitution`s.**
+  `eley sa`↔`e leysa` (identical modulo whitespace, but each 1-1 word pair differs:
+  `eley`≠`e`, `sa`≠`leysa`). The word-NW DP (`word_align._align`) had only 1-1 / 2-1
+  (merge) / 1-2 (split) steps, so it was forced into two subs. **Added a 2:2 step**
+  (`shift2`): when `despace(sch[i-2]+sch[i-1]) == despace(ocr[j-2]+ocr[j-1])` and no
+  punctuation is involved, emit ONE `spacing` diff (scored just under two perfect matches
+  so identical pairs still take the 1-1 path; suppressed when it is a line-wrap, matching
+  the split rule). The legacy char engine (`line_diff._diff_core`) got the equivalent fix:
+  spacing is now detected on the **raw** diff spans (blocks joined across whitespace-only
+  gaps) *before* `_expand` grows each half to whole words — this also fixed a pre-existing
+  miss (`un apostema`↔`una postema` had shown as add+del).
+- **A dropped-letter misread showed as `abbreviation`.** `meg`←`mieg` (a dropped `i`) is a
+  subsequence of the base, so the subsequence-contraction heuristic fired. **Tightened**:
+  the heuristic now additionally requires the expansion to be **multi-word** (whitespace in
+  the base) — the hallmark of a real contraction (`del`=`de lo`) — so a single-word
+  letter-drop stays a `substitution`. Brevigraph-marked abbreviations are unaffected (a
+  separate branch).
+
+Regenerated `finetune_400_full_corpus/line_diff.json`. Manuscript-wide deltas: abbreviation
+**3173→2729 (−444** false positives), substitution 12725→**12823**, spacing 8385→**8465**
+(net, after 2-1 merges collapse false-sub pairs); punctuation/orthographic unchanged. Both
+diff engines + the shared `classify_region` covered; `is_editorial` docstring corrected
+(word-boundary spacing is dropped in `_diff_core`, not "shown").
+
 
 ### 6.7.4 Discrepancy export for pattern analysis (2026-08-02)
 
