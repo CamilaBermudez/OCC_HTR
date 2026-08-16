@@ -3592,6 +3592,18 @@ Regenerated `finetune_400_full_corpus/line_diff.json`. Manuscript-wide deltas: a
 diff engines + the shared `classify_region` covered; `is_editorial` docstring corrected
 (word-boundary spacing is dropped in `_diff_core`, not "shown").
 
+**Viewer UI — 1-based model numbering + per-category filters (2026-08-16).** Two frontend
+changes to the 3-way alignment tab (`frontend/static/`): (1) the model column now displays
+**1-based** line numbers (`line.idx + 1` in `renderLineList`) to match the scholarly column
+(`k+1`); `idx` stays 0-based as the alignment/selection key. (2) The **"show editorial"
+checkbox is replaced by per-category filter chips** — the six legend chips (substitution /
+addition / deletion / abbrev / spacing / punct) are now clickable toggles, **all ON by
+default**; clicking one adds `.hide-<type>` to the tab (CSS) and dims the chip. Orthographic
+(u/v·i/j) and scramble spans stay hidden regardless (not surfaced as edits). The diff data
+itself is the cached **`line_diff.json`** (per-line `type`/`ocr_text`/`base_text`/`tei`),
+loaded once at repo start (`manuscript_data.ManuscriptRepo`); each diff carries a **TEI**
+encoding (`<choice><abbr>/<expan>`, `<sic>/<corr>`, `<add>`, `<del>`, …) shown on chip hover.
+
 
 ### 6.7.4 Discrepancy export for pattern analysis (2026-08-02)
 

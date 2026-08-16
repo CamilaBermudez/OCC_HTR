@@ -115,8 +115,8 @@ function renderDiffChips(line) {
     box.className = "diff-chips";
     for (const d of line.diffs || []) {
         const chip = document.createElement("span");
-        // group = substantive | editorial | scramble (spec §6.7.2/6.7.3). Editorial
-        // + scramble are hidden by CSS unless the "show editorial" toggle is on.
+        // group = substantive | editorial | scramble (spec §6.7.2/6.7.3). Kept as a
+        // class for the scramble hide-rule; per-type visibility is the filter chips.
         const group = d.group || "substantive";
         chip.className = `diff-chip diff-${d.type} diff-grp-${group}`;
         const ocr = d.ocr_text || "∅";
@@ -137,7 +137,9 @@ function renderLineList(container, page, textField, showDiffs = false) {
 
         const idxCell = document.createElement("span");
         idxCell.className = "line-idx";
-        idxCell.textContent = line.idx;
+        // 1-based display to match the scholarly column (idx stays 0-based as the
+        // alignment/selection key — see dataset.idx / setSelectedSeg below).
+        idxCell.textContent = line.idx + 1;
         row.appendChild(idxCell);
 
         const textCell = document.createElement("span");
@@ -620,12 +622,15 @@ function bindEvents() {
     $("#page-select").addEventListener("change", (e) => selectPage(e.target.value));
     $("#copy-btn").addEventListener("click", copyToClipboard);
     $("#download-btn").addEventListener("click", downloadTranscription);
-    const editorialToggle = $("#toggle-editorial");
-    if (editorialToggle) {
-        editorialToggle.addEventListener("change", () => {
-            $("#tab-alignment").classList.toggle("show-editorial", editorialToggle.checked);
+    // Per-category diff filters: each legend chip toggles the visibility of its
+    // diff type in the model column. All start active (shown); clicking one adds
+    // .hide-<type> to the tab (see CSS). Replaces the old "show editorial" checkbox.
+    $$("#diff-filters .filter-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+            const on = chip.classList.toggle("active");
+            $("#tab-alignment").classList.toggle(`hide-${chip.dataset.diffType}`, !on);
         });
-    }
+    });
 }
 
 // ---------- Tab 4: model comparison + confidence ----------

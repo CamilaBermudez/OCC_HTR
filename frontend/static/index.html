@@ -70,16 +70,13 @@
             <div class="pane pane-text">
                 <div class="pane-header">
                     <span class="pane-title">Model transcription</span>
-                    <div class="diff-legend">
-                        <span class="diff-chip diff-substitution">substitution</span>
-                        <span class="diff-chip diff-addition">addition</span>
-                        <span class="diff-chip diff-deletion">deletion</span>
-                        <span class="diff-chip diff-abbreviation">abbrev</span>
-                        <span class="diff-chip diff-spacing">spacing</span>
-                        <span class="diff-chip diff-punctuation">punct</span>
-                        <label class="editorial-toggle" title="Editorial differences (punctuation, brevigraph expansion, de+lo spacing) are hidden by default — they are not OCR errors.">
-                            <input type="checkbox" id="toggle-editorial"> show editorial
-                        </label>
+                    <div class="diff-legend" id="diff-filters" title="Click a category to show or hide it. All on by default.">
+                        <span class="diff-chip diff-substitution filter-chip active" data-diff-type="substitution">substitution</span>
+                        <span class="diff-chip diff-addition filter-chip active" data-diff-type="addition">addition</span>
+                        <span class="diff-chip diff-deletion filter-chip active" data-diff-type="deletion">deletion</span>
+                        <span class="diff-chip diff-abbreviation filter-chip active" data-diff-type="abbreviation">abbrev</span>
+                        <span class="diff-chip diff-spacing filter-chip active" data-diff-type="spacing">spacing</span>
+                        <span class="diff-chip diff-punctuation filter-chip active" data-diff-type="punctuation">punct</span>
                     </div>
                 </div>
                 <div class="line-list" id="lines-ours-2"></div>

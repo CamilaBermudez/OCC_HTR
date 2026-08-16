@@ -402,23 +402,22 @@ main {
 .diff-substitution { background: rgba(255, 167, 38, 0.18);  color: #ffca7a; border-color: rgba(255, 167, 38, 0.45); }
 .diff-spacing      { background: rgba(38, 198, 218, 0.15);  color: #7fd6e3; border-color: rgba(38, 198, 218, 0.40); }
 
-/* Editorial suppression (spec §6.7.2): punctuation, brevigraph expansion and
-   de+lo article spacing are editorial normalization, not OCR errors — hidden by
-   default. The "show editorial" toggle reveals them (adds .show-editorial to the
-   tab). Scramble spans (alignment failures) stay hidden either way; they are
-   flagged, not shown as edits. Legend chips are never group-tagged, so unaffected. */
-.diff-chips .diff-grp-editorial,
+/* Per-category filters (spec §6.7): the legend chips are toggles — all ON by
+   default; clicking one hides that diff type in the model column (adds
+   .hide-<type> to the tab). Orthographic (u/v·i/j normalization) and scramble
+   spans (alignment failures) are never surfaced as edits, so they stay hidden
+   regardless of the filters. Legend chips live in .diff-legend (not .diff-chips),
+   so the per-type hide rules below never affect the legend itself. */
+.diff-chips .diff-orthographic,
 .diff-chips .diff-grp-scramble { display: none; }
-#tab-alignment.show-editorial .diff-chips .diff-grp-editorial { display: inline; }
-.editorial-toggle {
-    font-size: 10px;
-    color: var(--muted, #9fb3c4);
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    cursor: pointer;
-    margin-left: 6px;
-}
+.filter-chip { cursor: pointer; user-select: none; }
+.filter-chip:not(.active) { opacity: 0.4; text-decoration: line-through; }
+#tab-alignment.hide-substitution .diff-chips .diff-substitution,
+#tab-alignment.hide-addition     .diff-chips .diff-addition,
+#tab-alignment.hide-deletion     .diff-chips .diff-deletion,
+#tab-alignment.hide-abbreviation .diff-chips .diff-abbreviation,
+#tab-alignment.hide-spacing      .diff-chips .diff-spacing,
+#tab-alignment.hide-punctuation  .diff-chips .diff-punctuation { display: none; }
 
 /* Model line with no confident scholarly alignment (flagged for review). */
 .line-row.unaligned {
