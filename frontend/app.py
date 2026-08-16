@@ -159,6 +159,20 @@ def api_compare_image(page_key: str, stem: str) -> FileResponse:
     return FileResponse(path, media_type="image/png")
 
 
+@app.get("/api/diffs.json")
+def api_diffs_json() -> FileResponse:
+    """The full classified-discrepancy file (all pages) for download / further analysis.
+
+    This is the same ``line_diff.json`` the viewer renders as chips: keyed
+    ``{page -> {seg_line_idx -> [ {type, ocr_text, base_text, tei, group, ocr_line} ]}}``,
+    each diff carrying its TEI encoding (see ``src/ocr/line_diff.py``).
+    """
+    path = get_repo().config.line_diff_json
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="no line_diff.json")
+    return FileResponse(path, media_type="application/json", filename="AlbucE_line_diff.json")
+
+
 # Static mount is LAST so ``/api/*`` routes take precedence. The SPA at
 # ``static/index.html`` is served for any other path. ``html=True`` makes
 # ``/`` return ``index.html`` implicitly.

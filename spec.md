@@ -3604,6 +3604,15 @@ itself is the cached **`line_diff.json`** (per-line `type`/`ocr_text`/`base_text
 loaded once at repo start (`manuscript_data.ManuscriptRepo`); each diff carries a **TEI**
 encoding (`<choice><abbr>/<expan>`, `<sic>/<corr>`, `<add>`, `<del>`, …) shown on chip hover.
 
+**Viewer — download the discrepancy file (2026-08-16).** A **"Download diffs (JSON)"**
+button in the 3-way tab exports the full classified-discrepancy file for offline analysis.
+New backend route `GET /api/diffs.json` (`frontend/app.py`) serves the cached
+`line_diff.json` as a `FileResponse` with `Content-Disposition: attachment;
+filename="AlbucE_line_diff.json"`; the frontend button triggers the download. Payload is the
+whole manuscript keyed `{page → {seg_line_idx → [diffs]}}`, each diff = `{type, ocr_text,
+base_text, tei, group, ocr_line}` — so a user can regroup by category, mine the TEI, or run
+their own error analysis without the viewer.
+
 
 ### 6.7.4 Discrepancy export for pattern analysis (2026-08-02)
 

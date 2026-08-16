@@ -631,6 +631,18 @@ function bindEvents() {
             $("#tab-alignment").classList.toggle(`hide-${chip.dataset.diffType}`, !on);
         });
     });
+    // Export the full discrepancy file (all pages, JSON with TEI) for offline analysis.
+    // The endpoint (FileResponse) already sets the download filename; the anchor's
+    // download attr is a same-origin fallback.
+    const dlDiffs = $("#download-diffs");
+    if (dlDiffs) {
+        dlDiffs.addEventListener("click", () => {
+            const a = document.createElement("a");
+            a.href = "/api/diffs.json";
+            a.download = "AlbucE_line_diff.json";
+            a.click();
+        });
+    }
 }
 
 // ---------- Tab 4: model comparison + confidence ----------
