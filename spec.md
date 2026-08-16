@@ -5477,10 +5477,18 @@ filtered-line corpus (**13 677 lines / 71 pages**, `data/processed/filtered_imag
 with both leaders' **deployed pipelines**, output mirroring the catmus `finetune_400_full_corpus`
 layout (per-page dir + `<page>_full.txt`) so the viewer/eval tooling reads them identically.
 kraken = **CTC + char-LM rescore** via `scripts/ocr/kraken_lm_transcribe.py`
-(`krakenLM_full_corpus`, CPU ~2 h); TrOCR via `run_trocr_transcribe.py`
-(`mixedmed4k_full_corpus`, MPS greedy ~3 h — beam-4 projected ~11 h, greedy chosen for a bulk
-deliverable at negligible CER cost). (`kraken_full_corpus.py` is the raw-CTC nested driver;
-`kraken_lm_transcribe.py` is the raw+LM one used here.) [In progress at time of writing.]
+(`krakenLM_full_corpus`); TrOCR via `run_trocr_transcribe.py` greedy
+(`mixedmed4k_full_corpus`; beam-4 projected ~11 h, greedy chosen for a bulk deliverable at
+negligible CER cost). (`kraken_full_corpus.py` is the raw-CTC nested driver;
+`kraken_lm_transcribe.py` is the raw+LM one used here.)
+
+**DONE (2026-08-16).** Both complete, 13 677 lines / 71 pages each, per-page dir +
+`<page>_full.txt` (the TrOCR `_full.txt` were assembled post-hoc — its transcribe script emits
+only per-line files). Timings: kraken+LM 4 190 s (~70 min, CPU); TrOCR greedy 10 394 s (~2.9 h,
+MPS, 1.32 lines/s). No accuracy number possible (no GT beyond the 300-val) — these are the
+transcription *deliverables*. Spot-check (page 1): kraken+LM "…las paraulas de … de albu casin"
+vs TrOCR "…las paramlas de … de albucasso" — the minim/degradation robustness gap (§ above)
+shows directly in the bulk output. Artefacts: `data/processed/transcription/{krakenLM,mixedmed4k}_full_corpus/`.
 
 ### 6.5.26 Clean two-stage ViT+RoBERTa — synthetic pretrain → real fine-tune (2026-08-14)
 
