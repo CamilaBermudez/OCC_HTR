@@ -5490,6 +5490,28 @@ transcription *deliverables*. Spot-check (page 1): kraken+LM "…las paraulas de
 vs TrOCR "…las paramlas de … de albucasso" — the minim/degradation robustness gap (§ above)
 shows directly in the bulk output. Artefacts: `data/processed/transcription/{krakenLM,mixedmed4k}_full_corpus/`.
 
+**catmus confidence calibration (2026-08-17).** Ran the §-above calibration on frozen
+catmus (`scripts/ocr/confidence_analysis.py --kraken … --kraken-label catmus`, 300-val):
+char_acc 0.9616, **AUROC_char 0.561** (conf✓ 0.977 vs conf✗ 0.957), ECE 0.044, AUROC_line
+0.669, ρ(conf,CER) −0.330. Like our fine-tuned kraken (0.548), catmus is **barely-better-
+than-chance at flagging its own errors** — the **CTC overconfidence pathology generalises**:
+the peak posterior saturates near 1.0 even on wrong minims. (Medusa VLM calibration deferred
+— needs the H200.) Plot: `tests/ocr/evaluations/confidence_analysis_catmus/`.
+
+**Error distribution across the manuscript (2026-08-17).** Where do errors concentrate?
+`scripts/ocr/error_distribution.py`, frozen catmus (UNBIASED — trained on none of our lines)
+over all **899 GT lines / 71 pages** (600 annotated + 300-val). Overall mean-line CER 0.0497,
+**29.4 % of lines perfectly predicted**. Per-page corpus-CER range **0.011–0.088** (median
+0.0475, stdev 0.0166); per-page %-perfect 8 %→71 %. **Findings:** (1) at the **line** level
+errors are strongly **long-tailed** — a minority of hard lines carry most of the error (264
+near-perfect lines vs a tail to CER 0.4); (2) at the **page** level they are **moderately
+spread, not concentrated** — no catastrophic region, but real ~2× variation (worst pages
+07_f_002v_003, 31_f_026v_027, 38_f_033v_034, 73_f_068v_069 ~0.08–0.09; cleanest 25_f_020v_021,
+63_f_058v_059, 18_f_013v_014 ~0.01–0.02, 64–71 % perfect). Worst pages are worth a
+degradation spot-check. Caveat: catmus (0.9616) is unbiased but weaker than the deployed
+kraken+LM; the deployed model on the held-out 300 would show the same shape at lower absolute
+CER. Artefacts: `tests/ocr/evaluations/error_distribution_catmus/{error_distribution.json,.png}`.
+
 ### 6.5.26 Clean two-stage ViT+RoBERTa — synthetic pretrain → real fine-tune (2026-08-14)
 
 **Motivation (user).** Every prior ViT+RoBERTa synthetic run *mixed* synthetic+real in

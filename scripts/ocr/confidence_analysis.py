@@ -167,8 +167,10 @@ def analyse(name, preds, gts):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--kraken", type=Path, required=True)
-    ap.add_argument("--trocr", type=Path, required=True)
+    ap.add_argument("--kraken", type=Path, required=True, help="a CTC (.mlmodel) model")
+    ap.add_argument("--kraken-label", default="kraken (CTC)")
+    ap.add_argument("--trocr", type=Path, default=None, help="optional TrOCR checkpoint dir")
+    ap.add_argument("--trocr-label", default="TrOCR (ViT+RoBERTa)")
     ap.add_argument("--val-dir", type=Path, required=True)
     ap.add_argument("--out", type=Path, default=Path("tests/ocr/evaluations/confidence_analysis"))
     ap.add_argument("--device-trocr", default="mps")
@@ -182,12 +184,11 @@ def main():
     gts = {k: v for k, v in gts.items() if v}
     crops = [c for c in crops if c.stem in gts]
 
-    print("running kraken ...")
-    kp = kraken_preds(a.kraken, crops)
-    print("running trocr ...")
-    tp = trocr_preds(a.trocr, crops, a.device_trocr)
-
-    results = [analyse("kraken (CTC)", kp, gts), analyse("TrOCR (ViT+RoBERTa)", tp, gts)]
+    print(f"running {a.kraken_label} (CTC) ...")
+    results = [analyse(a.kraken_label, kraken_preds(a.kraken, crops), gts)]
+    if a.trocr is not None:
+        print(f"running {a.trocr_label} ...")
+        results.append(analyse(a.trocr_label, trocr_preds(a.trocr, crops, a.device_trocr), gts))
 
     print(
         f"\n{'model':<22} | {'char_acc':>8} | {'conf✓':>6} | {'conf✗':>6} | "
