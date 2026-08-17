@@ -5495,8 +5495,30 @@ catmus (`scripts/ocr/confidence_analysis.py --kraken … --kraken-label catmus`,
 char_acc 0.9616, **AUROC_char 0.561** (conf✓ 0.977 vs conf✗ 0.957), ECE 0.044, AUROC_line
 0.669, ρ(conf,CER) −0.330. Like our fine-tuned kraken (0.548), catmus is **barely-better-
 than-chance at flagging its own errors** — the **CTC overconfidence pathology generalises**:
-the peak posterior saturates near 1.0 even on wrong minims. (Medusa VLM calibration deferred
-— needs the H200.) Plot: `tests/ocr/evaluations/confidence_analysis_catmus/`.
+the peak posterior saturates near 1.0 even on wrong minims. Plot:
+`tests/ocr/evaluations/confidence_analysis_catmus/`.
+
+**Medusa (9B VLM) confidence calibration (2026-08-17).** Ran on the H200
+(`scripts/ocr/medusa_confidence_dump.py` → per-token logprobs, cleaned to Medusa's first
+non-noise line; local calibration `scripts/ocr/confidence_from_dump.py`), 300-val:
+char_acc 0.9543, **AUROC_char 0.672** (conf✓ 0.920 vs conf✗ 0.805), ECE 0.061, AUROC_line
+0.696, ρ −0.382. Medusa is **meaningfully better than the CTC models at knowing when it's
+wrong** (a real 0.115 conf-split), though still below TrOCR. **Full calibration ranking (300-val,
+AUROC_char = does confidence flag errors):**
+
+| model | arch | char_acc | AUROC_char | reads its own errors? |
+|---|---|---|---|---|
+| **TrOCR** (ViT+RoBERTa) | seq2seq (LM decoder) | 0.9549 | **0.899** | yes, strongly |
+| **Medusa** (9B) | VLM (autoregressive) | 0.9543 | **0.672** | moderately |
+| **catmus** | CTC | 0.9616 | 0.561 | barely (chance-ish) |
+| **kraken** (0.9710 FT) | CTC | 0.9743 | 0.548 | barely (chance-ish) |
+
+**Clean monotone story:** the more a model decodes **autoregressively / with a language
+model**, the better its confidence flags errors — CTC (per-frame, no LM) is overconfident
+(~0.55, chance), the autoregressive VLM is moderate (0.672), the seq2seq LM-decoder is best
+(0.899). Accuracy and calibration are **orthogonal** here — kraken is the most accurate yet
+the least self-aware. Practical read: use TrOCR/Medusa confidence for a human-review queue,
+never the CTC posterior. Plot: `tests/ocr/evaluations/confidence_catmus_medusa/`.
 
 **Error distribution across the manuscript (2026-08-17).** Where do errors concentrate?
 `scripts/ocr/error_distribution.py`, frozen catmus (UNBIASED — trained on none of our lines)

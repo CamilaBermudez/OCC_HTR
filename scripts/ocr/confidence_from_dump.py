@@ -101,22 +101,27 @@ def main() -> None:
     }
     gts = {k: v for k, v in gts.items() if v}
 
-    from kraken import rpred  # noqa: PLC0415
     from kraken.lib import models  # noqa: PLC0415
+    from kraken.lib.dataset import ImageInputTransforms  # noqa: PLC0415
+    from kraken.lib.segmentation import extract_polygons  # noqa: PLC0415
 
     from src.ocr.transcribe_line_crops import _synthesised_seg  # noqa: PLC0415
 
     net = models.load_any(str(a.catmus), device="cpu")
+    b, ch_, h, w = net.nn.input
+    ts = ImageInputTransforms(b, h, w, ch_, (16, 0), valid_norm=False)
     catmus_preds: dict[str, tuple[str, list[float]]] = {}
     for c in crops:
         if c.stem not in gts:
             continue
         try:
             im, seg = _synthesised_seg(c)
-            preds = list(rpred.rpred(net, im, seg))
-            chars = [p[0] for p in preds] if preds else []
-            confs = [float(p[3]) for p in preds] if preds else []
-            catmus_preds[c.stem] = ("".join(chars), confs)
+            box, _ = next(extract_polygons(im, seg, legacy=net.nn.use_legacy_polygons))
+            preds = net.predict(ts(box).unsqueeze(0))[0]  # [(char, start, end, conf)]
+            catmus_preds[c.stem] = (
+                "".join(p[0] for p in preds),
+                [float(p[3]) for p in preds],
+            )
         except Exception:  # noqa: BLE001
             catmus_preds[c.stem] = ("", [])
 
