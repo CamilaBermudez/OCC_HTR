@@ -5116,6 +5116,30 @@ a fonts/letters/style problem, so **no style-transfer model is needed.** Open fo
 that arch harsh re-renders hurt −2.1 (Dataset D), so gentle may flip it positive, and
 external medical text already helps (medical-4000 0.9487 / stretch+BPE-150 0.9545).
 
+**Targeted-minim size sweep — controlled retry, NEGATIVE (2026-08-20).** User asked to
+push the §6.5.22-#4 idea harder: generate **1000 unique** minim-categorized *medical* lines
+(`minim_sweep_1000_20260817`, spacing-jitter 2.0, 1 render/line, ketos `--augment` at train
+time — no offline aug), and sweep pool size N∈{50,100,300,(600,1000 not reached)} across two
+recipes (`scripts/ocr/run_minim_sweep.sh`), each evaluated raw on the 300-val vs the 0.9710
+baseline:
+
+| N | A: catmus + 600 real + N synth | B: kraken 0.9710 + N synth-only (further-FT) |
+|---|---|---|
+| 50 | 0.9374 | 0.9565 |
+| 100 | 0.9330 | 0.9496 |
+| 300 | 0.9194 | 0.9394 |
+
+**Both recipes hurt, and MONOTONICALLY worse with more synthetic.** (A) mixing minim-synth
+into catmus+600 lands *below catmus-alone* (0.9603) and drops 0.9374→0.9194; (B)
+further-fine-tuning the 0.9710 model on synth-**only** degrades it *from* 0.9710
+(0.9565→0.9394) — the FT pulls the good model toward the synthetic distribution. B (synth-
+only) is consistently less harmful than A (mixed), but **neither approaches the real-only
+0.9710**, and the size axis shows *more targeted synthetic = worse*, not better. **Definitive
+for the CTC pipeline:** even content-targeted (minim), legibility-preserving (gentle),
+spacing-jittered synthetic does not help kraken — real + built-in ketos augmentation stays
+the best recipe. Stopped after B_n300 (user call); n600/n1000 not run (trend unambiguous).
+Results: `tests/ocr/evaluations/minim_sweep_20260820.txt`.
+
 **Phase 2b — gentle vs harsh on ViT+RoBERTa (2026-08-08).** Regenerated the full
 medical-4000 composition (600 real + 3000 anno re-renders + 4000 medical renders) as
 fresh raw renders, then augmented the SAME raw two ways — `--gentle` and default
