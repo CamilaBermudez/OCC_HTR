@@ -539,3 +539,24 @@ main {
     border-radius: 5px; padding: 4px 8px; font-size: 12px; white-space: nowrap;
     font-family: "JuliaMono", "SF Mono", monospace; box-shadow: 0 3px 12px rgba(0,0,0,0.5);
 }
+
+/* ---- Model dropdown (top bar) ---- */
+.model-select-label { margin-left: 12px; }
+#model-select { max-width: 260px; }
+
+/* ---- Info / guide tab (spec §6.5.28) ---- */
+.info-wrap { padding: 18px 26px; max-width: 1100px; overflow-y: auto; }
+.info-wrap h2 { margin: 0 0 12px; }
+.info-wrap h3 { margin: 20px 0 8px; font-size: 15px; }
+.info-sub { font-weight: normal; font-size: 12px; color: var(--muted, #9fb3c4); }
+.info-tabs ul { margin: 0; padding-left: 20px; line-height: 1.65; }
+.info-tabs li { margin-bottom: 6px; }
+#info-model-table { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 6px; }
+#info-model-table th, #info-model-table td {
+    border: 1px solid rgba(150, 160, 175, 0.25); padding: 5px 9px; text-align: left; vertical-align: top;
+}
+#info-model-table thead th { background: rgba(150, 160, 175, 0.12); font-weight: 600; }
+#info-model-table td:nth-child(n+4):nth-child(-n+7) { text-align: right; font-variant-numeric: tabular-nums; }
+.info-note { font-size: 12px; color: var(--muted, #9fb3c4); margin-top: 8px; }
+#tab-info.active { display: block; overflow: hidden; }
+.info-wrap { height: 100%; }

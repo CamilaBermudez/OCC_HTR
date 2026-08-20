@@ -174,6 +174,63 @@ def _load_line_diff(path: Path) -> dict[str, dict[int, list[dict]]]:
     return out
 
 
+# Transcription models the viewer can switch between (spec §6.5.28). ``dir`` is a folder
+# name under data/processed/transcription/ (per-page <page>/<page>_line_<n>.txt + an optional
+# line_diff.json). Stats are 300-val (spec §6.5.25/§6.13). Only entries whose dir exists on
+# disk are offered — so ``catmus`` appears once its full corpus finishes generating. Order =
+# dropdown order; the first is the default.
+_MODEL_REGISTRY: list[dict] = [
+    {
+        "key": "kraken_leader",
+        "label": "kraken 0.9743 (CTC + char-LM)",
+        "dir": "krakenLM_full_corpus",
+        "arch": "CTC (VGSL CRNN) + char n-gram LM rescore",
+        "size": "4.08M params / 16 MB",
+        "cer": 0.0256,
+        "char_acc": 0.9743,
+        "wer": 0.1629,
+        "word_acc": 0.8371,
+        "desc": "Best overall pipeline: fine-tuned CATMuS + per-position char-LM rescoring (§6.13).",
+    },
+    {
+        "key": "trocr_leader",
+        "label": "TrOCR 0.9549 (ViT+RoBERTa)",
+        "dir": "mixedmed4k_full_corpus",
+        "arch": "ViT encoder + RoBERTa decoder (seq2seq)",
+        "size": "282.6M params / 1130 MB",
+        "cer": 0.0451,
+        "char_acc": 0.9549,
+        "wer": 0.2280,
+        "word_acc": 0.7720,
+        "desc": "Best seq2seq: 600 real + 3000 anno + 4000 medical (gentle), stretch + BPE-150.",
+    },
+    {
+        "key": "medusa",
+        "label": "Medusa 0.9510 (9B VLM)",
+        "dir": "medusa_full_corpus_l4_20260713_095002_clean",
+        "arch": "9B vision-language model (autoregressive)",
+        "size": "9B params / ~18 GB BF16",
+        "cer": 0.0490,
+        "char_acc": 0.9510,
+        "wer": 0.3106,
+        "word_acc": 0.6894,
+        "desc": "Off-the-shelf multilingual medieval VLM (ENC-PSL), chat-template-cleaned output.",
+    },
+    {
+        "key": "catmus",
+        "label": "catmus 0.9603 (CTC baseline)",
+        "dir": "catmus_full_corpus",
+        "arch": "CTC (CATMuS-medieval, frozen)",
+        "size": "4.08M params / 16 MB",
+        "cer": 0.0397,
+        "char_acc": 0.9603,
+        "wer": 0.1488,
+        "word_acc": 0.8512,
+        "desc": "Frozen off-the-shelf CATMuS-medieval — strong zero-fine-tune baseline.",
+    },
+]
+
+
 @dataclass(frozen=True)
 class PageMeta:
     """Everything about one page that the frontend needs at render time."""
@@ -205,9 +262,11 @@ class ManuscriptRepo:
         # {page_key: {segmentation_line_idx: scholarly line NO}} from the
         # content-based aligner (spec §6.6) — drives the cross-highlight only.
         self._alignment: dict[str, dict[int, int]] = {}
-        # {page_key: {segmentation_line_idx: [diff dicts]}} from the diff
-        # classifier (spec §6.7). Empty => no diff chips.
-        self._diffs: dict[str, dict[int, list[dict]]] = {}
+        # Per-MODEL line diffs: {model_key: {page_key: {seg_idx: [diff dicts]}}}.
+        self._diffs_by_model: dict[str, dict[str, dict[int, list[dict]]]] = {}
+        # Available transcription models (registry entries whose dir exists on disk).
+        self._models: list[dict] = []
+        self._default_model: str = ""
         self._segmentation_pages: set[str] = set()
         self._load()
 
@@ -242,15 +301,31 @@ class ManuscriptRepo:
         # 5. Content-based line alignment (optional; positional fallback if absent).
         self._alignment = _load_line_alignment(self.config.line_alignment_json)
 
-        # 6. Per-line difference classification (optional).
-        self._diffs = _load_line_diff(self.config.line_diff_json)
+        # 6. Transcription model registry — every source the viewer can switch
+        #    between (spec §6.5.28). Only models whose transcription dir exists are
+        #    offered; each carries its own line_diff.json (per-model diff chips).
+        tx_base = self.config.model_transcription_dir.parent
+        for m in _MODEL_REGISTRY:
+            mdir = tx_base / m["dir"]
+            if not mdir.is_dir():
+                continue
+            entry = {**m, "dir": mdir}
+            self._models.append(entry)
+            self._diffs_by_model[m["key"]] = _load_line_diff(mdir / "line_diff.json")
+        if not self._models:
+            # Fallback to the single configured dir so the viewer still works.
+            self._models = [
+                {"key": "model", "label": "model", "dir": self.config.model_transcription_dir}
+            ]
+            self._diffs_by_model["model"] = _load_line_diff(self.config.line_diff_json)
+        self._default_model = self._models[0]["key"]
 
         logger.info(
-            "ManuscriptRepo loaded: %d usable pages, %d scholarly, %d aligned, %d with diffs",
+            "ManuscriptRepo loaded: %d usable pages, %d scholarly, %d aligned; models=%s",
             len(self._page_keys),
             sum(1 for k in self._page_keys if k in self._scholarly),
             sum(1 for k in self._page_keys if k in self._alignment),
-            sum(1 for k in self._page_keys if k in self._diffs),
+            [m["key"] for m in self._models],
         )
 
     def list_pages(self) -> list[str]:
@@ -269,17 +344,37 @@ class ManuscriptRepo:
                 self._image_size[page_key] = (im.width, im.height)
         return self._image_size[page_key]
 
-    def get_page(self, page_key: str) -> PageMeta:
+    def _resolve_model(self, model_key: str | None) -> dict:
+        """Registry entry for ``model_key`` (falls back to the default)."""
+        for m in self._models:
+            if m["key"] == model_key:
+                return m
+        return self._models[0]
+
+    def list_models(self) -> list[dict]:
+        """Public registry (no filesystem Paths) for the ``/api/models`` dropdown."""
+        return [
+            {k: v for k, v in m.items() if k != "dir"}
+            | {"default": m["key"] == self._default_model}
+            for m in self._models
+        ]
+
+    def model_diff_path(self, model_key: str | None = None) -> Path:
+        """Path to the selected model's line_diff.json (for the per-model download)."""
+        return self._resolve_model(model_key)["dir"] / "line_diff.json"
+
+    def get_page(self, page_key: str, model_key: str | None = None) -> PageMeta:
         if page_key not in self._page_keys:
             raise KeyError(f"Unknown page_key: {page_key}")
 
+        model = self._resolve_model(model_key)
         seg = json.loads(
             (self.config.segmentation_dir / f"{page_key}.json").read_text(encoding="utf-8")
         )
         width, height = self._get_image_size(page_key)
-        page_diffs = self._diffs.get(page_key, {})
+        page_diffs = self._diffs_by_model.get(model["key"], {}).get(page_key, {})
 
-        # Model column: one entry per segmentation line (full model transcription).
+        # Model column: one entry per segmentation line (selected model's transcription).
         lines: list[dict] = []
         for idx, seg_line in enumerate(seg.get("lines", [])):
             lines.append(
@@ -287,9 +382,7 @@ class ManuscriptRepo:
                     "idx": idx,
                     "polygon": seg_line.get("boundary") or [],
                     "baseline": seg_line.get("baseline") or [],
-                    "our_text": _load_our_transcription(
-                        self.config.model_transcription_dir, page_key, idx
-                    ),
+                    "our_text": _load_our_transcription(model["dir"], page_key, idx),
                     "diffs": page_diffs.get(idx, []),
                 }
             )

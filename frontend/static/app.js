@@ -8,6 +8,8 @@
 
 const state = {
     pages: [],
+    models: [],              // transcription models from /api/models
+    model: null,             // selected model key (drives tabs 1 & 2)
     currentPageKey: null,
     currentPage: null,       // full payload from /api/pages/{key}
     // Cross-highlight selection: a segmentation-line index (model side) and the
@@ -59,6 +61,51 @@ async function loadPageList() {
     }
 }
 
+// Transcription models (dropdown for tabs 1/2 + the Info-tab table). Must run before
+// the first selectPage so the page fetch carries the right ?model=.
+async function loadModels() {
+    let models = [];
+    try {
+        ({ models } = await fetchJson("/api/models"));
+    } catch {
+        return; // backend without the multi-model API — page fetch falls back to default
+    }
+    state.models = models;
+    const def = models.find(m => m.default) || models[0];
+    state.model = def ? def.key : null;
+    const sel = $("#model-select");
+    if (sel) {
+        sel.innerHTML = "";
+        for (const m of models) {
+            const opt = document.createElement("option");
+            opt.value = m.key;
+            opt.textContent = m.label;
+            sel.appendChild(opt);
+        }
+        if (state.model) sel.value = state.model;
+    }
+    renderInfoModels(models);
+}
+
+// Info-tab model table (built from /api/models so the stats never drift from the backend).
+function renderInfoModels(models) {
+    const tb = document.querySelector("#info-model-table tbody");
+    if (!tb) return;
+    tb.innerHTML = "";
+    const pct = v => (v == null ? "—" : (v * 100).toFixed(2) + "%");
+    const num = v => (v == null ? "—" : v.toFixed(4));
+    for (const m of models) {
+        const tr = document.createElement("tr");
+        for (const cell of [m.label, m.arch, m.size, pct(m.char_acc), pct(m.word_acc),
+                            num(m.cer), num(m.wer), m.desc]) {
+            const td = document.createElement("td");
+            td.textContent = cell ?? "—";
+            tr.appendChild(td);
+        }
+        tb.appendChild(tr);
+    }
+}
+
 async function selectPage(pageKey) {
     setStatus(`Loading ${pageKey}…`);
     state.currentPageKey = pageKey;
@@ -67,7 +114,8 @@ async function selectPage(pageKey) {
     // zoom persists silently and the new page opens at the wrong
     // magnification.
     state.zoom = { "1": 1, "2": 1, "3": state.zoom["3"] || 1 };
-    state.currentPage = await fetchJson(`/api/pages/${encodeURIComponent(pageKey)}`);
+    const mq = state.model ? `?model=${encodeURIComponent(state.model)}` : "";
+    state.currentPage = await fetchJson(`/api/pages/${encodeURIComponent(pageKey)}${mq}`);
     $("#page-select").value = pageKey;
     renderAll();
     const nLines = state.currentPage.lines.length;
@@ -620,6 +668,14 @@ function bindEvents() {
         btn.addEventListener("click", () => activateTab(btn.dataset.tab));
     });
     $("#page-select").addEventListener("change", (e) => selectPage(e.target.value));
+    // Model dropdown: re-fetch the current page for the chosen model (drives tabs 1 & 2).
+    const modelSel = $("#model-select");
+    if (modelSel) {
+        modelSel.addEventListener("change", (e) => {
+            state.model = e.target.value;
+            if (state.currentPageKey) selectPage(state.currentPageKey);
+        });
+    }
     $("#copy-btn").addEventListener("click", copyToClipboard);
     $("#download-btn").addEventListener("click", downloadTranscription);
     // Per-category diff filters: each legend chip toggles the visibility of its
@@ -637,9 +693,10 @@ function bindEvents() {
     const dlDiffs = $("#download-diffs");
     if (dlDiffs) {
         dlDiffs.addEventListener("click", () => {
+            const m = state.model ? `?model=${encodeURIComponent(state.model)}` : "";
             const a = document.createElement("a");
-            a.href = "/api/diffs.json";
-            a.download = "AlbucE_line_diff.json";
+            a.href = `/api/diffs.json${m}`;
+            a.download = `AlbucE_line_diff_${state.model || "model"}.json`;
             a.click();
         });
     }
@@ -823,6 +880,7 @@ async function init() {
     bindZoomHandlers();
     bindPanHandlers();
     try {
+        await loadModels();   // sets state.model so loadPageList's first fetch is model-aware
         await loadPageList();
     } catch (e) {
         setStatus(`Failed to load page list: ${e.message}`);

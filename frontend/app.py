@@ -70,16 +70,20 @@ def api_list_pages() -> dict:
     return {"pages": get_repo().list_pages()}
 
 
-@app.get("/api/pages/{page_key}")
-def api_get_page(page_key: str) -> dict:
-    """Full page payload: image dimensions + per-line polygons +
-    per-line our-transcription + per-line scholarly-transcription.
+@app.get("/api/models")
+def api_list_models() -> dict:
+    """Transcription models the viewer can switch between (dropdowns in tabs 1/2)."""
+    return {"models": get_repo().list_models()}
 
-    Returned in one shot so the frontend can render tab 1 and tab 2 from
-    the same fetch — reduces round-trips vs. one request per line.
+
+@app.get("/api/pages/{page_key}")
+def api_get_page(page_key: str, model: str | None = None) -> dict:
+    """Full page payload for the given ``model`` (default = first registry entry):
+    image dimensions + per-line polygons + that model's per-line transcription + diffs
+    + per-line scholarly transcription. One shot so tabs 1 and 2 render from one fetch.
     """
     try:
-        page = get_repo().get_page(page_key)
+        page = get_repo().get_page(page_key, model_key=model)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     # asdict handles the ``PageMeta`` dataclass but the Path field needs
@@ -160,17 +164,19 @@ def api_compare_image(page_key: str, stem: str) -> FileResponse:
 
 
 @app.get("/api/diffs.json")
-def api_diffs_json() -> FileResponse:
-    """The full classified-discrepancy file (all pages) for download / further analysis.
-
-    This is the same ``line_diff.json`` the viewer renders as chips: keyed
-    ``{page -> {seg_line_idx -> [ {type, ocr_text, base_text, tei, group, ocr_line} ]}}``,
+def api_diffs_json(model: str | None = None) -> FileResponse:
+    """The full classified-discrepancy file for the SELECTED ``model`` (all pages),
+    for download / further analysis — the same ``line_diff.json`` the viewer renders as
+    chips: ``{page -> {seg_line_idx -> [ {type, ocr_text, base_text, tei, group} ]}}``,
     each diff carrying its TEI encoding (see ``src/ocr/line_diff.py``).
     """
-    path = get_repo().config.line_diff_json
+    path = get_repo().model_diff_path(model)
     if not path.is_file():
-        raise HTTPException(status_code=404, detail="no line_diff.json")
-    return FileResponse(path, media_type="application/json", filename="AlbucE_line_diff.json")
+        raise HTTPException(status_code=404, detail="no line_diff.json for this model")
+    key = model or "model"
+    return FileResponse(
+        path, media_type="application/json", filename=f"AlbucE_line_diff_{key}.json"
+    )
 
 
 # Static mount is LAST so ``/api/*`` routes take precedence. The SPA at
