@@ -3633,10 +3633,21 @@ so the user can switch which model they read/compare:
   follow the selection. New **Info tab**: how-to for each tab + a model table
   (arch / size / char-acc / word-acc / CER / WER / notes) built live from `/api/models`.
 
-**Still to do (flagged):** tab 3 (Transcribe-a-page) model menu currently catmus-only —
-needs on-demand loading of the leader models in `page_pipeline`; tab 4 (Model compare) still
-shows the old scholarly/catmus/ViT triple — needs the `line_compare` JSONs regenerated with
-the two leader transcriptions (scholarly + catmus + kraken-leader + TrOCR-leader).
+**Request-by-request status (user's 6-part viewer ask, 2026-08-20):**
+
+| # | request | status |
+|---|---|---|
+| 1 | confirm the model numbers are 300-val | ✅ done (they are) |
+| 2 | tab 1 (Transcription): model dropdown (catmus + leaders + Medusa) | ✅ done — all 4 wired |
+| 3 | tab 2 (3-way): diff vs each model + dropdown + per-model download | ✅ done |
+| 4 | tab 3 (Transcribe-a-page): add leaders to the model menu + right .txt/ALTO download | ⏳ TODO — needs on-demand leader loading in `page_pipeline` |
+| 5 | tab 4 (Model compare): scholarly + catmus + kraken-leader + TrOCR-leader | ⏳ TODO — regenerate `line_compare` JSONs with the two leader transcriptions |
+| 6 | Info tab: per-tab how-to + model table (arch/size/CER/WER/char-acc/word-acc) | ✅ done |
+
+**Data prep (all done 2026-08-20):** all four models now have the full 13 677-line corpus +
+per-model `line_diff.json` — kraken-leader, TrOCR-leader, Medusa (GCP run recovered), and
+**catmus** (freshly transcribed over the whole manuscript, since only its 300-val existed).
+Remaining work is tabs 3 & 4 only.
 
 
 ### 6.7.4 Discrepancy export for pattern analysis (2026-08-02)
