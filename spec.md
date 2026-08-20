@@ -5534,6 +5534,18 @@ degradation spot-check. Caveat: catmus (0.9616) is unbiased but weaker than the 
 kraken+LM; the deployed model on the held-out 300 would show the same shape at lower absolute
 CER. Artefacts: `tests/ocr/evaluations/error_distribution_catmus/{error_distribution.json,.png}`.
 
+**Error map on 300-val — DEPLOYED leaders (2026-08-20).** Redo of the error distribution
+on the held-out 300 only, with the deployed pipelines (kraken+LM 0.9743, TrOCR
+`mixed_med4k_fixed` 0.9549), from the per-line eval CSVs — no re-transcription
+(`scripts/ocr/error_map_from_csv.py`). Overall: **kraken+LM corpus CER 0.0256, 46.2 % of
+lines perfect**; **TrOCR 0.0451, 28.4 % perfect**. Per-page (median/max CER):
+kraken+LM 0.0224/0.1154, TrOCR 0.0396/0.2162. **The two leaders' worst pages coincide** —
+07_f_002v_003, 05_garde_001, 28_f_023v_024, 17_f_012v_013 — and these match the catmus map's
+worst pages, so **those pages are objectively harder (physical degradation), independent of
+model/arch**. Caveat: on the 300-subset many pages have only 1–3 val lines (noisy per-page);
+the reliable signal is the overall gap + the cross-model worst-page overlap. Artefacts:
+`tests/ocr/evaluations/error_map_val300_leaders/{error_map.json,error_map_val300.png}`.
+
 ### 6.5.26 Clean two-stage ViT+RoBERTa — synthetic pretrain → real fine-tune (2026-08-14)
 
 **Motivation (user).** Every prior ViT+RoBERTa synthetic run *mixed* synthetic+real in
