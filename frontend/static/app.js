@@ -854,9 +854,11 @@ function renderCompareCard(page, line) {
     sch.textContent = line.scholarly.text || "— (no scholarly match)";
     if (!line.scholarly.text) sch.className = "cmp-none";
     rows.appendChild(compareRow("scholarly", "cmp-schol", sch));
-    rows.appendChild(compareRow("catmus", "cmp-cat", confSpans(line.catmus.chars)));
-    rows.appendChild(compareRow("kraken 0.9743", "cmp-krak", confSpans(line.kraken.chars)));
-    rows.appendChild(compareRow("TrOCR 0.9549", "cmp-vit", confSpans(line.trocr.tokens)));
+    // Defensive: a model missing on a line renders an empty row rather than throwing
+    // (which would blank the whole carousel).
+    rows.appendChild(compareRow("catmus", "cmp-cat", confSpans(line.catmus?.chars || [])));
+    rows.appendChild(compareRow("kraken 0.9743", "cmp-krak", confSpans(line.kraken?.chars || [])));
+    rows.appendChild(compareRow("TrOCR 0.9549", "cmp-vit", confSpans(line.trocr?.tokens || [])));
     card.appendChild(rows);
     return card;
 }
@@ -872,7 +874,14 @@ async function loadComparePage(page) {
         return;
     }
     car.innerHTML = "";
-    for (const line of data.lines) car.appendChild(renderCompareCard(page, line));
+    for (const line of data.lines) {
+        try {
+            car.appendChild(renderCompareCard(page, line));
+        } catch (e) {
+            console.error("compare card failed for", line.stem, e);
+        }
+    }
+    if (!car.children.length) car.textContent = "No comparison lines for this page.";
     car.scrollTop = 0;
     requestAnimationFrame(() => updateCompareFocus(car));
 }
