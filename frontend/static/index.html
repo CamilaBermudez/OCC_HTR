@@ -99,7 +99,8 @@
                     </label>
                     <label>Model
                         <select id="upload-model">
-                            <option value="catmus">CATMuS (kraken)</option>
+                            <option value="kraken_leader">kraken 0.9743 (CTC + LM)</option>
+                            <option value="catmus">CATMuS (frozen)</option>
                         </select>
                     </label>
                     <button id="upload-run" disabled>Transcribe</button>
@@ -163,7 +164,6 @@
                         <thead><tr><th>Model</th><th>Architecture</th><th>Size</th><th>char-acc</th><th>word-acc</th><th>CER</th><th>WER</th><th>Notes</th></tr></thead>
                         <tbody></tbody>
                     </table>
-                    <p class="info-note">char-acc = 1 − CER (character error rate); word-acc = 1 − WER. Lower CER/WER is better.</p>
                 </div>
             </div>
         </section>

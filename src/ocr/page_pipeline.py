@@ -27,7 +27,10 @@ from src.data_preprocessing.image_segmentation import (
 
 CATMUS_MODEL = "models/ocr/catmus-medieval.mlmodel"
 # Registry the frontend can grow later; value = path to a kraken .mlmodel.
+# (TrOCR-leader is seq2seq, not a kraken .mlmodel — it needs a separate line-recognition
+# path in this pipeline, so it's not offered here yet; the two CTC models are.)
 KRAKEN_MODELS = {
+    "kraken_leader": "models/ocr/finetuned/finetune_20260806_123435/model_best.mlmodel",
     "catmus": CATMUS_MODEL,
 }
 
