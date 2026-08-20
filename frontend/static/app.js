@@ -465,9 +465,11 @@ function activateTab(tabId) {
     });
     // Copy/Download only make sense on tab 1.
     $("#tab-actions").style.display = tabId === "tab-transcription" ? "flex" : "none";
-    // The corpus Page selector + footer are irrelevant on the upload and compare
-    // tabs (upload brings its own image; compare has its own page selector).
-    const ownControls = tabId === "tab-transcribe" || tabId === "tab-compare";
+    // The corpus Page selector + footer (page/line-count status) are irrelevant on the
+    // upload, compare, and Info tabs (upload brings its own image; compare has its own page
+    // selector; Info is static guide text) — hide them there.
+    const ownControls =
+        tabId === "tab-transcribe" || tabId === "tab-compare" || tabId === "tab-info";
     $(".page-selector").style.display = ownControls ? "none" : "flex";
     $("#status").style.display = ownControls ? "none" : "";
     if (tabId === "tab-compare") {

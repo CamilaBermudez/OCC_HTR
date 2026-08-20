@@ -81,8 +81,10 @@ def main() -> None:
                     output_scores=True,
                     return_dict_in_generate=True,
                 )
+            # beam_indices only exists for beam search; greedy (num_beams=1) omits it,
+            # and compute_transition_scores accepts None there.
             trans = model.compute_transition_scores(
-                out.sequences, out.scores, out.beam_indices, normalize_logits=True
+                out.sequences, out.scores, getattr(out, "beam_indices", None), normalize_logits=True
             )
             for j, c in enumerate(batch):
                 gen = out.sequences[j][1:]  # drop decoder-start

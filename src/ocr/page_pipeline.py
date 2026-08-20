@@ -26,12 +26,15 @@ from src.data_preprocessing.image_segmentation import (
 )
 
 CATMUS_MODEL = "models/ocr/catmus-medieval.mlmodel"
-# Registry the frontend can grow later; value = path to a kraken .mlmodel.
-# (TrOCR-leader is seq2seq, not a kraken .mlmodel — it needs a separate line-recognition
-# path in this pipeline, so it's not offered here yet; the two CTC models are.)
+# CTC recognisers — a kraken .mlmodel run over the whole page in one rpred pass.
 KRAKEN_MODELS = {
     "kraken_leader": "models/ocr/finetuned/finetune_20260806_123435/model_best.mlmodel",
     "catmus": CATMUS_MODEL,
+}
+# seq2seq recognisers — segment with kraken, then run TrOCR per line crop (value = HF
+# checkpoint dir with resize_mode.txt + tokenizer). Handled by ``_recognise_trocr``.
+TROCR_MODELS = {
+    "trocr_leader": "models/ocr/finetuned/mixed_med4k_fixed",
 }
 
 
@@ -40,6 +43,63 @@ def _load_rec_model(model_path: str, device: str = "cpu"):
     from kraken.lib import models  # lazy: pulls torch/scipy
 
     return models.load_any(model_path, device=device)
+
+
+def _minimal_alto(image_name: str, width: int, height: int, out_lines: list[dict]) -> str:
+    """Text+layout ALTO for the TrOCR path (no per-glyph cuts — seq2seq has none)."""
+    import html
+
+    tl = []
+    for i, ln in enumerate(out_lines):
+        poly = ln["polygon"] or [[0, 0]]
+        xs, ys = [int(p[0]) for p in poly], [int(p[1]) for p in poly]
+        x0, y0, w, h = min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)
+        pts = " ".join(f"{int(p[0])} {int(p[1])}" for p in poly)
+        box = f'HPOS="{x0}" VPOS="{y0}" WIDTH="{w}" HEIGHT="{h}"'
+        tl.append(
+            f'<TextLine ID="line_{i}" {box}><Shape><Polygon POINTS="{pts}"/></Shape>'
+            f'<String CONTENT="{html.escape(ln["text"])}" {box}/></TextLine>'
+        )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<alto xmlns="http://www.loc.gov/standards/alto/ns-v4#"><Description>'
+        f"<sourceImageInformation><fileName>{html.escape(image_name)}</fileName>"
+        "</sourceImageInformation></Description><Layout>"
+        f'<Page WIDTH="{width}" HEIGHT="{height}" PHYSICAL_IMG_NR="1" ID="page_1"><PrintSpace>'
+        f'<TextBlock ID="block_1">{"".join(tl)}</TextBlock></PrintSpace></Page></Layout></alto>'
+    )
+
+
+def _recognise_trocr(im, seg, json_lines: list[dict], model_dir: str, device: str) -> list[dict]:
+    """Run TrOCR on each segmented line crop; returns out_lines aligned to json_lines."""
+    import torch
+    from kraken.lib.segmentation import extract_polygons
+    from transformers import AutoImageProcessor, AutoTokenizer, VisionEncoderDecoderModel
+
+    from src.ocr.image_prep import prepare_image
+
+    mdir = Path(model_dir)
+    resize = "stretch"
+    if (mdir / "resize_mode.txt").is_file():
+        resize = (mdir / "resize_mode.txt").read_text(encoding="utf-8").strip() or "stretch"
+    tmodel = VisionEncoderDecoderModel.from_pretrained(mdir).to(device).eval()
+    proc = AutoImageProcessor.from_pretrained(mdir)
+    tok = AutoTokenizer.from_pretrained(mdir)
+
+    crops = [box for box, _ in extract_polygons(im, seg, legacy=False)]
+    out_lines: list[dict] = []
+    for order, ln in enumerate(json_lines):
+        text = ""
+        if order < len(crops):
+            img = prepare_image(crops[order].convert("RGB"), proc, resize)
+            pv = proc(images=img, return_tensors="pt").pixel_values.to(device)
+            with torch.no_grad():
+                g = tmodel.generate(pixel_values=pv, num_beams=1, max_length=128)
+            text = tok.batch_decode(g, skip_special_tokens=True)[0].strip()
+        out_lines.append(
+            {"order": order, "polygon": ln["boundary"], "baseline": ln["baseline"], "text": text}
+        )
+    return out_lines
 
 
 def transcribe_page(
@@ -92,7 +152,18 @@ def transcribe_page(
     ]
     out_lines: list[dict] = []
     alto = ""
-    if kraken_lines:
+    if kraken_lines and model in TROCR_MODELS:
+        # seq2seq path: kraken segmentation above, TrOCR recognition per line crop.
+        seg = Segmentation(
+            type="baselines",
+            imagename=str(image_path),
+            text_direction="horizontal-lr",
+            script_detection=False,
+            lines=kraken_lines,
+        )
+        out_lines = _recognise_trocr(im, seg, json_lines, TROCR_MODELS[model], device)
+        alto = _minimal_alto(image_name or image_path.name, width, height, out_lines)
+    elif kraken_lines:
         seg = Segmentation(
             type="baselines",
             imagename=str(image_path),
