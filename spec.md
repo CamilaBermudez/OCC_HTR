@@ -3613,6 +3613,31 @@ whole manuscript keyed `{page → {seg_line_idx → [diffs]}}`, each diff = `{ty
 base_text, tei, group, ocr_line}` — so a user can regroup by category, mine the TEI, or run
 their own error analysis without the viewer.
 
+### 6.5.28 Viewer — multi-model transcription support + Info tab (2026-08-20)
+
+The viewer became single-model (one `model_transcription_dir` + one `line_diff.json` loaded at
+startup). Refactored to a **model registry** (`frontend/manuscript_data.py::_MODEL_REGISTRY`)
+so the user can switch which model they read/compare:
+
+- **Models:** kraken-leader 0.9743 (CTC+char-LM, `krakenLM_full_corpus`), TrOCR-leader 0.9549
+  (`mixedmed4k_full_corpus`), Medusa 0.9510 (`medusa_full_corpus_l4_…_clean`, the GCP run —
+  full 13 677-line corpus recovered, cleaned), catmus 0.9603 (`catmus_full_corpus`). Only
+  models whose transcription dir exists are offered. Each carries its own `line_diff.json`
+  (generated per model with the shared finetune_400 `line_alignment.json`, since all use the
+  same segmentation).
+- **Backend:** `ManuscriptRepo` loads per-model diffs (`_diffs_by_model`); `get_page(page,
+  model)`; `GET /api/models`; `?model=` on `/api/pages/{key}` and `/api/diffs.json` (so the
+  download matches the selected model).
+- **Frontend:** a top-bar **Model** dropdown (next to Page) drives **tab 1 (Transcription)**
+  and **tab 2 (3-way alignment)** — the diff chips + the "Download diffs (JSON)" export both
+  follow the selection. New **Info tab**: how-to for each tab + a model table
+  (arch / size / char-acc / word-acc / CER / WER / notes) built live from `/api/models`.
+
+**Still to do (flagged):** tab 3 (Transcribe-a-page) model menu currently catmus-only —
+needs on-demand loading of the leader models in `page_pipeline`; tab 4 (Model compare) still
+shows the old scholarly/catmus/ViT triple — needs the `line_compare` JSONs regenerated with
+the two leader transcriptions (scholarly + catmus + kraken-leader + TrOCR-leader).
+
 
 ### 6.7.4 Discrepancy export for pattern analysis (2026-08-02)
 
