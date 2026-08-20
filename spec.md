@@ -3640,14 +3640,17 @@ so the user can switch which model they read/compare:
 | 1 | confirm the model numbers are 300-val | ✅ done (they are) |
 | 2 | tab 1 (Transcription): model dropdown (catmus + leaders + Medusa) | ✅ done — all 4 wired |
 | 3 | tab 2 (3-way): diff vs each model + dropdown + per-model download | ✅ done |
-| 4 | tab 3 (Transcribe-a-page): add leaders to the model menu + right .txt/ALTO download | ⏳ TODO — needs on-demand leader loading in `page_pipeline` |
-| 5 | tab 4 (Model compare): scholarly + catmus + kraken-leader + TrOCR-leader | ⏳ TODO — regenerate `line_compare` JSONs with the two leader transcriptions |
+| 4 | tab 3 (Transcribe-a-page): add leaders to the model menu + right .txt/ALTO download | ✅ done — kraken-leader (CTC path) + TrOCR-leader (new `_recognise_trocr` seq2seq path) |
+| 5 | tab 4 (Model compare): scholarly + catmus + kraken-leader + TrOCR-leader | ✅ done — `build_line_compare` emits 3 models (each vs scholarly); 4-row frontend |
 | 6 | Info tab: per-tab how-to + model table (arch/size/CER/WER/char-acc/word-acc) | ✅ done |
 
-**Data prep (all done 2026-08-20):** all four models now have the full 13 677-line corpus +
-per-model `line_diff.json` — kraken-leader, TrOCR-leader, Medusa (GCP run recovered), and
-**catmus** (freshly transcribed over the whole manuscript, since only its 300-val existed).
-Remaining work is tabs 3 & 4 only.
+**ALL DONE (2026-08-20).** Data: all four models have the full 13 677-line corpus +
+per-model `line_diff.json`; catmus was freshly transcribed over the whole manuscript.
+Tab 3 gained a TrOCR-per-line recognition path (`page_pipeline._recognise_trocr` + minimal
+ALTO). Tab 4 uses fresh kraken-leader (per-char, local CPU) + TrOCR-leader (per-token, H200
+`trocr_conf.sbatch`, greedy) confidence dumps over the full corpus, combined by
+`build_line_compare` into scholarly + catmus + kraken + TrOCR, rendered as 4 rows with
+per-char/token confidence heat + mismatch-vs-scholarly. Info-tab page status bar hidden.
 
 
 ### 6.7.4 Discrepancy export for pattern analysis (2026-08-02)
