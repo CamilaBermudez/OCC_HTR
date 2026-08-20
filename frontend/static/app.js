@@ -855,7 +855,8 @@ function renderCompareCard(page, line) {
     if (!line.scholarly.text) sch.className = "cmp-none";
     rows.appendChild(compareRow("scholarly", "cmp-schol", sch));
     rows.appendChild(compareRow("catmus", "cmp-cat", confSpans(line.catmus.chars)));
-    rows.appendChild(compareRow("ViT+RoBERTa", "cmp-vit", confSpans(line.vit.tokens)));
+    rows.appendChild(compareRow("kraken 0.9743", "cmp-krak", confSpans(line.kraken.chars)));
+    rows.appendChild(compareRow("TrOCR 0.9549", "cmp-vit", confSpans(line.trocr.tokens)));
     card.appendChild(rows);
     return card;
 }

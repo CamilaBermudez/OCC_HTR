@@ -127,7 +127,16 @@ def main() -> None:
         "--catmus-dir", type=Path, default=Path("data/processed/transcription/catmus_conf_fullms")
     )
     ap.add_argument(
-        "--vit-dir", type=Path, default=Path("data/processed/transcription/vit_conf_fullms")
+        "--kraken-dir",
+        type=Path,
+        default=Path("data/processed/transcription/krakenleader_conf_fullms"),
+        help="kraken-leader per-CHAR confidence (same format as catmus).",
+    )
+    ap.add_argument(
+        "--vit-dir",
+        type=Path,
+        default=Path("data/processed/transcription/trocrleader_conf_fullms"),
+        help="TrOCR-leader per-TOKEN confidence.",
     )
     ap.add_argument(
         "--scholarly-txt", type=Path, default=Path("tests/ocr/AlbucE_aligned_20260628_142959.txt")
@@ -151,6 +160,8 @@ def main() -> None:
     tot = 0
     for page in cat_pages:
         cat = json.loads((args.catmus_dir / f"{page}.json").read_text())["lines"]
+        kra_path = args.kraken_dir / f"{page}.json"
+        kra = json.loads(kra_path.read_text())["lines"] if kra_path.exists() else {}
         vit_path = args.vit_dir / f"{page}.json"
         vit = json.loads(vit_path.read_text())["lines"] if vit_path.exists() else {}
         sp = scholarly.get(page, {})
@@ -158,37 +169,40 @@ def main() -> None:
             build_scholarly_index(sp) if sp else ("", "", [], [])
         )
 
+        def _char_model(m: dict, stext: str) -> dict:
+            """A per-CHAR model (catmus / kraken): [char, conf, mismatch-vs-scholarly, 0]."""
+            t = m.get("text", "")
+            ms = char_mismatch(t, stext) if stext else [0] * len(t)
+            mchars = m.get("chars", [])
+            return {
+                "text": t,
+                "chars": [
+                    [t[i], mchars[i][1] if i < len(mchars) else 1.0, ms[i], 0]
+                    for i in range(len(t))
+                ],
+            }
+
         out_lines = []
         for stem in sorted(cat, key=seg_of):
             c = cat[stem]
-            v = vit.get(stem, {"text": "", "tokens": []})
             ctext = c["text"]
             # scholarly = best-matching SPAN in the continuous scholarly text
             stext, sno, ssim = scholarly_for_line(
                 fold(ctext)[0], raw_concat, folded_concat, f2raw, bounds
             )
 
-            # ViT display text = concatenation of its token surfaces (keeps token↔char
+            # TrOCR display text = concatenation of its token surfaces (keeps token↔char
             # exact); repair any byte-split multi-byte chars (U+FFFD) from v["text"].
+            v = vit.get(stem, {"text": "", "tokens": []})
             vtoks = clean_vit_tokens(v.get("tokens", []), v.get("text", ""))
             vtext = "".join(t for t, _ in vtoks)
             offs, pos = [], 0
             for t, _ in vtoks:
                 offs.append((pos, pos + len(t)))
                 pos += len(t)
-
-            c_ms = char_mismatch(ctext, stext) if stext else [0] * len(ctext)
-            c_mv = char_mismatch(ctext, vtext)
-            v_char_ms = char_mismatch(vtext, stext) if stext else [0] * len(vtext)
-            v_char_mc = char_mismatch(vtext, ctext)
-
-            chars = [
-                [ctext[i], c["chars"][i][1] if i < len(c["chars"]) else 1.0, c_ms[i], c_mv[i]]
-                for i in range(len(ctext))
-            ]
+            v_ms = char_mismatch(vtext, stext) if stext else [0] * len(vtext)
             tokens = [
-                [t, p, int(any(v_char_ms[a:b])), int(any(v_char_mc[a:b]))]
-                for (t, p), (a, b) in zip(vtoks, offs, strict=False)
+                [t, p, int(any(v_ms[a:b])), 0] for (t, p), (a, b) in zip(vtoks, offs, strict=False)
             ]
 
             out_lines.append(
@@ -197,8 +211,9 @@ def main() -> None:
                     "seg": seg_of(stem),
                     "image": f"{args.crops_rel}/{page}/{stem}.png",
                     "scholarly": {"text": stext, "match_sim": ssim, "no": sno},
-                    "catmus": {"text": ctext, "chars": chars},
-                    "vit": {"text": vtext, "tokens": tokens},
+                    "catmus": _char_model(c, stext),
+                    "kraken": _char_model(kra.get(stem, {}), stext),
+                    "trocr": {"text": vtext, "tokens": tokens},
                 }
             )
 
