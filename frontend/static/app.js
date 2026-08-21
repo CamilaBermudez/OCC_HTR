@@ -870,9 +870,9 @@ function renderCompareCard(page, line) {
     rows.appendChild(compareRow("scholarly", "cmp-schol", sch));
     // Defensive: a model missing on a line renders an empty row rather than throwing
     // (which would blank the whole carousel).
-    rows.appendChild(compareRow("catmus", "cmp-cat", confSpans(line.catmus?.chars || [])));
-    rows.appendChild(compareRow("kraken 0.9743", "cmp-krak", confSpans(line.kraken?.chars || [])));
-    rows.appendChild(compareRow("TrOCR 0.9549", "cmp-vit", confSpans(line.trocr?.tokens || [])));
+    rows.appendChild(compareRow("Catmus", "cmp-cat", confSpans(line.catmus?.chars || [])));
+    rows.appendChild(compareRow("kraken (CTC + LM)", "cmp-krak", confSpans(line.kraken?.chars || [])));
+    rows.appendChild(compareRow("TrOCR (ViT+RoBERTa)", "cmp-vit", confSpans(line.trocr?.tokens || [])));
     card.appendChild(rows);
     return card;
 }

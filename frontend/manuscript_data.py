@@ -183,7 +183,7 @@ _MODEL_REGISTRY: list[dict] = [
     {
         "key": "kraken_leader",
         "origin": "ours",
-        "label": "kraken 0.9743 (CTC + char-LM)",
+        "label": "kraken (CTC + LM)",
         "dir": "krakenLM_full_corpus",
         "arch": "CTC (VGSL CRNN) + char n-gram LM rescore",
         "size": "4.08M params / 16 MB",
@@ -196,7 +196,7 @@ _MODEL_REGISTRY: list[dict] = [
     {
         "key": "trocr_leader",
         "origin": "ours",
-        "label": "TrOCR 0.9549 (ViT+RoBERTa)",
+        "label": "TrOCR (ViT+RoBERTa)",
         "dir": "mixedmed4k_full_corpus",
         "arch": "ViT encoder + RoBERTa decoder (seq2seq)",
         "size": "282.6M params / 1130 MB",
@@ -210,7 +210,7 @@ _MODEL_REGISTRY: list[dict] = [
     {
         "key": "medusa",
         "origin": "baseline",
-        "label": "Medusa 0.9510 (9B VLM)",
+        "label": "Medusa",
         "dir": "medusa_full_corpus_l4_20260713_095002_clean",
         "arch": "9B vision-language model (autoregressive)",
         "size": "9B params / ~18 GB BF16",
@@ -223,7 +223,7 @@ _MODEL_REGISTRY: list[dict] = [
     {
         "key": "catmus",
         "origin": "baseline",
-        "label": "catmus 0.9603 (CTC baseline)",
+        "label": "Catmus",
         "dir": "catmus_full_corpus",
         "arch": "CTC (CATMuS-medieval, frozen)",
         "size": "4.08M params / 16 MB",

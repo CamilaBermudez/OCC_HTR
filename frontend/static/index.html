@@ -99,9 +99,9 @@
                     </label>
                     <label>Model
                         <select id="upload-model">
-                            <option value="kraken_leader">kraken 0.9743 (CTC + LM)</option>
-                            <option value="trocr_leader">TrOCR 0.9549 (ViT+RoBERTa)</option>
-                            <option value="catmus">CATMuS (frozen)</option>
+                            <option value="kraken_leader">kraken (CTC + LM)</option>
+                            <option value="trocr_leader">TrOCR (ViT+RoBERTa)</option>
+                            <option value="catmus">Catmus</option>
                         </select>
                     </label>
                     <button id="upload-run" disabled>Transcribe</button>
@@ -122,7 +122,7 @@
                     </div>
                 </div>
                 <div class="line-list" id="lines-transcribe">
-                    <div class="upload-hint">Upload a manuscript page, pick a model (default CATMuS),
+                    <div class="upload-hint">Upload a manuscript page, pick a model (default kraken (CTC + LM)),
                         and hit Transcribe. The full pipeline runs — line segmentation → reading order →
                         line-by-line recognition (~30–60 s/page).</div>
                 </div>
@@ -139,7 +139,7 @@
                         <span class="heatbar"><i></i><i></i><i></i><i></i><i></i></span>
                         low→high</span>
                     <span class="lg-item"><span class="lg-box lg-schol">abc</span> ≠ scholarly</span>
-                    <span class="lg-item lg-hint">scholarly · catmus · kraken 0.9743 · TrOCR 0.9549 — scroll to move focus · hover a character for its probability</span>
+                    <span class="lg-item lg-hint">scholarly · Catmus · kraken (CTC + LM) · TrOCR (ViT+RoBERTa) — scroll to move focus · hover a character for its probability</span>
                 </span>
             </div>
             <div id="compare-carousel" class="compare-carousel"></div>
