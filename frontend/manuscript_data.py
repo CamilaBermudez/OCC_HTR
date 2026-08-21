@@ -190,7 +190,7 @@ _MODEL_REGISTRY: list[dict] = [
         "char_acc": 0.9743,
         "wer": 0.1629,
         "word_acc": 0.8371,
-        "desc": "Best overall pipeline: fine-tuned CATMuS + per-position char-LM rescoring (§6.13).",
+        "desc": "Best overall pipeline: fine-tuned CATMuS + per-position char-LM rescoring.",
     },
     {
         "key": "trocr_leader",
@@ -202,7 +202,8 @@ _MODEL_REGISTRY: list[dict] = [
         "char_acc": 0.9549,
         "wer": 0.2280,
         "word_acc": 0.7720,
-        "desc": "Best seq2seq: 600 real + 3000 anno + 4000 medical (gentle), stretch + BPE-150.",
+        "desc": "Best seq2seq.",
+        #: 600 real + 3000 anno + 4000 medical (gentle), stretch + BPE-150
     },
     {
         "key": "medusa",
@@ -214,7 +215,7 @@ _MODEL_REGISTRY: list[dict] = [
         "char_acc": 0.9510,
         "wer": 0.3106,
         "word_acc": 0.6894,
-        "desc": "Off-the-shelf multilingual medieval VLM (ENC-PSL), chat-template-cleaned output.",
+        "desc": "Off-the-shelf multilingual medieval VLM (ENC-PSL) (Moins et al., 2026).",
     },
     {
         "key": "catmus",
@@ -226,7 +227,8 @@ _MODEL_REGISTRY: list[dict] = [
         "char_acc": 0.9603,
         "wer": 0.1488,
         "word_acc": 0.8512,
-        "desc": "Frozen off-the-shelf CATMuS-medieval — strong zero-fine-tune baseline.",
+        "desc": "Frozen off-the-shelf CATMuS-medieval — strong zero-fine-tune baseline "
+        "(Pinche et al., 2024).",
     },
 ]
 

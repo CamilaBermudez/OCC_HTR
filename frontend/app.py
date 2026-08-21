@@ -37,15 +37,18 @@ app = FastAPI(title="AlbucE manuscript viewer")
 
 @app.middleware("http")
 async def _no_cache_static(request, call_next):
-    """Tell the browser to revalidate the SPA assets every load.
+    """Tell the browser to revalidate every asset AND data response each load.
 
     The static JS/CSS is edited during development; without this the browser
     serves a stale ``app.js``/``style.css`` after a change (the chips/legend
-    silently don't appear). ``no-cache`` forces revalidation (cheap: 304s).
+    silently don't appear). The ``/api/*`` JSON is *regenerated* too — e.g.
+    ``/api/compare/<page>`` gains kraken/TrOCR rows when the line-compare files
+    are rebuilt — so a browser holding the old JSON shows blank model rows in the
+    Model-compare tab even though the current code + data are correct. ``no-cache``
+    forces revalidation on everything (cheap: ETag 304s when unchanged).
     """
     response = await call_next(request)
-    if not request.url.path.startswith("/api/"):
-        response.headers["Cache-Control"] = "no-cache"
+    response.headers["Cache-Control"] = "no-cache"
     return response
 
 
