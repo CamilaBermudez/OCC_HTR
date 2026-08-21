@@ -1,0 +1,46 @@
+=== Pansier corpus synthetic sweep vs validation_300 (2026-08-21) — spec §6.5.29 ===
+
+Corpus: data/raw/pansier_excerpt.TXT (Old Occitan glossary/lexicon excerpt)
+  14558 raw lines -> 11743 usable / 9628 unique >=15-char -> 2000 rendered (1 realization/line)
+Renders: merged_font_code_cmpl2.ttf, long-s + rotunda-r allographs, NO abbrev stamps
+Aug pool: synthetic_samples/augmented_images/pansier_aug_2000_20260820 (gentle, parchment composite)
+Labels: original_text (base letters; 0 medieval glyphs leaked into GT)
+
+Leader baseline (mixed_med4k_fixed, trocr-base-handwritten, stretch+BPE-150): char_acc 0.9548
+
+Approach A = mix from base (600 real + 7000 medical + N pansier, BPE-150, stretch, 15ep)
+Approach B = further-FT the leader checkpoint (+ N pansier + 600 real anchor)
+
+char_acc (1 - corpus CER), 300-val, 299 lines:
+  size    A(mix)     B(ft)
+  300     0.9518     0.9549
+  600     0.9555     0.9546
+  1000    0.9537     0.9539
+  2000    0.9507     0.9554
+  leader  0.9548     0.9548
+
+Full metrics (CER / char_acc / WER / word_acc):
+  leader_0.9549   0.0452  0.9548  0.2295  0.7705   (median CER 0.0286)
+  pansierA_300    0.0482  0.9518  0.2455  0.7545
+  pansierA_600    0.0445  0.9555  0.2382  0.7618   (median CER 0.0286)
+  pansierA_1000   0.0463  0.9537  0.2406  0.7594
+  pansierA_2000   0.0493  0.9507  0.2460  0.7540
+  pansierB_300    0.0451  0.9549  0.2445  0.7555
+  pansierB_600    0.0455  0.9545  0.2277  0.7723
+  pansierB_1000   0.0461  0.9539  0.2368  0.7632
+  pansierB_2000   0.0446  0.9554  0.2348  0.7652   (median CER 0.0294)
+
+Paired bootstrap (10000x, seed 42, 299 shared lines):
+  leader - pansierA_600   d_char_acc -0.08% [-0.47%, +0.32%]  P(A>B)=0.347   n.s. (CI spans 0)
+  leader - pansierB_2000  d_char_acc -0.06% [-0.43%, +0.30%]  P(A>B)=0.358   n.s. (CI spans 0)
+  pansierA_600 - pansierB_2000  d +0.01% [-0.42%, +0.41%]  P=0.507   coin flip
+  All 9 per-model 95% CIs overlap (~95.0-95.6%).
+
+VERDICT: NET-NEUTRAL. No pansier model statistically distinguishable from the leader in either
+regime. Flat scatter, no monotonic trend (A_2000 worst at 0.9507). Keep the 0.9548/0.9549 leader
+deployed; no 5k/10k scale-up (gated on improving trend, which is absent). Pansier is a general
+Old Occitan lexicon, not medical-treatise text -> adds no manuscript-relevant signal (consistent
+with §6.5.24: the lever is distinct IN-DOMAIN medical text, not distinctness alone).
+
+Artifacts: tests/ocr/evaluations/pansier_sweep_vs_val300_20260821/{pansier_full.md,pansier_full.csv}
+Cluster models: $WS/models/pansier{A,B}_{300,600,1000,2000}/  (not pulled — none deployed)

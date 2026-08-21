@@ -5767,3 +5767,63 @@ fine-tune) does the heavy lifting** (+0.29–0.31 char), and the lift GROWS with
 (4) Decomposed against real-only (0.9431): the whole two-stage gain (+0.63 char at 12k)
 is Stage-1's contribution *as an init*, realized only after Stage-2. **Takeaway:** judge a
 synthetic pretrain by the fine-tuned result, never by its standalone accuracy.
+
+### 6.5.29 Pansier corpus synthetic sweep — NET-NEUTRAL for the ViT leader (2026-08-21)
+
+**Question.** The established lever (§6.5.24, [[project_synthetic_net_negative_ctc]]) is that
+font-rendered synthetic helps the ViT *only* by adding **distinct medical text content**, and
+only mixed (not staged). Does a **new external corpus — Pansier** (an Old Occitan
+glossary/lexicon excerpt, `data/raw/pansier_excerpt.TXT`) — add manuscript-relevant signal on
+top of the deployed leader (`mixed_med4k_fixed` = trocr-base-handwritten, stretch + BPE-150,
+600 real + 3000 anno-aug + 4000 medical-aug; **0.9548 char-acc** on the 300-val)?
+
+**Data.** 14 558 raw lines → 11 743 usable / 9 628 unique ≥15-char → **2000 rendered**
+(1 realization/line, `merged_font_code_cmpl2.ttf`, long-s + rotunda-r allographs, **no**
+abbreviation stamps) → **gentle-augmented** (parchment composite + gentle degrade, matching the
+medical-4000 recipe). Labels = `original_text` (base letters; long-s/rotunda transcribed as
+`s`/`r` per the diplomatic convention — verified zero medieval glyphs leaked into GT).
+Pool: `synthetic_samples/augmented_images/pansier_aug_2000_20260820` (+ flat labels).
+
+**Design — two approaches × four sizes (300/600/1000/2000), 8 H200 runs.**
+- **A (mix from base):** retrain trocr-base-handwritten on 600 real + 7000 medical + **N pansier**
+  (combined symlink pools `poolA_med7k_pansier{N}`), BPE-150, stretch, 15 ep — i.e. the exact
+  leader recipe **plus** pansier.
+- **B (further-FT the leader):** warm-start the deployed leader checkpoint, continue-train on
+  **N pansier** + the 600 real (anchor), tokenizer/processor inherited from the checkpoint.
+
+**Results (300-val, `tests/ocr/evaluations/pansier_sweep_vs_val300_20260821/`).**
+
+| size | **A** (mix from base) char-acc | **B** (further-FT) char-acc |
+|---|---|---|
+| — leader baseline — | **0.9548** | **0.9548** |
+| 300  | 0.9518 (−0.30pp) | 0.9549 (+0.01pp) |
+| 600  | 0.9555 (+0.07pp) | 0.9546 (−0.02pp) |
+| 1000 | 0.9537 (−0.11pp) | 0.9539 (−0.09pp) |
+| 2000 | 0.9507 (−0.41pp) | 0.9554 (+0.06pp) |
+
+**Flat noise, no trend.** The scatter is ±0.4pp with **no monotonicity** — A_2000 is the *worst*
+model (−0.41pp), and the two nominal "bests" (A_600, B_2000) share the leader's **identical
+median CER (0.0286)**. Paired bootstrap (10 000×, seed 42, on the 299 shared lines):
+
+| A − B | Δ char-acc [95% CI] | P(A>B) | verdict |
+|---|---|---|---|
+| leader − pansierA_600 | −0.08% [−0.47%, +0.32%] | 0.347 | CI spans 0 → **n.s.** |
+| leader − pansierB_2000 | −0.06% [−0.43%, +0.30%] | 0.358 | CI spans 0 → **n.s.** |
+| pansierA_600 − pansierB_2000 | +0.01% [−0.42%, +0.41%] | 0.507 | coin flip |
+
+All 9 per-model 95% CIs overlap (~95.0–95.6%). **No pansier model is statistically
+distinguishable from the leader in either regime.**
+
+**Why (consistent with §6.5.24).** Pansier is a **general Old Occitan lexicon**, not
+medical-treatise text. AlbucE's residual errors are dominated by medical vocabulary + scribal
+abbreviation, which pansier's word distribution does not cover — so it adds no manuscript-relevant
+signal, unlike the medical corpus that *did* move the ViT. This also matches the "distinct
+**medical** text is the lever" finding: distinctness alone is insufficient; the content must
+overlap the target domain.
+
+**Decision.** **Net-neutral → no deployment change; keep the 0.9548/0.9549 leader.** The
+conditional scale-up to a 5k/10k pansier pool was **declined**: it is gated on an improving trend,
+and the trend is flat — more pansier would chase noise. (Ceiling note: at 1 realization/line the
+unique-line budget caps a clean pool at ~9.6k anyway; 10k would require repeats/short lines.)
+Extends [[project_synthetic_net_negative_ctc]]: synthetic helps the ViT only via distinct
+**in-domain (medical)** text — out-of-domain Old Occitan text does not transfer.
