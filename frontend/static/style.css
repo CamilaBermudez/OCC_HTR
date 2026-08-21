@@ -545,7 +545,7 @@ main {
 #model-select { max-width: 260px; }
 
 /* ---- Info / guide tab (spec §6.5.28) ---- */
-.info-wrap { padding: 18px 26px; max-width: 1100px; overflow-y: auto; }
+.info-wrap { padding: 18px 26px; max-width: 1100px; }
 .info-wrap h2 { margin: 0 0 12px; }
 .info-wrap h3 { margin: 20px 0 8px; font-size: 15px; }
 .info-sub { font-weight: normal; font-size: 12px; color: var(--muted, #9fb3c4); }
@@ -564,5 +564,6 @@ main {
     padding-left: 2em; text-indent: -2em;  /* APA hanging indent */
 }
 .info-refs a { color: var(--accent, #6db3f2); word-break: break-word; }
-#tab-info.active { display: block; overflow: hidden; }
-.info-wrap { height: 100%; }
+/* The full-width panel scrolls (scrollbar at the window's right edge); the
+   .info-wrap only caps the text line-length for readability. */
+#tab-info.active { display: block; overflow-y: auto; }
