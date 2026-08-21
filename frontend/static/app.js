@@ -94,9 +94,23 @@ function renderInfoModels(models) {
     tb.innerHTML = "";
     const pct = v => (v == null ? "—" : (v * 100).toFixed(2) + "%");
     const num = v => (v == null ? "—" : v.toFixed(4));
+    const originLabel = { ours: "This thesis", baseline: "Baseline" };
     for (const m of models) {
         const tr = document.createElement("tr");
-        for (const cell of [m.label, m.arch, m.size, pct(m.char_acc), pct(m.word_acc),
+        if (m.origin) tr.classList.add("origin-" + m.origin);
+        // Model
+        const tdModel = document.createElement("td");
+        tdModel.textContent = m.label ?? "—";
+        tr.appendChild(tdModel);
+        // Origin — a badge (this thesis's own model vs. third-party baseline)
+        const tdOrigin = document.createElement("td");
+        const badge = document.createElement("span");
+        badge.className = "origin-badge origin-" + (m.origin || "unknown");
+        badge.textContent = originLabel[m.origin] ?? "—";
+        tdOrigin.appendChild(badge);
+        tr.appendChild(tdOrigin);
+        // rest of the row
+        for (const cell of [m.arch, m.size, pct(m.char_acc), pct(m.word_acc),
                             num(m.cer), num(m.wer), m.desc]) {
             const td = document.createElement("td");
             td.textContent = cell ?? "—";
