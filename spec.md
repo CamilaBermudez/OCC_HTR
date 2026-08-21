@@ -3652,6 +3652,33 @@ ALTO). Tab 4 uses fresh kraken-leader (per-char, local CPU) + TrOCR-leader (per-
 `build_line_compare` into scholarly + catmus + kraken + TrOCR, rendered as 4 rows with
 per-char/token confidence heat + mismatch-vs-scholarly. Info-tab page status bar hidden.
 
+**Follow-up polish (2026-08-21).** Viewer refinements after the multi-model landing:
+
+- **Baseline citations (Info tab).** The two third-party baselines now carry academic
+  citations: a short cite appended to their `desc` (Medusa → *(Moins et al., 2026)*;
+  Catmus → *(Pinche et al., 2024)*) and a new **Citations** block at the bottom of the Info
+  tab with the full **APA** references — Medusa = HAL preprint `hal-05600991`, Catmus =
+  Zenodo dataset `10.5281/zenodo.12743230` (hanging-indent, clickable links). The kraken +
+  TrOCR leaders are this thesis's own models (no external cite).
+- **"Origin" column (Info tab).** New `origin` field in `_MODEL_REGISTRY` (`ours` for
+  kraken/TrOCR, `baseline` for Medusa/Catmus), rendered as a badge column ("This thesis" /
+  "Baseline") with a subtle row tint on our models — so the table visibly separates our two
+  leaders from the off-the-shelf baselines.
+- **Unified model names across all tabs.** One canonical label per model everywhere (registry
+  → top-bar dropdown + Info table; upload dropdown; Model-compare rows + legend):
+  **kraken (CTC + LM) · TrOCR (ViT+RoBERTa) · Medusa · Catmus** — accuracy/size suffixes
+  dropped from labels (they have their own Info columns). `"catmus"`/`"kraken_leader"` etc.
+  remain the internal model **keys** (API identifiers), unchanged.
+- **Two UI fixes.** (a) Dropped the `ℹ` (U+2139) glyph from the Info tab button — some system
+  fonts lack it and drew a missing-glyph box; plain "Info" is consistent with the other tabs.
+  (b) Info-tab scrollbar moved to the window edge: the full-width `#tab-info` panel now scrolls
+  (was `.info-wrap`, capped at 1100px, so its scrollbar sat mid-page).
+- **Stale-cache fix (`app.py`).** The no-cache middleware now covers `/api/*` too, not just
+  static. The Model-compare tab had shown blank kraken/TrOCR rows because the browser held a
+  pre-rebuild `/api/compare/<page>` JSON (that path was cache-exempt) — data + render code were
+  already correct. (Dev note: uvicorn `--reload` picks up `manuscript_data.py` edits reliably
+  only after clearing `frontend/__pycache__/*.pyc`.)
+
 
 ### 6.7.4 Discrepancy export for pattern analysis (2026-08-02)
 
