@@ -5854,3 +5854,52 @@ and the trend is flat — more pansier would chase noise. (Ceiling note: at 1 re
 unique-line budget caps a clean pool at ~9.6k anyway; 10k would require repeats/short lines.)
 Extends [[project_synthetic_net_negative_ctc]]: synthetic helps the ViT only via distinct
 **in-domain (medical)** text — out-of-domain Old Occitan text does not transfer.
+
+#### 6.5.29-CORRECTION — two confounds masked a small real benefit (2026-08-22)
+
+The "net-neutral" verdict above was drawn from a **flawed** pansier build. Two bugs, both of
+which *disadvantaged* pansier relative to the leader, were found and fixed, and the sweep re-run:
+
+1. **Label bug (v/j):** the pansier labels were built straight from `original_text` and **skipped
+   the standard `v→u, j→i` diplomatic fold** that the pipeline (and the leader's own pool) applies
+   via `label_correction`. The pansier labels carried 881 `v` + 162 `j` the model was trained to
+   emit as `u`/`i` — pure label noise, worst at large N (it dragged A_2000 down to 0.9507).
+2. **Rendering mismatch (stamps):** pansier was rendered with **only long-s + rotunda-r**, while
+   the leader's medical/anno pools use the full production config — `p_tironian_et=0.3`,
+   `p_abbreviation=0.1`, `p_capital_e=0.4`, `p_end_decor=0.3`, pattern ligatures on. So pansier
+   images were stylistically plainer than the leader's, confounding text-content with render-style.
+
+**Rerun (both fixed):** labels re-folded (v/j→0); pansier re-rendered with the exact production
+stamp config (glyphs verified to fire: 604 tironian, 794 abbrev tildes across 2000 lines), re-aug
+(gentle), diplomatic labels. Image carries the scribal glyphs, label stays clean base letters —
+matching the leader convention exactly.
+
+**Result — the benefit was masked, not absent.** Best char-acc climbs monotonically as the
+confounds are removed:
+
+| version | best char-acc | Δ vs leader (0.9548) | significant? |
+|---|---|---|---|
+| buggy (v/j labels, no stamps) | 0.9555 | +0.07pp | no (CI spans 0) |
+| label-fixed (still no stamps) | 0.9565 | +0.17pp | — |
+| **stamp-matched (both fixed)** | **0.9591** (B_600) | **+0.43pp** | **yes (char-acc)** |
+
+Stamp-matched full table (300-val), char-acc / word-acc — A = mix-from-base, B = further-FT leader:
+
+| size | A (mix) | B (further-FT) |
+|---|---|---|
+| 300 | 0.9564 / 0.7647 | 0.9561 / 0.7725 |
+| 600 | 0.9554 / 0.7730 | **0.9591 / 0.7754** |
+| 1000 | 0.9568 / 0.7730 | 0.9509 / 0.7579 |
+| 2000 | 0.9557 / 0.7759 | 0.9574 / 0.7754 |
+
+Paired bootstrap (10 000×, seed 42) vs leader: **B_600 Δ char-acc +0.44% [+0.04%, +0.84%],
+p=0.015 — CI excludes 0 (significant)**; A_1000 +0.20% [−0.16%, +0.58%] and B_2000 +0.26%
+[−0.14%, +0.68%] not significant; word-acc gains not significant for any.
+
+**Corrected verdict.** Done correctly, pansier gives a **modest but real char-acc improvement**
+(best B_600 = 0.9591, +0.43pp, significant at char level). Caveats: small (~0.4pp),
+**size-sensitive** (B_1000 dips to 0.9509), word-acc n.s., and 1-of-8 significance is partly
+selection effect. So a **weak-but-real positive**, superseding the earlier net-neutral read — and
+a methodological lesson: **match the synthetic build to the leader's exactly (labels + render
+style) before concluding, or confounds masquerade as a null.** Artifacts:
+`tests/ocr/evaluations/pansier_stamped_vs_val300_20260822/`, `logs/analysis/pansier_stamped_rerun_vs_val300_20260822.log`.

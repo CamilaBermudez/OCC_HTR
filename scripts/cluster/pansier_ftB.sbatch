@@ -21,8 +21,10 @@ DATA="$WS/data/processed"
 N="${N:-2000}"
 NAME="${NAME:-pansierB_${N}}"
 LEADER="$WS/models/mixed_med4k_fixed/trocr_20260814_173955/best_model"
-POOL="$DATA/synthetic_samples/augmented_images/pansier_aug_2000_20260820"
-LABELS="$DATA/synthetic_samples/img_labels/labels_pansier_2000_20260820/labels.json"
+# Stamped pool (spec §6.5.29 clean rerun): production render config (tironian/abbrev/
+# capital/ligatures) + gentle aug + diplomatic labels (v->u, j->i). Overridable.
+POOL="${POOL:-$DATA/synthetic_samples/augmented_images/pansier_aug_stamps_2000_20260822}"
+LABELS="${LABELS:-$DATA/synthetic_samples/img_labels/labels_pansier_stamps_2000_20260822/labels.json}"
 echo "RUNNING $(date -Is) job=${SLURM_JOB_ID:-?} N=$N node=$(hostname)" > "$STAT/$NAME.status"
 
 python scripts/ocr/run_trocr_finetune.py \

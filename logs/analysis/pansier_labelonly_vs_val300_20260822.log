@@ -1,0 +1,7 @@
+Pansier LABEL-ONLY rerun (v->u,j->i fixed, stamps OFF) vs val300, leader 0.9548:
+size   A(mix)   B(FT)
+300    0.9559   0.9551
+600    0.9533   0.9556
+1000   0.9562   0.9565
+2000   0.9565   0.9549
+Best 0.9565 (+0.17pp). A_2000 recovered from 0.9507(buggy)->0.9565.
