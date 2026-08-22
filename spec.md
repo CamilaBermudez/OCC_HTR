@@ -5896,10 +5896,38 @@ Paired bootstrap (10 000×, seed 42) vs leader: **B_600 Δ char-acc +0.44% [+0.0
 p=0.015 — CI excludes 0 (significant)**; A_1000 +0.20% [−0.16%, +0.58%] and B_2000 +0.26%
 [−0.14%, +0.68%] not significant; word-acc gains not significant for any.
 
-**Corrected verdict.** Done correctly, pansier gives a **modest but real char-acc improvement**
-(best B_600 = 0.9591, +0.43pp, significant at char level). Caveats: small (~0.4pp),
-**size-sensitive** (B_1000 dips to 0.9509), word-acc n.s., and 1-of-8 significance is partly
-selection effect. So a **weak-but-real positive**, superseding the earlier net-neutral read — and
-a methodological lesson: **match the synthetic build to the leader's exactly (labels + render
-style) before concluding, or confounds masquerade as a null.** Artifacts:
-`tests/ocr/evaluations/pansier_stamped_vs_val300_20260822/`, `logs/analysis/pansier_stamped_rerun_vs_val300_20260822.log`.
+Paired bootstrap (10 000×, seed 42) vs leader: **B_600 Δ char-acc +0.44% [+0.04%, +0.84%],
+p=0.015 — CI excludes 0 (significant)**; A_1000 +0.20% [−0.16%, +0.58%] and B_2000 +0.26%
+[−0.14%, +0.68%] not significant; word-acc gains not significant for any.
+
+#### 6.5.29-CORRECTION-2 — the "stamp-match" matched the WRONG config (2026-08-22)
+
+**Error found while tracing the leader's source renders.** The stamp-matched rerun above added
+the production stamp config (tironian/abbrev/capital/ligatures) on the belief that the leader's
+medical pool used stamps — based on the `medical_1font`/`medical_mf` render summaries. **But those
+are NOT the leader's renders.** The leader (`mixed_med4k_fixed`) trained on
+`mixed_med4k_gentle_fixedlabels_20260814`, whose medical part came from a run **`medical_raw`**
+(logs/medieval_text/medical_raw_medieval_text.log) rendered with **all stamps OFF** (long-s +
+rotunda only) into a since-deleted scratchpad. Confirmed three ways: (1) the `medical_raw` render
+log config; (2) all `_raw`/`gentle` pool renders are no-stamps while `_1font`/`_mf` are stamped;
+(3) the leader pool's image `AnatMondG_l00011_aug00.png` shows plain "am" / no tironian —
+visually identical in style to the no-stamps `med4k_gentle` pool, NOT to the stamped
+`medical_1font` render.
+
+**So the leader's entire synthetic pool (medical + anno) has NO stamps** — only long-s + rotunda.
+The correct rendering-match to the leader is therefore the **no-stamps** pansier, i.e. the
+**label-fixed** version (§6.5.29-CORRECTION): best **0.9565 (+0.17pp)**, which given the ±0.4pp
+CIs is **not significant** — roughly net-neutral / marginal. The "stamp-matched" B_600=0.9591
+gain came from **adding scribal glyphs the leader's pool never had**, so it is a *rendering
+change*, not a controlled text-content test — it conflates "more pansier text" with "richer
+glyphs" and must not be read as "pansier text helps."
+
+**Net corrected verdict (supersedes CORRECTION-1's "weak-but-real positive"):** matched to the
+leader's *actual* (no-stamps) rendering, pansier is **marginal and not significant** (best
++0.17pp) — i.e. **back to ≈ net-neutral**, consistent with the original §6.5.29 read. Separately,
+rendering pansier *with* extra scribal stamps nudges one config to significance (B_600 +0.44pp),
+but that is a confounded rendering intervention, not evidence that the out-of-domain text
+transfers. **Lesson (sharper): verify the leader's build from its OWN provenance logs, not from
+a similarly-named render dir — `medical_1font` ≠ `medical_raw`.** Artifacts:
+`tests/ocr/evaluations/pansier_stamped_vs_val300_20260822/`,
+`logs/analysis/pansier_stamped_rerun_vs_val300_20260822.log`.
