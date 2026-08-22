@@ -5931,3 +5931,26 @@ transfers. **Lesson (sharper): verify the leader's build from its OWN provenance
 a similarly-named render dir — `medical_1font` ≠ `medical_raw`.** Artifacts:
 `tests/ocr/evaluations/pansier_stamped_vs_val300_20260822/`,
 `logs/analysis/pansier_stamped_rerun_vs_val300_20260822.log`.
+
+**Leader (`mixed_med4k_fixed`) synthetic-pool provenance — full chain (documented for the record).**
+The deployed TrOCR leader trained on `mixed_med4k_gentle_fixedlabels_20260814` (=
+`labels_mixed_med4k_fixed_20260814`), assembled 2026-08-08/14 entirely in a **temporary
+scratchpad** (`/private/tmp/.../scratchpad/med4k_gentle/`, since deleted):
+
+1. **Text corpora.** *Medical* = the 15 Old Occitan medical `.txt` in `data/raw/medical_texts/`:
+   `AnatMondG` (the Occitan **surgery of Henri de Mondeville** — "la surgia de Anric de
+   Mondiuiala"), `RecChantC_*` / `RecMedAVB` / `RecMedMontpB` / `RecMedOCB` / `RecMédPrM`
+   (recipe/remedy collections). Categorized → `medical_input.json` (4000 lines). *Anno* = the
+   600 real manuscript lines' text → `anno_input.json` (3000 lines).
+2. **Render** (`run_medieval_text_generation`, runs `medical_raw` + `anno_raw`, git f8756a5):
+   `merged_font_code_cmpl2.ttf`, size 24, margin 7, **long-s 0.95/0.8 + rotunda-r 0.7 ONLY —
+   NO stamps** (`p_tironian_et=p_abbreviation=p_capital_e=p_end_decor=0`, `enable_pattern_stamps=false`),
+   base_seed 42. Output to scratchpad (deleted).
+3. **Augment** (`run_augment_images`, `med4k_gentle_20260808` + `anno_3k_gentle_20260814`):
+   gentle preset, `n_augmentations=1`, base_seed 42, 175 parchment crops.
+4. **Merge + fix labels** → `mixed_med4k_gentle_fixedlabels` (7000 imgs) + BPE-150 tokenizer +
+   stretch → trocr-base-handwritten fine-tune = the 0.9548/0.9549 leader.
+
+Takeaway for reproduction: the leader's synthetic is **no-stamps** throughout, and its raw renders
+live only in a deleted temp dir — reproduce via re-render (config above) if raw images are needed.
+`AnatMondG_lNNNNN` = line NNNNN of the Mondeville-surgery text.
