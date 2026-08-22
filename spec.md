@@ -5977,3 +5977,36 @@ retires CORRECTION-1's "weak-but-real positive": that B_600 = 0.9591 significanc
 Out-of-domain Old Occitan text does not transfer to the AlbucE ViT leader.
 Artifacts: `tests/ocr/evaluations/pansier_nostamps_vs_val300_20260822/`,
 `logs/analysis/pansier_nostamps_bootstrap_vs_val300_20260822.log`.
+
+### 6.5.30 Augment the REAL crops directly? — legibility probe + light preset (2026-08-22)
+
+User idea: instead of render→augment (synthetic), **skip rendering and apply the augmentation
+pipeline straight to the 600 real annotated crops**. Replicated the §6.5.24 legibility probe
+(frozen catmus CER, training-free) on the *real* crops (n=100):
+
+| condition | catmus CER |
+|---|---|
+| REAL raw (no aug) | 0.0540 (≈ the 0.0525 real reference — probe calibrated) |
+| REAL + **gentle** aug | 0.1091 (2.0×) |
+| REAL + **harsh** aug | 0.1930 (3.6×) |
+| *(synthetic + gentle, for contrast)* | *0.059* |
+
+**Why augmenting real is *worse* than augmenting synthetic:** the pipeline is calibrated to turn a
+**clean white-bg render** into a real-looking image (fade ink, composite onto parchment, age,
+warp). Real crops are **already** faded/aged/on-parchment, so it stacks a *second* degradation
+layer → over-degrades below real legibility. Synthetic starts clean, so the same aug brings it
+*down to* real level (0.059); real starts at real level, so it gets pushed *past* it.
+
+**Fix — a light REAL-crop preset** (`scripts/data_augmentation/augment_real_light.py`): drop
+composite / aging / ink-bleed / creases / heavy warp; keep only **mild affine (±1.5° rotate,
+±1–2% shift, 0.98–1.02 scale) + light GaussianBlur(3) + light GaussNoise + ±6% brightness/contrast**.
+Probe: **REAL + light = catmus CER 0.0503 ≈ raw (0.0540)** — holds real legibility (vs 0.109/0.193).
+This is essentially the offline form of kraken's online `ketos --augment` (the 0.9710 leader).
+
+**Pending kraken test:** generated an offline pool `real_light_600x5_20260822` (600 real × 5 =
+3000 light-aug + `labels.json`) and a run (`kraken_light_real.sbatch`: 600 real + this pool,
+ketos `--no-augment`, leak-fixed recipe) to test whether **offline light-augmented real
+beats/matches the online-ketos 0.9710** baseline. Awaiting cluster (VPN). Assessment: light
+augmentation of real is viable and legibility-preserving; expected to *match* ketos-online (online
+gets more per-epoch variety) — and for the pretrained ViT it adds image-variety but **no new text
+content** (§6.5.24), so it's most promising for the CTC/kraken path.
