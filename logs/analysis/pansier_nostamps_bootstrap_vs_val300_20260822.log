@@ -1,0 +1,16 @@
+=== Pansier NO-STAMPS sweep (correct leader-match: no stamps + v/j-fixed labels) 20260822 ===
+spec §6.5.29 FINAL. Leader 0.9548. Paired bootstrap 10000x seed 42, 299 lines.
+Delta = model - leader (positive = model better).
+
+size   A(mix) char / delta[CI]              B(FT) char / delta[CI]
+300    0.9530 / -0.17 [-0.58,+0.25] n.s.    0.9494 / -0.53 [-0.94,-0.14] SIG WORSE
+600    0.9549 / +0.01 [-0.36,+0.39] n.s.    0.9559 / +0.12 [-0.23,+0.47] n.s.
+1000   0.9532 / -0.15 [-0.56,+0.24] n.s.    0.9568 / +0.20 [-0.16,+0.57] n.s.  <- best
+2000   0.9561 / +0.13 [-0.26,+0.53] n.s.    0.9563 / +0.15 [-0.26,+0.57] n.s.
+
+VERDICT: NET-NEUTRAL. No model significantly > leader (all "better" CIs span 0). Best
+B_1000 0.9568 (+0.20pp) n.s.; B_300 significantly WORSE. word-acc: none sig better.
+Confirms the original §6.5.29 net-neutral read with proper CIs for the correct config.
+The stamped run's "significant B_600 +0.44%" was a rendering confound (added stamps the
+leader's pool lacks), NOT pansier text transfer.
+Artifacts: tests/ocr/evaluations/pansier_nostamps_vs_val300_20260822/

@@ -5954,3 +5954,26 @@ scratchpad** (`/private/tmp/.../scratchpad/med4k_gentle/`, since deleted):
 Takeaway for reproduction: the leader's synthetic is **no-stamps** throughout, and its raw renders
 live only in a deleted temp dir — reproduce via re-render (config above) if raw images are needed.
 `AnatMondG_lNNNNN` = line NNNNN of the Mondeville-surgery text.
+
+#### 6.5.29-FINAL — correct-config (no-stamps) sweep, with proper bootstrap CIs (2026-08-22)
+
+Retrained the 8 pansier models on the **no-stamps** pools (v/j-fixed labels + the leader's
+actual rendering) under distinct names (`pansierAns_*`/`pansierBns_*`) and bootstrapped (10 000×,
+seed 42, 299 lines). Δ = model − leader (0.9548), positive = better:
+
+| size | A (mix) char-acc · Δ [95% CI] | B (further-FT) char-acc · Δ [95% CI] |
+|---|---|---|
+| 300 | 0.9530 · −0.17 [−0.58, +0.25] | 0.9494 · **−0.53 [−0.94, −0.14] sig WORSE** |
+| 600 | 0.9549 · +0.01 [−0.36, +0.39] | 0.9559 · +0.12 [−0.23, +0.47] |
+| 1000 | 0.9532 · −0.15 [−0.56, +0.24] | **0.9568** · +0.20 [−0.16, +0.57] |
+| 2000 | 0.9561 · +0.13 [−0.26, +0.53] | 0.9563 · +0.15 [−0.26, +0.57] |
+
+**FINAL VERDICT: pansier is NET-NEUTRAL.** With the leader's real (no-stamps) rendering, **no
+model significantly beats the leader** — every positive Δ CI includes 0, the best (B_1000 = 0.9568,
++0.20pp) is not significant, and B_300 is significantly *worse*; word-acc shows no significant
+gain either. This confirms the original §6.5.29 read *with proper CIs for the correct config*, and
+retires CORRECTION-1's "weak-but-real positive": that B_600 = 0.9591 significance came purely from
+**adding stamps the leader's pool never had** (a rendering confound), not from the pansier text.
+Out-of-domain Old Occitan text does not transfer to the AlbucE ViT leader.
+Artifacts: `tests/ocr/evaluations/pansier_nostamps_vs_val300_20260822/`,
+`logs/analysis/pansier_nostamps_bootstrap_vs_val300_20260822.log`.
