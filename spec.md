@@ -6003,10 +6003,27 @@ composite / aging / ink-bleed / creases / heavy warp; keep only **mild affine (�
 Probe: **REAL + light = catmus CER 0.0503 ≈ raw (0.0540)** — holds real legibility (vs 0.109/0.193).
 This is essentially the offline form of kraken's online `ketos --augment` (the 0.9710 leader).
 
-**Pending kraken test:** generated an offline pool `real_light_600x5_20260822` (600 real × 5 =
-3000 light-aug + `labels.json`) and a run (`kraken_light_real.sbatch`: 600 real + this pool,
-ketos `--no-augment`, leak-fixed recipe) to test whether **offline light-augmented real
-beats/matches the online-ketos 0.9710** baseline. Awaiting cluster (VPN). Assessment: light
-augmentation of real is viable and legibility-preserving; expected to *match* ketos-online (online
-gets more per-epoch variety) — and for the pretrained ViT it adds image-variety but **no new text
-content** (§6.5.24), so it's most promising for the CTC/kraken path.
+**Kraken test — offline light-aug vs online ketos (2026-08-22).** Generated an offline pool
+`real_light_600x5_20260822` (600 real × 5 = 3000 light-aug + `labels.json`) and trained kraken
+(`kraken_light_real.sbatch`, leak-fixed recipe) two ways, vs the online-ketos baseline. Evaluated
+all three on the 300-val with the **same** crop-transcriber (systematically ~0.5pp harsh vs the
+documented eval, but internally consistent):
+
+| config | char-acc (same scale) | Δ vs online |
+|---|---|---|
+| **C** — 600 real + ketos **online** `--augment` (the 0.9710 recipe) | **0.9657** | — |
+| **A** — 600 real + offline-light pool, ketos `--no-augment` | 0.9608 | −0.49pp |
+| **B** — 600 real + offline-light pool + ketos `--augment` (both) | 0.9600 | −0.57pp |
+
+**Result: offline light-augmented real does NOT beat online ketos** — ~0.5pp worse. Online's
+fresh per-epoch variety beats a fixed set of 5 offline copies. **Stacking (B) doesn't help** —
+marginally worse than A, so the double-augmentation is redundant (slight over-jitter). **Online
+ketos (C) stays best**, confirming the 0.9710 leader recipe.
+
+**Overall conclusion for the idea.** Augmenting the real crops directly is **viable and
+legibility-preserving** *only* with a light preset (`augment_real_light.py`, catmus CER 0.050 vs
+0.11–0.19 for the synthetic pipeline, which over-degrades already-real images). But as **offline**
+data it can't match kraken's **online** `ketos --augment`; and for the pretrained ViT it adds
+image-variety with **no new text content** (§6.5.24). So it's a clean negative for beating the
+leaders — real + online ketos aug (kraken 0.9710) remains the simplest best. Models:
+`models/ocr/finetuned/kraken_light_real_{noaug,aug}/`.

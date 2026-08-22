@@ -1,0 +1,13 @@
+=== Offline light-aug REAL crops for kraken vs online ketos (spec §6.5.30) 20260822 ===
+300-val, same crop-transcriber (~0.5pp harsh vs documented eval, internally consistent).
+
+config                                          char-acc   CER
+C: 600 real + ketos ONLINE --augment (=0.9710)  0.9657     0.0343
+A: 600 real + offline-light pool, --no-augment  0.9608     0.0392   (-0.49pp vs C)
+B: 600 real + offline-light + ketos --augment   0.9600     0.0400   (-0.57pp vs C)
+
+VERDICT: offline light-augmented real does NOT beat online ketos (~0.5pp worse). Stacking
+both (B) no help (marginally worse than A). Online ketos (C) best. Idea is legibility-
+preserving (light preset holds real at catmus CER 0.050 vs 0.11-0.19 synthetic pipeline) but
+offline < online for kraken; ViT gains no new content. Real + online ketos aug stays best.
+Models: models/ocr/finetuned/kraken_light_real_{noaug,aug}/model_best.mlmodel
