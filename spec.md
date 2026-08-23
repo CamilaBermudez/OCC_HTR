@@ -5636,6 +5636,23 @@ model/arch**. Caveat: on the 300-subset many pages have only 1–3 val lines (no
 the reliable signal is the overall gap + the cross-model worst-page overlap. Artefacts:
 `tests/ocr/evaluations/error_map_val300_leaders/{error_map.json,error_map_val300.png}`.
 
+**Error vs line LENGTH on 300-val — deployed leaders (2026-08-23).** Does per-line error
+depend on GT line length? `scripts/ocr/error_vs_length.py` (reuses the per-line eval CSVs,
+no re-transcription; quantile length bins shared across models). **Answer: no length
+effect on CER for either leader.** kraken+LM Spearman(len, CER) **+0.027** / Pearson
++0.006; TrOCR Spearman **+0.001** / Pearson −0.178 (the negative Pearson is a few short
+high-CER outliers — e.g. a 13-char line at CER 0.54 — not a trend; rank corr ≈ 0).
+Corpus CER by length quartile (9–35 / 35–37 / 37–39 / 39–46 chars): kraken+LM
+0.0245/0.0237/0.0236/0.0284, TrOCR 0.0450/0.0405/0.0480/0.0467 — flat. %-perfect *does*
+fall with length (kraken+LM 53.6→35.6 %, TrOCR 37.5→21.8 %) but that's half-mechanical
+(more chars = more chances for ≥1 edit), not proportional degradation. Notably TrOCR shows
+**no long-line seq2seq degradation** (over/under-generation) inside this range. Caveat:
+manuscript lines are physically uniform, so GT lengths are tightly clamped (median 37,
+IQR ~35–39, min 9 / max 46) — the analysis rules out a length effect *within the
+manuscript's natural range*; it can't speak to lines much longer than ~46 chars. Full
+tables in `logs/analysis/error_vs_length_val300_20260823.log`; artefacts:
+`tests/ocr/evaluations/error_vs_length_val300_leaders/{error_vs_length.json,.png}`.
+
 ### 6.5.26 Clean two-stage ViT+RoBERTa — synthetic pretrain → real fine-tune (2026-08-14)
 
 **Motivation (user).** Every prior ViT+RoBERTa synthetic run *mixed* synthetic+real in
@@ -6047,3 +6064,31 @@ leader too (+0.26pp, n.s.) and beats real-only 0.9371 by +2pp.
   synthetic-component than a synthetic font render. Candidate new TrOCR leader.
 Models: `models/ocr/finetuned/kraken_light_real_{noaug,aug}/`; cluster
 `models/vit_lightreal_{only,med4k}/`; eval `tests/ocr/evaluations/vit_lightreal_vs_val300_20260823/`.
+
+**Medical-VOLUME sweep on the light-real base — is 4k the hotspot? (2026-08-23).** Held the
+3000 light-aug-real fixed and varied only the no-stamps+gentle medical slot, flanking the existing
+`vit_lightreal_med4k` (0.9617) with **1k** (first-1000 of med4k's exact 4000 medical, nested
+subset) and **7k** (med4k's 4000 + **3000 NEW** medical lines, text-disjoint from the 4000 —
+8079 of the 12,012 corpus lines were unused; rendered no-stamps+gentle with the identical
+`medical_raw` config, namespaced `n3k_` to avoid stem clashes). med4k reproduced 0.9617 exactly
+(same reused model) → the sweep is internally consistent. 300-val, bootstrap 10000× seed 42:
+
+| run | char-acc | word-acc | Δ char vs prev [95% CI] |
+|---|---|---|---|
+| leader (rendered-anno) | 0.9548 | 0.7705 | — |
+| light-real **only** (0 medical, §6.5.30) | 0.9573 | 0.7725 | — |
+| **med1k** | 0.9566 | 0.7754 | vs leader +0.18% [−0.22,+0.58] n.s. |
+| **med4k** | 0.9617 | 0.7827 | vs med1k **+0.51% [+0.14,+0.90] sig** (P=0.003) |
+| **med7k** | 0.9621 | **0.7929** | vs med4k **+0.04% [−0.33,+0.40] n.s.** (P=0.40) |
+
+**The medical-volume response SATURATES at ~4000.** 1k→4k is a real +0.51pp gain, but **4k→7k is
+flat** (+0.04pp, CI spans 0) — doubling the distinct medical text beyond 4k buys nothing on
+char-acc. med1k (0.9566) even dips slightly *below* the medical-free light-real-only (0.9573):
+1k is too little to help. The one monotonic signal is **word-acc** (0.7725→0.7929, med7k best),
+n.s. pairwise but hinting the extra distinct medical vocabulary still aids whole-word recognition
+where char-acc has plateaued. **Takeaway: 4k stays the ViT operating point; no reason to render
+medical beyond ~4k.** Consistent with §6.5.3's diminishing-returns curve (the 500→4000 medical
+climb was already flattening). Pools `poolLR_light3k_med{1k,7k}_20260823`; models
+`models/vit_lightreal_med{1k,7k}/`; eval `tests/ocr/evaluations/vit_medsweep_vs_val300_20260823/`;
+log `logs/analysis/vit_medsweep_vs_val300_20260823.log`. Scripts `scripts/cluster/{medsweep_prep,
+vit_medsweep_train,vit_medsweep_eval}.sbatch` + `build_medsweep_pool.py`.
