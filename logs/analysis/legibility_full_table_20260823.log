@@ -13,3 +13,11 @@ Three separable legibility factors, ranked by damage:
 No-stamps clean renders read at/below real level (anno raw 0.0317 < real 0.0479). Stamped+harsh
 medical 0.2133 reproduces original §6.5.24 "synth medical 0.2082". Caveat: frozen catmus never
 trained on the stamps; a trained model learns the mappings.
+
+--- Matched-lines note (2026-08-23) ---
+The "Real crop" row above (0.0479) is the 300 VALIDATION crops — a DIFFERENT line set than the
+synth anno-renders (which render the full_annotated/train lines). Matched reference: the real
+full_annotated crops of the SAME 300 lines as the anno-renders = CER 0.0520 (≈ validation 0.0479,
+≈ documented 0.0525). So same-text comparison holds: same 300 annotated lines read at 0.0520 as
+REAL crops vs 0.0317 as clean no-stamps RENDERS (≈ real) vs 0.1114 stamped — the degradation is
+the STAMPS, not the rendering (content held constant).
