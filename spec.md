@@ -6020,10 +6020,30 @@ fresh per-epoch variety beats a fixed set of 5 offline copies. **Stacking (B) do
 marginally worse than A, so the double-augmentation is redundant (slight over-jitter). **Online
 ketos (C) stays best**, confirming the 0.9710 leader recipe.
 
-**Overall conclusion for the idea.** Augmenting the real crops directly is **viable and
-legibility-preserving** *only* with a light preset (`augment_real_light.py`, catmus CER 0.050 vs
-0.11–0.19 for the synthetic pipeline, which over-degrades already-real images). But as **offline**
-data it can't match kraken's **online** `ketos --augment`; and for the pretrained ViT it adds
-image-variety with **no new text content** (§6.5.24). So it's a clean negative for beating the
-leaders — real + online ketos aug (kraken 0.9710) remains the simplest best. Models:
-`models/ocr/finetuned/kraken_light_real_{noaug,aug}/`.
+**ViT+RoBERTa test — light-aug-real vs rendered-anno (2026-08-23).** Trained trocr-base +
+BPE-150 + stretch two ways and evaluated on the 300-val (leader = 600 real + 3000 *rendered-anno*
++ 4000 medical = 0.9548):
+
+| run | char-acc | word-acc | Δ char vs leader [95% CI] |
+|---|---|---|---|
+| leader (rendered-anno) | 0.9548 | 0.7705 | — |
+| **vit_lightreal_only** (600 real + 3000 light-aug-real) | 0.9573 | 0.7725 | +0.26% [−0.15, +0.66] (n.s.) |
+| **vit_lightreal_med4k** (600 real + 3000 light-aug-real + 4000 medical) | **0.9617** | **0.7827** | **+0.69% [+0.32, +1.07], p<0.001 (sig)** |
+
+**On the ViT the picture FLIPS: light-augmented real crops significantly BEAT the rendered-anno
+leader** (0.9617 vs 0.9548, +0.69pp, p<0.001) — a new-best TrOCR. Replacing the synthetic
+font-render of the annotated text with *lightly-augmented copies of the real crops* keeps the real
+handwriting (no synthetic-font gap, unlike Dataset D §6.3.12) while adding image variety; the
+medical corpus still adds significant new content on top (+0.44pp, p=0.009). Light-only edges the
+leader too (+0.26pp, n.s.) and beats real-only 0.9371 by +2pp.
+
+**Overall conclusion for the idea — architecture-dependent:**
+- **Legibility:** augmenting real crops is viable *only* with a light preset (`augment_real_light.py`,
+  catmus CER 0.050 vs 0.11–0.19 for the synthetic pipeline, which over-degrades already-real images).
+- **kraken (CTC):** offline light-aug-real **loses** to online `ketos --augment` (−0.5pp); real +
+  online ketos aug (0.9710) stays best.
+- **ViT+RoBERTa:** light-aug-real **beats** rendered-anno significantly — **the user's idea is a
+  win here** (0.9617, +0.69pp). For the pretrained ViT, *real handwriting + light aug* is a better
+  synthetic-component than a synthetic font render. Candidate new TrOCR leader.
+Models: `models/ocr/finetuned/kraken_light_real_{noaug,aug}/`; cluster
+`models/vit_lightreal_{only,med4k}/`; eval `tests/ocr/evaluations/vit_lightreal_vs_val300_20260823/`.

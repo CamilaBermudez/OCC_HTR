@@ -1,0 +1,14 @@
+=== ViT+RoBERTa light-aug-real (spec §6.5.30) 20260823, 300-val, leader 0.9548 ===
+trocr-base + BPE-150 + stretch. Bootstrap 10000x seed 42.
+
+run                    char-acc  word-acc  d_char vs leader [CI]              p
+leader (rendered-anno) 0.9548    0.7705    --
+vit_lightreal_only     0.9573    0.7725    +0.26% [-0.15,+0.66]               0.101 n.s.
+vit_lightreal_med4k    0.9617    0.7827    +0.69% [+0.32,+1.07]               <0.001 SIG
+  (medical adds on top of light-real: +0.44% [+0.06,+0.82] p=0.009 SIG)
+
+VERDICT: FLIPS vs kraken. For ViT, light-augmented REAL crops significantly BEAT the
+rendered-anno leader (0.9617 vs 0.9548). Real handwriting + light aug > synthetic font
+render as the augmentation component. Medical still adds new content. New-best TrOCR
+candidate. (kraken: offline light-aug-real LOSES to online ketos, -0.5pp.)
+Eval: tests/ocr/evaluations/vit_lightreal_vs_val300_20260823/
