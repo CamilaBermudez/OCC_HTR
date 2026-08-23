@@ -1,0 +1,15 @@
+=== Legibility table (frozen catmus CER, n=300, GT=base letters) — spec §6.5.24/§6.5.30 20260823 ===
+render type          stamps       raw      +gentle   +harsh
+Real crop            real image   0.0479   --        --
+synth anno-renders   no-stamps    0.0317   0.0338    0.0915
+synth anno-renders   WITH stamps  0.1114   0.1225    0.1820
+synth medical        no-stamps    0.0491   0.0528    0.1110
+synth medical        WITH stamps  0.1506   0.1607    0.2133
+
+Three separable legibility factors, ranked by damage:
+  1. STAMPS      +0.08..0.10 CER (composited scribal glyphs frozen catmus can't map to base-letter GT) — biggest
+  2. HARSH aug   +0.06..0.07
+  3. GENTLE aug  +0.002..0.011 (negligible — legibility-preserving, the point of the gentle preset)
+No-stamps clean renders read at/below real level (anno raw 0.0317 < real 0.0479). Stamped+harsh
+medical 0.2133 reproduces original §6.5.24 "synth medical 0.2082". Caveat: frozen catmus never
+trained on the stamps; a trained model learns the mappings.
