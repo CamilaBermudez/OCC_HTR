@@ -1,0 +1,14 @@
+=== Stamps vs no-stamps legibility probe (frozen catmus CER, spec §6.5.30) 20260823 ===
+100 medical texts (AnatMondG), rendered WITH stamps (medical_1font) and NO stamps (matched),
+GT = original_text (base letters). Same 100 lines both ways.
+
+                 raw      +gentle   +harsh
+  WITH stamps    0.1511   0.1517    0.2006
+  NO stamps      0.0596   0.0569    0.1167
+
+FINDING: stamps add a large RAW legibility penalty (0.151 vs 0.060, 2.5x) BEFORE augmentation —
+frozen catmus can't map the composited scribal glyphs (tironian, abbrev, capitals, ligatures)
+to the clean base-letter GT (the "stamp bleed" of §6.5.24). Gentle aug barely changes either;
+harsh adds ~0.05-0.06. So the STAMPS are a bigger frozen-reader legibility hit than gentle aug.
+Caveat: measures a model that never trained on the stamps; a trained model learns the mappings.
+Reinforces why the leader's no-stamps renders read clean (~0.06).
