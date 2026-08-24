@@ -1,0 +1,191 @@
+% Pseudocode for the thesis — three algorithms, ready to \input or copy.
+% Requires: \usepackage{algorithm} \usepackage{algpseudocode} \usepackage{amsmath}
+% Algorithm 1: page -> reference-text alignment (the "authoritative" page alignment).
+% Algorithm 2: within-page comparison of two transcriptions (model OCR vs scholarly edition).
+% Algorithm 3: classification of one aligned difference (used inside Algorithm 2's emit step).
+
+% =====================================================================
+\begin{algorithm}[htbp]
+  \caption{Transcription alignment of OCR pages to the reference text.}
+  \label{alg:transcription-alignment}
+  \begin{algorithmic}[1]
+    \Require OCR pages $\mathcal{P} = \langle P_1, \dots, P_N \rangle$ (each a sequence of
+             lines; $|P_i|$ = its word count); reference word array $R[1..M]$
+    \Ensure  per-line reference range $[\mathit{lo}_\ell, \mathit{hi}_\ell]$ for every OCR
+             line $\ell$, partitioning $[1..M]$ losslessly
+
+    \Statex \textbf{Pass 1 --- per-page anchoring}
+    \Statex \textit{1. Coarse position estimation}
+    \State $\rho \gets M / \sum_{k=1}^{N} |P_k|$ \Comment{reference words per OCR word}
+    \For{$i = 1, \dots, N$}
+      \State $e_i \gets \big\lfloor \rho \cdot \sum_{j<i} |P_j| \big\rfloor$
+             \Comment{cumulative count, rescaled to ref-word units}
+    \EndFor
+
+    \Statex \textit{2. Anchor refinement (char 3-gram Jaccard, proximity-biased)}
+    \For{$i = 1, \dots, N$}
+      \State $q_i \gets$ first $25$ words of $P_i$
+      \State $(a_i, s_i) \gets \textsc{FindAnchor}(q_i,\, e_i,\, w{=}0.15)$
+    \EndFor
+
+    \Statex \textit{3. Global ordering}
+    \For{$i = 2, \dots, N$}
+      \If{$a_i \le a_{i-1}$} \State $a_i \gets \min(a_{i-1} + 1,\, M)$
+          \Comment{anchors keep reading order} \EndIf
+    \EndFor
+
+    \Statex \textit{4. Fine word-level alignment + line end-points}
+    \For{$i = 1, \dots, N$}
+      \State $W_i \gets R[a_i \,..\, \min(M,\; a_i + |P_i| + 300)]$
+             \Comment{own length $+300$ buffer; may overlap $W_{i+1}$}
+      \State $A_i \gets \textsc{WordDP}(P_i, W_i)$
+             \Comment{semi-global NW; merge $2{\to}1$, split $1{\to}2$}
+      \For{each line $\ell$ of $P_i$}
+        \State $\mathcal{M}_\ell \gets \{\, a_i + r : \text{a word of } \ell \text{ matched }
+               W_i[r] \text{ in } A_i \,\}$
+        \State $h_\ell \gets \textsc{RobustMax}(\mathcal{M}_\ell)$
+               \Comment{drop far-forward outliers; \textsc{None} if empty}
+      \EndFor
+      \State $\mathit{cov}_i \gets |\{\ell : h_\ell \neq \textsc{None}\}| \,/\, (\text{lines of } P_i)$
+    \EndFor
+
+    \Statex \textit{5. Re-anchor low-coverage pages (recovery)}
+    \For{each $i$ with $\mathit{cov}_i < 0.80$}
+      \State $(a_i', s_i') \gets \textsc{FindAnchor}(q_i,\, e_i,\, w{=}0.05)$
+             \Comment{weaker proximity penalty}
+      \State recompute $W_i', A_i', \{h_\ell'\}, \mathit{cov}_i'$ at $a_i'$
+      \If{$\mathrm{matched}(A_i') > \mathrm{matched}(A_i)$ \textbf{and} $s_i' > s_i$}
+        \State $a_i \gets a_i'$;\quad $h_\ell \gets h_\ell'$ for all lines of $P_i$
+               \Comment{accept only if both improve}
+      \EndIf
+    \EndFor
+
+    \Statex \textbf{Pass 2 --- lossless partition}
+    \State $H \gets \langle h_\ell \rangle$ over all lines in reading order
+    \State forward-clamp $H$ to be non-decreasing (carry last known value)
+    \State interpolate every \textsc{None} in $H$ linearly from its nearest known neighbours
+    \State $H_{\text{last}} \gets \max(H_{\text{last}},\, M)$ \Comment{pin document tail}
+    \State $\mathit{lo}\gets 1$
+    \For{each line $\ell$ in reading order}
+      \State $[\mathit{lo}_\ell, \mathit{hi}_\ell] \gets [\mathit{lo},\, H_\ell]$;\quad
+             $\mathit{lo} \gets H_\ell + 1$
+    \EndFor
+    \State \Return $\{[\mathit{lo}_\ell, \mathit{hi}_\ell]\}$
+           \Comment{concatenating the ranges reproduces $R$ exactly}
+
+    \Statex\hrulefill
+    \Function{FindAnchor}{$q,\, e,\, w$}
+      \State $\mathit{from} \gets \max(1, e - 1500)$;\quad $\mathit{to} \gets \min(M, e + 400)$
+      \State $\mathit{span} \gets \max(1, \mathit{to} - \mathit{from})$;\quad
+             $(a^\star, s^\star, \sigma^\star) \gets (e, -\infty, -\infty)$
+      \For{$p = \mathit{from}, \mathit{from}{+}10, \dots, \mathit{to}$}
+        \State $s \gets \mathrm{Jaccard}_3\big(q,\; R[p \,..\, p{+}150]\big)$
+               \Comment{char 3-gram set overlap}
+        \State $\sigma \gets s - w \cdot |p - e| / \mathit{span}$
+        \If{$\sigma > \sigma^\star$} \State $(a^\star, s^\star, \sigma^\star) \gets (p, s, \sigma)$ \EndIf
+      \EndFor
+      \State \textbf{if } $s^\star < 0.10$ \textbf{ then return } $(e, s^\star)$
+             \Comment{floor: fall back to prediction}
+      \State \Return $(a^\star, s^\star)$
+    \EndFunction
+  \end{algorithmic}
+\end{algorithm}
+
+% =====================================================================
+\begin{algorithm}[htbp]
+  \caption{Alignment + comparison of two transcriptions of one page.}
+  \label{alg:transcription-compare}
+  \begin{algorithmic}[1]
+    \Require model OCR lines $\mathcal{P}=\langle(\mathit{seg}_i,\, t_i)\rangle_{i=1}^{n}$;
+             scholarly edition lines $\mathcal{S}=\langle(\mathit{no}_j,\, u_j)\rangle_{j=1}^{m}$
+    \Ensure  typed word-level differences $\mathcal{D}$, each owned by a model line
+
+    \Statex \textbf{Pass 1 --- content-based line alignment} (monotonic Needleman--Wunsch)
+    \State \textit{sim}$(a,b) \gets$ RapidFuzz-ratio$(\textsc{fold}\,a,\textsc{fold}\,b)$
+           \Comment{$1$ if both empty; $0$ if exactly one empty}
+    \State $D[0][0]\gets 0$;\quad $D[i][0]\gets -i\,g$;\quad $D[0][j]\gets -j\,g$
+           \Comment{gap penalty $g=0.4$}
+    \For{$i=1..n,\ j=1..m$}
+      \State $D[i][j] \gets \max\big(\ D[i\!-\!1][j\!-\!1]+\textit{sim}(t_i,u_j),\ \
+             D[i\!-\!1][j]-g,\ \ D[i][j\!-\!1]-g\ \big)$
+    \EndFor
+    \State backtrace $\to$ pairs; \textbf{demote} a matched pair with $\textit{sim} < 0.34$ to two gaps
+    \For{each model-only gap line $\ell$ with $|\textsc{fold}(t_\ell)|\ge 8$}
+      \State scan scholarly lines bracketed by $\ell$'s aligned neighbours; if $\textsc{fold}(t_\ell)$ is
+             contained in a \emph{longer} $u_k$ (partial-ratio $\ge 0.85$), attach $\ell\!\mapsto\! k$
+    \EndFor
+    \State $A \gets \{\mathit{seg}_i \mapsto \mathit{no}_j : (i,j)\text{ matched}\}$
+
+    \Statex \textbf{Pass 2 --- anchored, banded word-level diff}
+    \State build OCR token stream $O$ (each token tagged with its owner model line) and scholarly
+           token stream $C$ (indexed by line no.)
+    \State anchors $\gets \{(\textsc{start}_C(\mathit{no}),\, \textsc{start}_O(\mathit{seg})) :
+           (\mathit{seg}\!\mapsto\!\mathit{no})\in A\}$, sorted + made monotonic; prepend $(0,0)$, append $(|C|,|O|)$
+    \State $\mathit{exp}[i] \gets$ piecewise-linear interpolation of the OCR index through the anchors
+           \Comment{expected diagonal}
+    \State $b \gets 6$ if $\ge 2$ real anchors \textbf{else} $\max(6,|O|)$ \Comment{band width}
+    \State $E[0][0]\gets 0$
+    \For{cells $(i,j)$ with $|j-\mathit{exp}[i]|\le b$ (or the final corner)}
+      \State $E[i][j] \gets \max$ of the moves:
+      \State \quad \textbf{del} $C_i$: $E[i\!-\!1][j]+\gamma$; \quad \textbf{ins} $O_j$: $E[i][j\!-\!1]+\gamma$
+             \Comment{word gap $\gamma=-0.55$}
+      \State \quad \textbf{sub} $1\!:\!1$: $E[i\!-\!1][j\!-\!1] + \textsc{wsim}(C_i,O_j)$
+      \State \quad \textbf{merge} $2C\!\to\!1O$: $E[i\!-\!2][j\!-\!1] + \textsc{wsim}(C_{i-1}C_i,\,O_j) - \varepsilon$
+      \State \quad \textbf{split} $1C\!\to\!2O$: $E[i\!-\!1][j\!-\!2] + \textsc{wsim}(C_i,\,O_{j-1}O_j) - \varepsilon$
+      \State \quad \textbf{shift2} $2\!:\!2$: $E[i\!-\!2][j\!-\!2] + 2 - \varepsilon$ \textbf{if}
+             $\textsc{despace}(C_{i-1}C_i)=\textsc{despace}(O_{j-1}O_j)$
+      \State \quad ($\varepsilon=0.02$; merge/split/shift2 never span a punctuation token)
+    \EndFor
+    \State backtrace; for each step whose two sides differ, emit
+           $\textsc{Diff}(\textsc{classify}(c,o),\, c,\, o,\, \text{owner}=\text{nearest OCR line})$
+           \Comment{Alg.~\ref{alg:classify}}
+    \State \textbf{suppress} a split/shift that is only a manuscript line-wrap (its two OCR tokens sit on
+           \emph{different} model lines and are despace-equal)
+    \State \Return $\mathcal{D}$
+
+    \Statex\hrulefill
+    \Function{wsim}{$a,b$} \Comment{folded word similarity, punctuation-aware}
+      \State \textbf{if} both punctuation: \textbf{return} $1$ if $a=b$ else $0.4$
+      \State \textbf{if} exactly one punctuation: \textbf{return} $-1.5$ \Comment{word $\leftrightarrow$ mark forced to a gap}
+      \State \textbf{return} $1 - \mathrm{Lev}(\textsc{fold}\,a,\textsc{fold}\,b)/\max(|\textsc{fold}\,a|,|\textsc{fold}\,b|)$
+    \EndFunction
+  \end{algorithmic}
+\end{algorithm}
+
+% =====================================================================
+\begin{algorithm}[htbp]
+  \caption{Classify one aligned difference region (\texttt{classify\_region}).}
+  \label{alg:classify}
+  \begin{algorithmic}[1]
+    \Require aligned pair $(\mathit{base},\mathit{ocr})$ --- $\mathit{base}$ = scholarly (expanded, ASCII),
+             $\mathit{ocr}$ = diplomatic OCR (keeps brevigraphs, u/v, lineation)
+    \Ensure  one of \{abbreviation, orthographic, punctuation, addition, deletion, substitution, spacing\}
+    \If{$\mathit{ocr}=\varepsilon$} \Return \textsc{punct}$(\mathit{base})$ ? \textit{punctuation} : \textit{deletion} \EndIf
+    \If{$\mathit{base}=\varepsilon$} \Return \textsc{punct}$(\mathit{ocr})$ ? \textit{punctuation} : \textit{addition} \EndIf
+    \If{$\textsc{despace}(\mathit{base}) = \textsc{despace}(\mathit{ocr})$} \Return \textit{spacing}
+        \Comment{only whitespace differs --- a line-wrap, not an edit} \EndIf
+    \If{$\textsc{hasAbbrevMark}(\mathit{ocr})$} \Return \textit{abbreviation}
+        \Comment{OCR carries a non-ASCII letter/combining mark (brevigraph)} \EndIf
+    \State $f_b \gets \textsc{fold}(\mathit{base})$;\quad $f_o \gets \textsc{fold}(\mathit{ocr})$
+    \If{$f_o\neq\varepsilon \wedge f_b\neq\varepsilon \wedge f_o\neq f_b \wedge |f_o|\le 4 \wedge |f_o|<|f_b|
+         \wedge |f_o|\ge 0.6\,|f_b| \wedge (\mathit{base}\text{ has a space}) \wedge \textsc{subseq}(f_o,f_b)$}
+      \State \Return \textit{abbreviation} \Comment{scribal contraction: \texttt{del}\,$\subseteq$\,\texttt{de lo}}
+    \EndIf
+    \If{$f_b\neq\varepsilon \wedge f_b=f_o$} \Return \textit{orthographic} \Comment{u/v, i/j, long-s} \EndIf
+    \If{$\textsc{punct}(\mathit{base}) \wedge \textsc{punct}(\mathit{ocr})$} \Return \textit{punctuation} \EndIf
+    \State \Return \textit{substitution} \Comment{genuine misread or real variant}
+
+    \Statex\hrulefill
+    \Function{fold}{$t$} NFKD; lowercase; map $v\!\to\!u,j\!\to\!i,ſ\!\to\!s,ꝛ\!\to\!r$;
+        keep only ASCII alphanumerics \EndFunction
+    \Function{despace}{$t$} $t$ with all whitespace removed \EndFunction
+    \Function{punct}{$t$} $t\neq\varepsilon$ and every non-space char is Unicode category P \EndFunction
+    \Function{hasAbbrevMark}{$t$} $\exists$ char with codepoint $>127$ and category $\in\{L,M\}$ \EndFunction
+    \Function{subseq}{$s,\ell$} $s$ is a subsequence of $\ell$ (letters dropped in order) \EndFunction
+  \end{algorithmic}
+\end{algorithm}
+
+% After classification, the viewer's cleanup layer (split_diffs): SPACING and
+% ORTHOGRAPHIC diffs are suppressed; the rest split into SUBSTANTIVE (real
+% misreads), EDITORIAL (punctuation, expansions, a bare 'de'+article spaced),
+% and SCRAMBLE (an add/del span > 50 chars = an alignment failure, flagged).
