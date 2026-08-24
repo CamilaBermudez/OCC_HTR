@@ -33,7 +33,7 @@ fi
 uv run python scripts/ocr/run_finetune_ocr.py \
   --base-model models/ocr/catmus-medieval.mlmodel \
   --real-folder "$D/annotated_samples/OCR/full_annotated" \
-  --real-train-frac 0.6 --real-val-frac 0.4 \
+  --real-train-frac 0.8 --real-val-frac 0.2 \
   --output-base-dir "$WS/models/$NAME" \
   --val-fraction 0.1 --seed 42 \
   --lrate 1e-5 --lag 5 --resize union --epochs -1 \

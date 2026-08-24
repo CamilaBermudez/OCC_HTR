@@ -16,7 +16,7 @@ source "$HOME/cayn/scripts/cluster/env.sh"
 export UV_PROJECT_ENVIRONMENT="$WS/.venv-kraken"
 cd "$PROJECT_ROOT"
 GT="$WS/data/processed/annotated_samples/OCR/validation"
-OUT="$WS/kraken_minim_eval"; mkdir -p "$OUT"
+OUT="$WS/kraken_minim_eval_8020"; mkdir -p "$OUT"
 
 trans () {
   local name="$1"
@@ -27,11 +27,11 @@ trans () {
   uv run python scripts/ocr/run_transcribe_line_crops.py --model-path "$mdl" \
     --input-dir "$GT" --output-dir "$OUT" --run-name "${name}_pred" --device cuda:0 || return 0
 }
-trans kraken_minim_base
-trans kraken_minim_ovs
+trans kraken_minim_base_8020
+trans kraken_minim_ovs_8020
 
 args=()
-for n in kraken_minim_base kraken_minim_ovs; do
+for n in kraken_minim_base_8020 kraken_minim_ovs_8020; do
   p="$OUT/${n}_pred"; [ -d "$p" ] && args+=(--pred "$n=$p")
 done
 uv run python scripts/ocr/run_evaluate_ocr.py --gt-dir "$GT" "${args[@]}" \

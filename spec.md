@@ -6130,3 +6130,22 @@ Takeaway: tested, weak-positive trend, n.s. — not a reliable win. Models `mode
 {base,ovs}/`; eval `tests/ocr/evaluations/kraken_minim_ovs_vs_val300_20260823/`; log
 `logs/analysis/kraken_minim_oversample_vs_val300_20260823.log`; scripts `scripts/cluster/kraken_minim_
 {prep,train,eval}.sbatch`.
+
+**Re-run at the 0.9710 partition (80/20) + leakage fix (2026-08-24).** The first run used 60/40 and
+prefixed all 158 dense lines to train — so a dense line in the internal-val split got a light-aug copy
+in train (mild early-stopping leak). Fixed both: partition = the **0.9710 leader's 80/20** (480/120,
+seed 42), and oversample **only the 124 dense lines that fall in the train split** (the 34 in val are
+excluded → no eval-split line's copy enters training; reproduced `_compute_real_stem_split`
+deterministically to know the split before training). 300-val, bootstrap 10000× seed 42:
+
+| arm (80/20) | char-acc | word-acc | Δ vs base [95% CI] |
+|---|---|---|---|
+| baseline (480 real + ketos aug) | 0.9681 | 0.8070 | — |
+| + minim-oversampled (124 dense ×3) | 0.9696 | 0.8158 | char **+0.16% [−0.02,+0.34] P=0.95**; word +0.88% [−0.15,+1.96] |
+
+**Cleaner + stronger than 60/40** (P 0.85→0.95; leakage fixed; baseline near the leader). Consistent
+**weak-positive** (~+0.15pp char / +0.9pp word, **at the edge of significance**), and **positive where
+the synthetic minim sweep (§6.5.24) was negative** — real crops beat synthetic here too. But the lift
+is **broad** (minim=0 +0.17pp ≈ minim≥2 +0.25pp), so it reads as a general "more augmented real data"
+regularization, **not a clean minim-specific fix**. Modest, real, marginally-n.s. Models
+`models/kraken_minim_{base,ovs}_8020/`; eval `tests/ocr/evaluations/kraken_minim_ovs_8020_vs_val300_20260824/`.

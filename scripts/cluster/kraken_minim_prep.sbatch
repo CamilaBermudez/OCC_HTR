@@ -21,14 +21,14 @@ source "$WS/.venv-poolgen/bin/activate"
 cd "$PROJECT_ROOT"
 D="$WS/data/processed"
 FA="$D/annotated_samples/OCR/full_annotated"
-STEMS="$D/minim_dense_stems.json"
+STEMS="$D/minim_safe_dense_train_8020.json"   # only dense lines in the 80/20 TRAIN split (no val leak)
 AI="$D/synthetic_samples/augmented_images"
 
 # 1. gather the dense-minim real crops (png + gt) into a working folder
-DENSE="$AI/minim_dense_crops"; rm -rf "$DENSE"; mkdir -p "$DENSE"
+DENSE="$AI/minim_dense_crops_8020"; rm -rf "$DENSE"; mkdir -p "$DENSE"
 python3 - "$STEMS" "$FA" "$DENSE" <<'PY'
 import json, os, shutil, sys
-stems = json.load(open(sys.argv[1]))["dense_ge2"]; fa, dst = sys.argv[2], sys.argv[3]
+stems = json.load(open(sys.argv[1]))["safe_dense_train"]; fa, dst = sys.argv[2], sys.argv[3]
 n = 0
 for s in stems:
     png, gt = os.path.join(fa, s + ".png"), os.path.join(fa, s + ".gt.txt")
@@ -40,11 +40,11 @@ PY
 
 # 2. light-augment x3 (mild affine + light blur/noise, no composite/aging)
 python scripts/data_augmentation/augment_real_light.py \
-  --real-folder "$DENSE" --output-folder "$AI/minim_ovs_raw" \
+  --real-folder "$DENSE" --output-folder "$AI/minim_ovs_raw_8020" \
   --n-augmentations 3 --seed 42
 
 # 3. prefix 'ovs_' so every copy is unrouted -> forced to TRAIN
-python3 - "$AI/minim_ovs_raw" "$AI/minim_ovs_pool" <<'PY'
+python3 - "$AI/minim_ovs_raw_8020" "$AI/minim_ovs_pool_8020" <<'PY'
 import json, os, sys
 src, dst = sys.argv[1], sys.argv[2]; os.makedirs(dst, exist_ok=True)
 labels = json.load(open(os.path.join(src, "labels.json"))); out = {}
