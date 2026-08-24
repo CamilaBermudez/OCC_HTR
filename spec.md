@@ -5642,10 +5642,22 @@ no re-transcription; quantile length bins shared across models). **Answer: no le
 effect on CER for either leader.** kraken+LM Spearman(len, CER) **+0.027** / Pearson
 +0.006; TrOCR Spearman **+0.001** / Pearson −0.178 (the negative Pearson is a few short
 high-CER outliers — e.g. a 13-char line at CER 0.54 — not a trend; rank corr ≈ 0).
-Corpus CER by length quartile (9–35 / 35–37 / 37–39 / 39–46 chars): kraken+LM
-0.0245/0.0237/0.0236/0.0284, TrOCR 0.0450/0.0405/0.0480/0.0467 — flat. %-perfect *does*
-fall with length (kraken+LM 53.6→35.6 %, TrOCR 37.5→21.8 %) but that's half-mechanical
-(more chars = more chances for ≥1 edit), not proportional degradation. Notably TrOCR shows
+Per length-quartile bin (%-perfect = share of lines with ZERO char edits, CER = 0):
+
+| len bin (chars) | n | kraken+LM corpus CER | kraken+LM %perfect | TrOCR corpus CER | TrOCR %perfect |
+|---|---|---|---|---|---|
+| 9–35 | 56 | 0.0245 | 53.6 | 0.0450 | 37.5 |
+| 35–37 | 82 | 0.0237 | 58.5 | 0.0405 | 30.5 |
+| 37–39 | 60 | 0.0236 | 40.0 | 0.0480 | 28.3 |
+| 39–46 (incl.) | 101 | 0.0284 | 35.6 | 0.0467 | 21.8 |
+
+Corpus CER by bin is **flat** for both models. %-perfect *does* fall with length (and not
+even monotonically — kraken+LM bin 2 > bin 1), but that's mechanical: a line is perfect
+only if EVERY char is right, so with a length-independent per-char error rate p,
+P(perfect) ≈ (1−p)^L decays by arithmetic alone — for kraken+LM's p ≈ 0.026 that predicts
+0.974^35 ≈ 40 % vs 0.974^46 ≈ 30 %, the same magnitude of drop as observed. Falling
+%-perfect is therefore NOT evidence of per-char degradation; the flat corpus CER per bin
+is the honest per-character comparison. Notably TrOCR shows
 **no long-line seq2seq degradation** (over/under-generation) inside this range. Caveat:
 manuscript lines are physically uniform, so GT lengths are tightly clamped (median 37,
 IQR ~35–39, min 9 / max 46) — the analysis rules out a length effect *within the
@@ -6092,3 +6104,29 @@ climb was already flattening). Pools `poolLR_light3k_med{1k,7k}_20260823`; model
 `models/vit_lightreal_med{1k,7k}/`; eval `tests/ocr/evaluations/vit_medsweep_vs_val300_20260823/`;
 log `logs/analysis/vit_medsweep_vs_val300_20260823.log`. Scripts `scripts/cluster/{medsweep_prep,
 vit_medsweep_train,vit_medsweep_eval}.sbatch` + `build_medsweep_pool.py`.
+
+**Oversampling REAL minim lines (kraken) — the "flip" of the §6.5.24 synthetic idea (2026-08-23).**
+User idea: the §6.5.24 minim sweep added *synthetic* minim lines (net-negative — font-vs-hand gap).
+Instead, **oversample the REAL annotated lines dense in minim patterns**, so the model over-weights
+the hard cases without any synthetic. Clean A/B, one identical kraken recipe (catmus + ketos online
+`--augment`): target = the **158 annotated lines with ≥2 minim substrings** (of 600; 54 have ≥3),
+each ×3 **light-augmented** copies (474), prefixed `ovs_` so `run_finetune_ocr` routes all to TRAIN
+(`--aug-unrouted-to-train`); baseline arm = 600 real + ketos aug (`--no-synth-train`). (Baseline
+lands 0.9675 not the 0.9710 leader because only the 0.6 real-train split trains — the **Δ** is the
+result, not the absolute.) 300-val, bootstrap 10000× seed 42:
+
+| arm | char-acc | word-acc | Δ vs base [95% CI] |
+|---|---|---|---|
+| baseline (600 real + ketos aug) | 0.9675 | 0.8012 | — |
+| + minim-oversampled (158 dense ×3) | 0.9690 | 0.8109 | char **+0.15% [−0.11,+0.41]** n.s.; word +0.97% [−0.34,+2.28] n.s. |
+
+**Mildly positive but NOT significant** (P(ovs>base)=0.85). **Directionally better than the synthetic
+sweep** (real crops → no font gap → positive not negative). Minim-subset breakdown shows the gain is
+real-signal — concentrated on minim lines (minim≥1 **+0.25pp**, minim=0 −0.02pp) — **but the densest
+minim≥2 lines it actually oversampled barely move (+0.04pp)**. So oversampling gives a diffuse mild
+lift on easier minim lines yet does **not crack the genuinely-hard dense minims**, consistent with
+those being perceptual/context-limited (the real lever stays the char-LM reranker α/λ, §6.13).
+Takeaway: tested, weak-positive trend, n.s. — not a reliable win. Models `models/kraken_minim_
+{base,ovs}/`; eval `tests/ocr/evaluations/kraken_minim_ovs_vs_val300_20260823/`; log
+`logs/analysis/kraken_minim_oversample_vs_val300_20260823.log`; scripts `scripts/cluster/kraken_minim_
+{prep,train,eval}.sbatch`.
