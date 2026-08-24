@@ -6149,3 +6149,20 @@ the synthetic minim sweep (§6.5.24) was negative** — real crops beat syntheti
 is **broad** (minim=0 +0.17pp ≈ minim≥2 +0.25pp), so it reads as a general "more augmented real data"
 regularization, **not a clean minim-specific fix**. Modest, real, marginally-n.s. Models
 `models/kraken_minim_{base,ovs}_8020/`; eval `tests/ocr/evaluations/kraken_minim_ovs_8020_vs_val300_20260824/`.
+
+**ViT+RoBERTa version — oversample hard lines on the light-real+medical base (IN PROGRESS, 2026-08-24).**
+Same idea applied to the ViT leader `vit_lightreal_med4k` (0.9617). §6.8.1 lists the ViT+RoBERTa
+issues as: **minims** (n/m/u/i/r) #1, **dropped abbreviation tildes** (ViT-specific), letter-shapes,
+and spacing — spacing excluded as a *subword-tokenization artefact*, not perceptual. **Definition of
+the oversample set:** a per-line issue-density score = minim-substring count + abbreviation-mark count
+(combining tildes, ñ/õ/⁊) on the folded GT; **177 lines score ≥2** (minims dominate, 619 vs 67 abbrev).
+**Design (purely additive):** training pool = `600 real + 3000 light-aug-real (all 600) + 4000 medical`
+(the med4k pool, unchanged) **+ 531 extra light-aug copies** (the 177 hard lines × 3, fresh seed 142,
+renamed `_aug1N`). **Leakage-safe by construction:** the ViT `_split_by_source_stem` keeps every aug
+copy in the same split as its source line, so a hard line in the internal-val split keeps its copies in
+val (never leaks into train) — no train-restriction / prefix trick needed. The extra copies share the
+600 real source stems, so the stem universe is unchanged → the train/val split is **identical to med4k**,
+making med4k (0.9617) a clean A/B baseline. Pool `poolLR_light3k_med4k_vitovs_20260824` (7531); model
+`models/vit_lightreal_minimovs/`; scripts `scripts/cluster/vit_minim_{prep,eval}.sbatch` (+ reuses
+`vit_medsweep_train.sbatch`). **Prior:** modest — the kraken run's lift was broad, not minim-specific,
+and the ViT is already at its 4k medical plateau; expect neutral-to-small. Result pending.
