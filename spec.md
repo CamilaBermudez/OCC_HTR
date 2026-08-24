@@ -5411,6 +5411,23 @@ Both architectures benefit; the CTC lattice is validated-but-not-needed here. Ar
 `scratchpad b5_ctc_lm.log`, `b6_honest_lambda.log`; models pulled local
 (`models/ocr/finetuned/vit_real500_stretch_bpe/`).
 
+**Minim-variant rescoring — targeted candidate enumeration, NEGATIVE (2026-08-24).** User idea:
+instead of restricting the LM's training to minim words (rejected — an n-gram LM needs the full
+corpus and scores the whole line, so a minim-only LM would be data-starved and mis-score non-minim
+context), keep the FULL 600-GT LM but focus the *candidate set*: for each maximal minim run in the
+kraken 0.9710 1-best, enumerate every re-partition of its strokes (i=1,n=2,u=2,m=3 →
+`cum/cuin/cim/…`) and pick the full-line-LM-best reading (`scripts/ocr/minim_variant_rescore.py`).
+**It does not help.** On the 0.9710 leader's 300-val 1-best: naive (margin 0) **HURTS −0.62pp**
+(0.9707→0.9645, 98 lines changed) — pure text-LM argmax over-corrects readings the recogniser
+already had right. Adding a margin (only override when the LM prefers a variant by > m log-prob)
+recovers monotonically; the best, **tuned on the test set itself (oracle)**, is a negligible
+**+0.04pp** (margin 12, 16 lines), so an honest dev-tuned margin lands at ~0. **Why:** a text-only
+LM has no acoustic evidence to anchor the correct minim reading — minims disambiguate only when the
+LM is *combined* with the recogniser's score, which is exactly what the α (CTC prefix-beam B5) and
+λ (per-position) rerankers already do. Done properly the idea reduces to B5 (already have it). Net:
+the existing per-position char-LM (0.9743) remains the right and sufficient minim lever; a
+text-LM-only candidate rescore adds nothing. Script `scripts/ocr/minim_variant_rescore.py`.
+
 **LM rescoring — transferring the honest λ to the 600-leader (2026-08-15).** The honest
 λ\*=0.8 was tuned on the *weaker* ViT-500's clean dev; the deployable best ViT is the
 600-data `mixed_med4k_fixed` (0.9546/0.7705 baseline). Applying the **pre-committed λ=0.8**
@@ -6164,5 +6181,10 @@ val (never leaks into train) — no train-restriction / prefix trick needed. The
 600 real source stems, so the stem universe is unchanged → the train/val split is **identical to med4k**,
 making med4k (0.9617) a clean A/B baseline. Pool `poolLR_light3k_med4k_vitovs_20260824` (7531); model
 `models/vit_lightreal_minimovs/`; scripts `scripts/cluster/vit_minim_{prep,eval}.sbatch` (+ reuses
-`vit_medsweep_train.sbatch`). **Prior:** modest — the kraken run's lift was broad, not minim-specific,
-and the ViT is already at its 4k medical plateau; expect neutral-to-small. Result pending.
+`vit_medsweep_train.sbatch`). **RESULT (2026-08-24): NEUTRAL.** 300-val, bootstrap 10000× seed 42:
+med4k 0.9617 → minimovs **0.9612** char (Δ **−0.04% [−0.49, +0.37]**, P=0.43 n.s.), word 0.7827 →
+0.7846 (+0.20% [−1.66, +2.07] n.s.). **Unlike kraken (small +0.16pp), oversampling does nothing for
+the ViT** — it's already at its 4k medical plateau and its light-aug base already sees all 600 lines,
+so extra copies of hard lines add no signal. Confirms the "broad, not issue-specific" reading: where
+the model has headroom (kraken CTC) a mild lift appears; where it's saturated (ViT) it's flat. Model
+`models/vit_lightreal_minimovs/`; eval `tests/ocr/evaluations/vit_minimovs_vs_val300_20260824/`.
