@@ -5428,6 +5428,28 @@ LM is *combined* with the recogniser's score, which is exactly what the α (CTC 
 the existing per-position char-LM (0.9743) remains the right and sufficient minim lever; a
 text-LM-only candidate rescore adds nothing. Script `scripts/ocr/minim_variant_rescore.py`.
 
+**External LM corpora ruled out (2026-08-25).** Does adding COMETA / Pansier to the reranker LM
+help? Honest sweep (order-6 char-LM, λ tuned on the 100-line dev, eval on 300-val; per-position
+candidates from the 0.9710 model reused across configs; baseline reproduces 0.9743/0.8367 exactly):
+
+| LM training text | val char | val word | Δ char / word |
+|---|---|---|---|
+| **annotated (600)** | **0.9743** | **0.8367** | — |
+| + medical (12k) | 0.9745 | 0.8371 | +0.03 / +0.05 (tied) |
+| + COMETA (8.5k) | 0.9736 | 0.8323 | −0.06 / −0.44 |
+| + Pansier (2k) | 0.9741 | 0.8352 | −0.02 / −0.15 |
+| COMETA-alone | 0.9718 | 0.8250 | −0.25 / −1.17 |
+| Pansier-alone | 0.9708 | 0.8211 | −0.35 / −1.56 |
+
+**External corpora do not help the reranker LM.** +medical ties (reconfirms "medical adds nothing");
++COMETA/+Pansier are neutral-to-negative — they dilute the in-domain **diplomatic** statistics with
+*normalized/edited* Occitan (no brevigraphs, normalized spelling); the *-alone* variants are clearly
+worse (external can't substitute for the in-domain text). **The 600 in-domain diplomatic GT is the
+right and sufficient LM training set.** The remaining LM levers are a lexicon constraint or more
+diplomatic transcriptions, not general corpora. Script `scripts/ocr/kraken_lm_corpus_sweep.py`; log
+`logs/analysis/lm_corpus_sweep_20260825.log`. (Also, the LM-impact breakdown, §6.8: the reranker's
+whole gain is substitutions 147→109; ins/del untouched — `scripts/ocr/lm_error_analysis.py`.)
+
 **LM rescoring — transferring the honest λ to the 600-leader (2026-08-15).** The honest
 λ\*=0.8 was tuned on the *weaker* ViT-500's clean dev; the deployable best ViT is the
 600-data `mixed_med4k_fixed` (0.9546/0.7705 baseline). Applying the **pre-committed λ=0.8**
