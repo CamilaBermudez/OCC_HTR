@@ -6210,3 +6210,26 @@ the ViT** — it's already at its 4k medical plateau and its light-aug base alre
 so extra copies of hard lines add no signal. Confirms the "broad, not issue-specific" reading: where
 the model has headroom (kraken CTC) a mild lift appears; where it's saturated (ViT) it's flat. Model
 `models/vit_lightreal_minimovs/`; eval `tests/ocr/evaluations/vit_minimovs_vs_val300_20260824/`.
+
+**Light-aug AMOUNT × medical VOLUME — full 3×3 grid (2026-08-27).** To rule out a missed
+(augmentation × medical) interaction, crossed **light-aug {×3, ×5, ×7}** (1800/3000/4200, nested from
+one ×7 render) with **medical {2k, 4k, 8k}** (2k = first-2000 of 4k; 8k = 4k + 3000 + 1000 freshly
+rendered no-stamps+gentle). 300-val char-acc:
+
+| light ↓ / med → | 2k | 4k | 8k |
+|---|---|---|---|
+| ×3 (1800) | 0.9593 | 0.9603 | 0.9598 |
+| ×5 (3000) | 0.9610 | 0.9579\* | **0.9634** |
+| ×7 (4200) | 0.9605 | 0.9617 | 0.9620 |
+
+\*×5×4k = 0.9579 came in *below* the existing med4k (0.9617, identical recipe, different light-aug
+seed) — that ~0.4pp gap **is the run-to-run noise**, ≈ the whole surface's spread (0.9579–0.9634).
+**Verdict: noise-dominated FLAT PLATEAU, no interaction.** Bootstrap: numeric-best ×5×8k (0.9634) vs
+the med4k region (×7×4k 0.9617) = **+0.17pp [−0.15,+0.50] n.s.** (P=0.84); only the extreme corners
+differ (×5×8k vs ×3×2k +0.41pp sig). Neither more augmentation (×7 vs ×5) nor more medical (8k vs 4k)
+reliably beats ×5/4k. Mild non-sig tendencies: ×3 row weakest, ×7 robust across medical. **~5 light-aug
++ 4000 medical stays a robust operating point; the grid rules out a materially-better combo we'd have
+overlooked** (single-seed cells can't resolve sub-0.4pp — crowning one exact cell would need multi-seed
+averaging). Models `models/vit_lx{3,5,7}_m{2k,4k,8k}/`; eval
+`tests/ocr/evaluations/vit_augamount_grid_vs_val300_20260827/`; scripts `scripts/cluster/vit_augamount_
+{prep,eval}.sbatch`.
