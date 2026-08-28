@@ -5450,6 +5450,17 @@ diplomatic transcriptions, not general corpora. Script `scripts/ocr/kraken_lm_co
 `logs/analysis/lm_corpus_sweep_20260825.log`. (Also, the LM-impact breakdown, §6.8: the reranker's
 whole gain is substitutions 147→109; ins/del untouched — `scripts/ocr/lm_error_analysis.py`.)
 
+**Consolidated 6-model results table + figure (2026-08-28).** The final side-by-side of all reported
+models on the 300-val — kraken (CTC, CTC+LM), TrOCR (0.9549, 0.9617), Catmus, Medusa — with corpus +
+per-line-median CER/WER/char-acc/word-acc and **95% paired-bootstrap CIs**. **Char-acc leader (kraken
+CTC+LM, 0.9744) ≠ word-acc leader (Catmus, 0.8566 / WER 0.1434)** — the frozen baseline makes the fewest
+whole-word errors. **Protocol care:** Catmus/Medusa use their *fair* full-page eval
+(`tests/ocr/evaluations/seven_way_vs_validation_300/`, Catmus 0.9613); the per-crop transcriber
+under-reads Catmus by ~0.5pp (0.9552) and is **not** used. Deliverables: table `docs/model_results.md`;
+published styled artifact + its source `docs/model_results.html`; **reproducer**
+`scripts/ocr/plot_model_results.py` (regenerates the char-vs-word CI scatter PDF/PNG + tables + CSVs into
+`docs/figures/`, which is git-ignored — regenerate, don't commit). CIs via `scripts/ocr/bootstrap_ocr_ci.py`.
+
 **LM rescoring — transferring the honest λ to the 600-leader (2026-08-15).** The honest
 λ\*=0.8 was tuned on the *weaker* ViT-500's clean dev; the deployable best ViT is the
 600-data `mixed_med4k_fixed` (0.9546/0.7705 baseline). Applying the **pre-committed λ=0.8**

@@ -64,3 +64,6 @@ __pycache__/
 
 # Discrepancy exports (large derived data — regenerate via discrepancy_table.py)
 /tests/ocr/evaluations/discrepancies/
+
+# Generated results figures/CSVs — regenerate via scripts/ocr/plot_model_results.py
+/docs/figures/

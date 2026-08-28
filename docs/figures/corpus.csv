@@ -1,7 +1,0 @@
-name,group,arch,cer,char,cLo,cHi,wer,word,wLo,wHi,size
-kraken · CTC + LM,ours,CTC + char-LM,0.0256,0.9744,0.9707,0.978,0.1627,0.8373,0.8143,0.8597,4.08 M / 16 MB
-kraken · CTC,ours,CTC (VGSL CRNN),0.029,0.971,0.967,0.9749,0.1798,0.8202,0.7962,0.8441,4.08 M / 16 MB
-TrOCR · light-aug,ours,ViT + RoBERTa,0.0383,0.9617,0.9573,0.966,0.2174,0.7826,0.759,0.8059,282.6 M / 1.1 GB
-Catmus,base,"Kraken CTC, frozen",0.0387,0.9613,0.9562,0.9663,0.1434,0.8566,0.8389,0.8738,4.08 M / 16 MB
-TrOCR · med4k,ours,ViT + RoBERTa,0.0452,0.9548,0.9496,0.9596,0.2293,0.7707,0.7462,0.7938,282.6 M / 1.1 GB
-Medusa,base,"Qwen-VL, 9 B",0.049,0.951,0.9459,0.9558,0.3106,0.6894,0.6593,0.7191,9 B / ~18 GB
