@@ -5464,26 +5464,34 @@ published styled artifact + its source `docs/model_results.html`; **reproducer**
 **Long-tail confidence zoom — does the model know when it's wrong? (2026-08-28).** The per-line
 error is long-tailed (§6.2: ~25% of lines perfect, a worst-decile tail drives the corpus metric).
 Zoomed into that tail (worst decile by CER, 30/299 lines) and asked whether each recogniser's own
-confidence flags the hard cases (usable triage) or is blindsided. **Calibration is
-architecture-dependent:**
+confidence flags the hard cases. Models: kraken = the **0.9710 CTC** recogniser (base of 0.9743; the
+LM rescore is post-hoc, no per-char confidence); TrOCR = **0.9549** `mixed_med4k_fixed`. **CORRECTION
+(supersedes a first pass):** the first run read kraken's *reported* per-char `conf` field, which is
+near-saturated and barely discriminative (AUROC 0.59) → it wrongly looked "blind/over-confident." The
+**genuine** kraken confidence is the **peak-frame softmax posterior** (`om[:,peak].max()`), now used
+in `kraken_preds`. Corrected:
 
-| | kraken (CTC) | TrOCR (ViT+RoBERTa) |
+| char-level (300-val) | kraken (CTC), corrected | TrOCR (ViT+RoBERTa) |
 |---|---|---|
-| mean conf body / tail | 0.983 / 0.977 | 0.982 / **0.950** |
-| char AUROC (low-conf ⇒ error) | **0.548** (≈ random) | **0.899** (strong) |
-| conf on correct / error | 0.983 / 0.962 (Δ0.02) | 0.985 / 0.809 (Δ0.18) |
-| over-confident errors (>0.9) | **89%** | 50% |
-| Spearman(mean-conf, CER) | −0.23 | **−0.65** |
+| AUROC (low-conf ⇒ error) | **0.956** | 0.899 |
+| conf on correct / error | 0.992 / **0.806** | 0.985 / 0.809 |
+| mean conf body / tail | 0.989 / **0.969** | 0.982 / 0.950 |
+| line-detector AUROC (mean-conf) | 0.839 | 0.809 |
+| over-confident errors (>0.9) | 45% | 50% |
 
-**kraken CTC is severely over-confident** — its confidence barely drops on the hard tail, is a
-near-random error detector (char AUROC 0.55), and **89% of its errors are emitted with >0.9
-confidence** (classic CTC peaked-softmax pathology) → **unusable for triage**. **TrOCR (seq2seq,
-RoBERTa decoder) is well-calibrated** — confidence drops on the tail, char AUROC 0.90, conf on
-errors 0.81 ≪ 0.99 on correct → its confidence **is** a usable human-in-the-loop signal. So the
-**accuracy leader (kraken CTC+LM, 0.9744) is NOT the calibration leader (TrOCR)**: for flagging hard
-lines to a human, use TrOCR's confidence, not kraken's. Script `scripts/ocr/longtail_confidence.py`
-(builds on `confidence_analysis.py`); figures + `worst_lines_*.md` + `per_line_*.csv` in
-`tests/ocr/evaluations/longtail_confidence/`; log `logs/analysis/longtail_confidence_20260828.log`.
+**Both leaders are well-calibrated — and kraken's peak-posterior is *marginally the better* error
+detector** (char AUROC 0.956 > 0.899). Confidence drops on the hard tail and separates correct from
+error for both → **both are usable for human-in-the-loop triage.** Hard-case overlap: of each model's
+30 worst lines, only **11 are hard for both** (49-line union, 22% overlap) — the two architectures fail
+on **largely disjoint** lines (complementary → ensemble potential).
+
+**Temperature scaling (kraken, `temperature_scale_kraken.py`, test split).** kraken is only *mildly*
+over-confident; fitting **T\*=1.36** on a 100-line dev split cuts ECE **0.0118→0.0024** and
+over-confident errors **46%→32%** with **AUROC flat at 0.956** and accuracy untouched (argmax-preserving)
+— a calibration *polish*, not a rescue (the ranking was already good). Scripts
+`scripts/ocr/{longtail_confidence,temperature_scale_kraken}.py` (build on `confidence_analysis.py`);
+figures + `worst_lines_*.md` + `per_line_*.csv` in `tests/ocr/evaluations/longtail_confidence/`; log
+`logs/analysis/longtail_confidence_20260828.log`.
 
 **LM rescoring — transferring the honest λ to the 600-leader (2026-08-15).** The honest
 λ\*=0.8 was tuned on the *weaker* ViT-500's clean dev; the deployable best ViT is the

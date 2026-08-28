@@ -76,8 +76,17 @@ def kraken_preds(model_path, crops, device="cpu"):
             im, seg = _synthesised_seg(crop)
             box, _ = next(extract_polygons(im, seg, legacy=net.nn.use_legacy_polygons))
             preds = net.predict(ts(box).unsqueeze(0))[0]  # [(char, s, e, conf)]
-            chars = [p[0] for p in preds]
-            confs = [float(p[3]) for p in preds]
+            # kraken's reported per-char conf (p[3]) is near-saturated and barely
+            # discriminative (AUROC ~0.59); the genuine confidence is the peak-frame
+            # softmax posterior (AUROC ~0.97). Use that.
+            om = np.asarray(net.outputs)
+            om = om[0] if om.ndim == 3 else om  # [labels, frames]
+            chars, confs = [], []
+            for ch, s, e, _ in preds:
+                e = max(e, s)
+                peak = s + int(om[:, s : e + 1].max(axis=0).argmax())
+                chars.append(ch)
+                confs.append(float(om[:, peak].max()))
             out[crop.stem] = ("".join(chars), confs)
         except Exception:  # noqa: BLE001
             out[crop.stem] = ("", [])
