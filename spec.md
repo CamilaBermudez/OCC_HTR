@@ -5461,6 +5461,30 @@ published styled artifact + its source `docs/model_results.html`; **reproducer**
 `scripts/ocr/plot_model_results.py` (regenerates the char-vs-word CI scatter PDF/PNG + tables + CSVs into
 `docs/figures/`, which is git-ignored — regenerate, don't commit). CIs via `scripts/ocr/bootstrap_ocr_ci.py`.
 
+**Long-tail confidence zoom — does the model know when it's wrong? (2026-08-28).** The per-line
+error is long-tailed (§6.2: ~25% of lines perfect, a worst-decile tail drives the corpus metric).
+Zoomed into that tail (worst decile by CER, 30/299 lines) and asked whether each recogniser's own
+confidence flags the hard cases (usable triage) or is blindsided. **Calibration is
+architecture-dependent:**
+
+| | kraken (CTC) | TrOCR (ViT+RoBERTa) |
+|---|---|---|
+| mean conf body / tail | 0.983 / 0.977 | 0.982 / **0.950** |
+| char AUROC (low-conf ⇒ error) | **0.548** (≈ random) | **0.899** (strong) |
+| conf on correct / error | 0.983 / 0.962 (Δ0.02) | 0.985 / 0.809 (Δ0.18) |
+| over-confident errors (>0.9) | **89%** | 50% |
+| Spearman(mean-conf, CER) | −0.23 | **−0.65** |
+
+**kraken CTC is severely over-confident** — its confidence barely drops on the hard tail, is a
+near-random error detector (char AUROC 0.55), and **89% of its errors are emitted with >0.9
+confidence** (classic CTC peaked-softmax pathology) → **unusable for triage**. **TrOCR (seq2seq,
+RoBERTa decoder) is well-calibrated** — confidence drops on the tail, char AUROC 0.90, conf on
+errors 0.81 ≪ 0.99 on correct → its confidence **is** a usable human-in-the-loop signal. So the
+**accuracy leader (kraken CTC+LM, 0.9744) is NOT the calibration leader (TrOCR)**: for flagging hard
+lines to a human, use TrOCR's confidence, not kraken's. Script `scripts/ocr/longtail_confidence.py`
+(builds on `confidence_analysis.py`); figures + `worst_lines_*.md` + `per_line_*.csv` in
+`tests/ocr/evaluations/longtail_confidence/`; log `logs/analysis/longtail_confidence_20260828.log`.
+
 **LM rescoring — transferring the honest λ to the 600-leader (2026-08-15).** The honest
 λ\*=0.8 was tuned on the *weaker* ViT-500's clean dev; the deployable best ViT is the
 600-data `mixed_med4k_fixed` (0.9546/0.7705 baseline). Applying the **pre-committed λ=0.8**
