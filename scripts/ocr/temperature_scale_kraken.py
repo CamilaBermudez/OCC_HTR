@@ -22,7 +22,6 @@ before/after on the held-out rest.
 from __future__ import annotations
 
 import argparse
-import random
 import sys
 from pathlib import Path
 
@@ -96,45 +95,45 @@ def report(name, conf, y):
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--model", type=Path, required=True)
-    ap.add_argument("--val-dir", type=Path, required=True)
+    ap.add_argument(
+        "--dev-dir",
+        type=Path,
+        default=Path("data/processed/annotated_samples/OCR/full_annotated"),
+        help="set to FIT T on (the 600 annotated — held out from the 300-val), "
+        "so the 300-val stays a pure held-out report, consistent with the LM λ-tuning",
+    )
+    ap.add_argument("--val-dir", type=Path, required=True, help="the 300-val — REPORTED on in FULL")
     ap.add_argument("--out", type=Path, default=Path("tests/ocr/evaluations/longtail_confidence"))
-    ap.add_argument("--n-dev", type=int, default=100)
     ap.add_argument("--device", default="cpu")
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
 
-    crops = sorted(a.val_dir.glob("*.png"))
-    gts = {
-        c.stem: c.with_name(c.stem + ".gt.txt").read_text(encoding="utf-8").strip() for c in crops
-    }
-    gts = {k: v for k, v in gts.items() if v}
-    crops = [c for c in crops if c.stem in gts]
-
-    print(f"running kraken (CTC) on {len(crops)} lines ...")
-    preds = kraken_cols(a.model, crops, a.device)
-
-    # per-line -> per-char (posterior col, is_correct); split dev/test by LINE
-    stems = [c.stem for c in crops if preds[c.stem][1]]
-    rng = random.Random(42)
-    rng.shuffle(stems)
-    dev_stems, test_stems = set(stems[: a.n_dev]), set(stems[a.n_dev :])
-
-    def gather(sel):
+    def collect(dir_):
+        crops = sorted(dir_.glob("*.png"))
+        gts = {
+            c.stem: c.with_name(c.stem + ".gt.txt").read_text(encoding="utf-8").strip()
+            for c in crops
+        }
+        gts = {k: v for k, v in gts.items() if v}
+        crops = [c for c in crops if c.stem in gts]
+        preds = kraken_cols(a.model, crops, a.device)
         cols, y = [], []
-        for stem in sel:
-            pred, cc = preds[stem]
+        for stem, (pred, cc) in preds.items():
             if not pred or len(cc) != len(pred):
                 continue
             err = label_errors(pred, gts[stem])
             for col, is_err in zip(cc, err, strict=True):
                 cols.append(col)
                 y.append(0 if is_err else 1)
-        return np.array(cols), np.array(y)
+        return np.array(cols), np.array(y), len(crops)
 
-    dc, dy = gather(dev_stems)
-    tc, ty = gather(test_stems)
+    print(f"fitting T on dev = {a.dev_dir} (the 600 annotated) ...")
+    dc, dy, ndev = collect(a.dev_dir)
+    print(f"reporting on val = {a.val_dir} (the full 300-val) ...")
+    tc, ty, nval = collect(a.val_dir)
     print(
-        f"dev chars {len(dy)} (acc {dy.mean():.3f})  |  test chars {len(ty)} (acc {ty.mean():.3f})"
+        f"dev {ndev} lines / {len(dy)} chars (acc {dy.mean():.3f})  |  "
+        f"val {nval} lines / {len(ty)} chars (acc {ty.mean():.3f})"
     )
 
     # ---- fit T on dev: minimise binary NLL of correctness vs softened confidence ----
@@ -173,7 +172,7 @@ def main() -> None:
         _, xs, accs, confm, _ = ece(conf_T(tc, T), ty)
         ax[0].plot(confm, accs, "o-", label=r["name"])
     ax[0].plot([0, 1], [0, 1], "k--", lw=1, label="perfect")
-    ax[0].set(xlabel="confidence", ylabel="empirical accuracy", title="Reliability (test)")
+    ax[0].set(xlabel="confidence", ylabel="empirical accuracy", title="Reliability (300-val)")
     ax[0].legend(frameon=False)
     ax[0].grid(alpha=0.3)
     ax[1].hist(conf_T(tc, 1.0), bins=30, alpha=0.5, density=True, label="T=1")
@@ -181,7 +180,9 @@ def main() -> None:
     ax[1].set(xlabel="confidence", ylabel="density", title="Confidence distribution")
     ax[1].legend(frameon=False)
     ax[1].grid(alpha=0.3)
-    fig.suptitle(f"kraken CTC temperature scaling (T*={Tstar:.2f}) — test split", y=1.02)
+    fig.suptitle(
+        f"kraken CTC temperature scaling (T*={Tstar:.2f}) — fit on 600, report on 300-val", y=1.02
+    )
     fig.tight_layout()
     fig.savefig(a.out / "temperature_scaling_kraken.png", dpi=140, bbox_inches="tight")
     print(f"\nsaved {a.out}/temperature_scaling_kraken.png")

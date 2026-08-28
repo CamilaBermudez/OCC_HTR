@@ -5465,60 +5465,78 @@ published styled artifact + its source `docs/model_results.html`; **reproducer**
 error is long-tailed (§6.2: ~25% of lines perfect, a worst-decile tail drives the corpus metric).
 Zoomed into that tail (worst decile by CER, 30/299 lines) and asked whether each recogniser's own
 confidence flags the hard cases. Models: kraken = the **0.9710 CTC** recogniser (base of 0.9743; the
-LM rescore is post-hoc, no per-char confidence); TrOCR = **0.9549** `mixed_med4k_fixed`. **CORRECTION
-(supersedes a first pass):** the first run read kraken's *reported* per-char `conf` field, which is
-near-saturated and barely discriminative (AUROC 0.59) → it wrongly looked "blind/over-confident." The
-**genuine** kraken confidence is the **peak-frame softmax posterior** (`om[:,peak].max()`), now used
-in `kraken_preds`. Corrected:
+LM rescore is post-hoc, no per-char confidence); TrOCR = the **exact 0.9617** `vit_lightreal_med4k`
+(now pulled local). **CORRECTION (supersedes a first pass):** the first run read kraken's *reported*
+per-char `conf` field, which is near-saturated and barely discriminative (AUROC 0.59) → it wrongly
+looked "blind/over-confident." The **genuine** kraken confidence is the **peak-frame softmax
+posterior** (`om[:,peak].max()`), now used in `kraken_preds`. Corrected head-to-head:
 
-| char-level (300-val) | kraken (CTC), corrected | TrOCR (ViT+RoBERTa) |
+| char-level (300-val) | kraken (CTC), corrected | TrOCR 0.9617 (ViT+RoBERTa) |
 |---|---|---|
-| AUROC (low-conf ⇒ error) | **0.956** | 0.899 |
-| conf on correct / error | 0.992 / **0.806** | 0.985 / 0.809 |
-| mean conf body / tail | 0.989 / **0.969** | 0.982 / 0.950 |
-| line-detector AUROC (mean-conf) | 0.839 | 0.809 |
-| over-confident errors (>0.9) | 45% | 50% |
+| char acc (calib labels) | 0.9758 | 0.9726 |
+| AUROC (low-conf ⇒ error) | **0.956** | 0.900 |
+| conf on correct / error | 0.992 / **0.806** | 0.989 / 0.856 |
+| mean conf body / tail | 0.989 / **0.969** | 0.987 / 0.967 |
+| ECE | 0.011 | 0.019 |
+| line-detector AUROC (≥1 err) | 0.806 | **0.826** |
+| over-confident errors (>0.9) | 45% | 57% |
 
-**Both leaders are well-calibrated — and kraken's peak-posterior is *marginally the better* error
-detector** (char AUROC 0.956 > 0.899). Confidence drops on the hard tail and separates correct from
-error for both → **both are usable for human-in-the-loop triage.** Hard-case overlap: of each model's
-30 worst lines, only **11 are hard for both** (49-line union, 22% overlap) — the two architectures fail
-on **largely disjoint** lines (complementary → ensemble potential).
+**Both leaders are well-calibrated** — kraken's peak-posterior is *marginally the better* **char**-level
+error detector (AUROC 0.956 > 0.900); TrOCR is marginally better at the **line** level (0.826 > 0.806).
+Confidence drops on the hard tail and separates correct from error for both → **both are usable for
+human-in-the-loop triage.** Hard-case overlap: of each model's 30 worst lines, only **11 are hard for
+both** (49-line union, 22% overlap) — the two architectures fail on **largely disjoint** lines
+(complementary → ensemble potential).
 
-**Temperature scaling (kraken, `temperature_scale_kraken.py`, test split).** kraken is only *mildly*
-over-confident; fitting **T\*=1.36** on a 100-line dev split cuts ECE **0.0118→0.0024** and
-over-confident errors **46%→32%** with **AUROC flat at 0.956** and accuracy untouched (argmax-preserving)
-— a calibration *polish*, not a rescue (the ranking was already good). Scripts
-`scripts/ocr/{longtail_confidence,temperature_scale_kraken}.py` (build on `confidence_analysis.py`);
-figures + `worst_lines_*.md` + `per_line_*.csv` in `tests/ocr/evaluations/longtail_confidence/`; log
-`logs/analysis/longtail_confidence_20260828.log`.
+**Temperature scaling (kraken, `temperature_scale_kraken.py`).** Protocol matched to the LM λ-tuning:
+**fit T on the 600 annotated, report on the full 299-val** (T never sees the report set). kraken is only
+*mildly* over-confident; **T\*=1.32** cuts ECE **0.0114→0.0036** and over-confident errors **45%→33%**
+with **AUROC flat (0.956→0.957)** and accuracy untouched (argmax is T-invariant). **This is a
+*prerequisite* for any confidence-consuming decision (a triage threshold, a confidence-gated router),
+NOT an accuracy result** — if nothing downstream reads the confidence *as a probability*, it is cosmetic
+(CER, error-ranking all unchanged). *(Caveat: the recogniser trained on those 600, so the T-fit set is
+train data → mild optimism in T itself; the reported ECE/AUROC are on the never-touched 299-val.)*
+Scripts `scripts/ocr/{longtail_confidence,temperature_scale_kraken}.py` (build on
+`confidence_analysis.py`); figures + `worst_lines_*.md` + `per_line_*.csv` in
+`tests/ocr/evaluations/longtail_confidence/`; log `logs/analysis/longtail_confidence_20260828.log`.
 
 *Why kraken's reported conf is a bad signal (mechanism, verified):* `net.predict → codec.decode →
 greedy_decoder` computes the per-char confidence via `outputs[mask]` (mask = one-hot of the per-frame
-argmax); **boolean-mask indexing flattens in class-major order, not frame order**, so the confidences
-are **misaligned from their frames** and collapse toward ~1.0 (verified: char `n` at frame 17 reports
-1.000 while `om[:,17].max()`=0.826). The genuine confidence is the softmax posterior at the char's
-peak frame.
+argmax); **boolean-mask indexing flattens in class-major (row) order, not frame order**, so the
+confidences are **misaligned from their frames** and collapse toward ~1.0 (verified: per-frame max
+`[0.8,0.9,0.7,0.8]` vs `out[mask]` `[0.9,0.8,0.8,0.7]` — the class-major reshuffle). The genuine
+confidence is the softmax posterior at the char's peak frame.
 
-**Hard-case feature analysis — what's hard, and for which model (2026-08-28).** Characterised the four
-funnel groups (hard-for-BOTH / kraken-only / TrOCR-only / neither) by line features (image size, text
-length, ink-bleed §6.5.8, minim + abbreviation density; `scripts/ocr/hard_case_features.py`):
+**Hard-case feature analysis — what's hard, and for which model (2026-08-28, exact 0.9617).**
+Characterised the four funnel groups (hard-for-BOTH / kraken-only / TrOCR-only / neither) by line
+features (image size, text length, ink-bleed §6.5.8, minim + abbreviation density;
+`scripts/ocr/hard_case_features.py`):
 
 | group (n) | ink-bleed | minim | abbrev |
 |---|---|---|---|
-| BOTH-hard (11) | 0.35 | 1.45 | 0.64 |
-| kraken-only (19) | **0.33** | 0.84 | 0.11 |
-| TrOCR-only (19) | 0.23 | **1.21** | **0.53** |
-| neither (250) | 0.24 | 0.85 | 0.08 |
+| BOTH-hard (11) | 0.33 | 1.18 | 0.55 |
+| kraken-only (19) | **0.34** | 1.00 | 0.16 |
+| TrOCR-only (19) | 0.24 | 0.89 | **0.26** |
+| neither (250) | 0.24 | 0.88 | 0.10 |
 
-**Complementary weaknesses:** **kraken (CTC) is hurt more by *physical degradation*** — its own-hard
-lines are ink-bled (0.33) but content-simple (bleed↔CER ρ=0.21 > TrOCR 0.17); **TrOCR (seq2seq) is hurt
-more by *content ambiguity*** — its own-hard lines are physically clean but minim/abbrev-dense
-(minim↔CER ρ=0.19 > kraken 0.14). BOTH-hard = both problems. **Image size and line length do NOT
-predict error** (ρ≈0). → a per-line **router** is plausible: ink-bled lines → TrOCR, minim/abbrev-dense
-lines → kraken (correlations modest ~0.13–0.21, so a tendency, but the group structure is consistent).
-Artefacts `tests/ocr/evaluations/longtail_confidence/hard_case_features.{png,csv}`. *(TrOCR here is the
-0.9549 med4k model; re-run on the exact 0.9617 light-aug pending a cluster pull.)*
+Spearman(feature, per-line CER): kraken — **bleed 0.21**, minim 0.14, abbr 0.13; TrOCR — bleed 0.08,
+minim 0.14, **abbr 0.16**, height 0.18. **Complementary weaknesses:** **kraken (CTC) is hurt more by
+*physical degradation*** (bleed↔CER ρ=0.21 vs TrOCR 0.08); **TrOCR (seq2seq) is hurt more by *content
+ambiguity*** (abbrev↔CER ρ=0.16 vs kraken 0.13; robust to bleed). **Image width and line length do NOT
+predict error** (ρ≈0).
+
+**Router — what is actually routable (revised, important).** The two driver axes are **not symmetric at
+inference.** **Ink-bleed is computable from the image alone** (§6.5.8, no transcription needed) →
+"bleed-heavy → TrOCR" is a genuine *a-priori* routing rule. **Minim/abbrev density is a property of the
+GT text** → known only *after* decoding, so it is **diagnostic (it explains *why* TrOCR fails), NOT a
+routable feature** — you cannot detect a minim-dense line before reading it. The actionable router is
+therefore a **confidence-gated ensemble**: run both, arbitrate per line by *calibrated* confidence (both
+calibrated, char-AUROC 0.956/0.900), optionally with the bleed score as a cheap prior. Confidence
+captures the *effect* of minim-difficulty (TrOCR's confidence genuinely drops there) without needing to
+*detect the cause* — which is exactly why the calibration step above matters (cross-model confidence
+comparison must be on one calibrated scale). Artefacts
+`tests/ocr/evaluations/longtail_confidence/hard_case_features.{png,csv}`; head-to-head calibration
+`tests/ocr/evaluations/confidence_analysis/confidence_calibration.png`.
 
 **LM rescoring — transferring the honest λ to the 600-leader (2026-08-15).** The honest
 λ\*=0.8 was tuned on the *weaker* ViT-500's clean dev; the deployable best ViT is the
