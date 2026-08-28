@@ -1,0 +1,245 @@
+<title>AlbucE OCR — model results (300-line validation)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#EAE6DC; --panel:#F7F4EC; --panel-2:#F1EDE3;
+    --ink:#2A251F; --muted:#7B7264; --faint:#98907F;
+    --line:#D9D1C2; --line-strong:#C6BCA8;
+    --accent:#9C2A24;            /* madder rubric — this thesis */
+    --gold:#8A6A26;              /* illuminated ochre — baselines */
+    --accent-soft:rgba(156,42,36,.16);
+    --gold-soft:rgba(138,106,38,.16);
+    --best:#7A4C10;              /* per-column leader tint */
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#16130E; --panel:#201C15; --panel-2:#262117;
+      --ink:#ECE5D6; --muted:#9C9284; --faint:#7C7466;
+      --line:#352E23; --line-strong:#463D2E;
+      --accent:#D8695C; --gold:#C8A24E;
+      --accent-soft:rgba(216,105,92,.18); --gold-soft:rgba(200,162,78,.18);
+      --best:#E7C583;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#16130E; --panel:#201C15; --panel-2:#262117;
+    --ink:#ECE5D6; --muted:#9C9284; --faint:#7C7466;
+    --line:#352E23; --line-strong:#463D2E;
+    --accent:#D8695C; --gold:#C8A24E;
+    --accent-soft:rgba(216,105,92,.18); --gold-soft:rgba(200,162,78,.18);
+    --best:#E7C583;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--serif); line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    padding:clamp(20px,4vw,56px) 18px 72px;
+  }
+  .wrap{max-width:1000px;margin:0 auto}
+  .num{font-family:var(--sans);font-variant-numeric:tabular-nums}
+
+  header{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:30px}
+  .eyebrow{
+    font-family:var(--sans);text-transform:uppercase;letter-spacing:.16em;
+    font-size:11.5px;font-weight:600;color:var(--accent);margin:0 0 10px}
+  h1{font-size:clamp(28px,4.4vw,42px);line-height:1.08;margin:0 0 8px;
+    font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+  .lede{margin:0;color:var(--muted);font-size:clamp(15px,1.7vw,17px);max-width:64ch}
+  .lede b{color:var(--ink);font-weight:600}
+
+  section{margin-top:40px}
+  h2{font-family:var(--sans);font-size:12px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.13em;color:var(--muted);margin:0 0 14px;
+    display:flex;align-items:baseline;gap:10px}
+  h2 .rule{flex:1;height:1px;background:var(--line);transform:translateY(-3px)}
+
+  /* ---- plot ---- */
+  figure{margin:0;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:18px 16px 12px}
+  .plot{width:100%;height:auto;display:block;overflow:visible}
+  .grid{stroke:var(--line);stroke-width:1}
+  .axis{stroke:var(--line-strong);stroke-width:1.4}
+  .tick{font-family:var(--sans);font-size:11px;fill:var(--faint)}
+  .axttl{font-family:var(--sans);font-size:11.5px;font-weight:600;fill:var(--muted);
+    text-transform:uppercase;letter-spacing:.08em}
+  .ci-ours{stroke:var(--accent);stroke-width:1.4;opacity:.5}
+  .ci-base{stroke:var(--gold);stroke-width:1.4;opacity:.5}
+  .dot-ours{fill:var(--accent);stroke:var(--panel);stroke-width:1.5}
+  .dot-base{fill:var(--gold);stroke:var(--panel);stroke-width:1.5}
+  .lbl{font-family:var(--sans);font-size:11.5px;font-weight:600;fill:var(--ink)}
+  .lbl-sub{font-family:var(--sans);font-size:10px;fill:var(--faint);
+    font-variant-numeric:tabular-nums}
+  .legend{display:flex;gap:22px;flex-wrap:wrap;margin:12px 4px 2px;
+    font-family:var(--sans);font-size:12px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .swatch{width:11px;height:11px;border-radius:50%}
+  .swatch.o{background:var(--accent)} .swatch.b{background:var(--gold)}
+  .swatch.ci{width:16px;height:0;border-top:2px solid var(--faint);border-radius:0}
+
+  /* ---- tables ---- */
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+  table{border-collapse:collapse;width:100%;min-width:640px}
+  caption{caption-side:bottom;text-align:left;font-family:var(--sans);font-size:12px;
+    color:var(--faint);padding:10px 14px 0}
+  th,td{padding:11px 14px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{font-family:var(--sans);font-size:10.5px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.07em;color:var(--muted);background:var(--panel-2);
+    position:sticky;top:0}
+  thead th:first-child,tbody td:first-child{text-align:left}
+  tbody tr:last-child td{border-bottom:none}
+  tbody td.model{font-family:var(--serif);font-size:15.5px;font-weight:600}
+  .ci{display:block;font-family:var(--sans);font-size:10.5px;color:var(--faint);
+    font-variant-numeric:tabular-nums;margin-top:1px}
+  td.lead{color:var(--best);font-weight:700}
+  td.lead .ci{color:var(--best);opacity:.75}
+  .chip{font-family:var(--sans);font-size:10px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.05em;padding:2px 7px;border-radius:20px;vertical-align:middle;margin-left:8px}
+  .chip.ours{color:var(--accent);background:var(--accent-soft)}
+  .chip.base{color:var(--gold);background:var(--gold-soft)}
+  .arch{display:block;font-family:var(--sans);font-size:11px;color:var(--muted);
+    font-weight:400;margin-top:2px}
+
+  .notes{margin-top:34px;font-size:14px;color:var(--muted);border-top:1px solid var(--line);
+    padding-top:18px}
+  .notes p{margin:0 0 9px;max-width:74ch}
+  .notes b{color:var(--ink);font-weight:600}
+  .notes .k{font-family:var(--sans);font-size:12.5px}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">AlbucE · Old Occitan medical manuscript · HTR benchmark</p>
+    <h1>Model results on the held-out validation set</h1>
+    <p class="lede">Six line recognisers scored on the <b>300-line validation set</b> (299 lines
+      with predictions). Confidence intervals are 95% paired bootstrap (10 000×). The character-accuracy
+      leader and the word-accuracy leader are <b>not the same model</b>.</p>
+  </header>
+
+  <section>
+    <h2>Accuracy trade-off <span class="rule"></span></h2>
+    <figure>
+      <svg id="plot" class="plot" viewBox="0 0 680 430" role="img"
+           aria-label="Scatter of character accuracy versus word accuracy with 95% confidence-interval bars for six models."></svg>
+      <div class="legend">
+        <span><span class="swatch o"></span> This thesis</span>
+        <span><span class="swatch b"></span> Baseline</span>
+        <span><span class="swatch ci"></span> 95% CI (char × word)</span>
+      </div>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Corpus-level <span class="rule"></span></h2>
+    <div class="scroll">
+      <table id="corpus">
+        <thead><tr>
+          <th>Model</th><th>CER</th><th>char-acc</th><th>WER</th><th>word-acc</th><th>Size</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="num" style="font-family:var(--sans);font-size:12px;color:var(--faint);margin:10px 2px 0">
+      char-acc = 1 − CER · word-acc = 1 − WER · both corpus-aggregated (Σ edits ⁄ Σ reference).
+      Leader per column shown in <span style="color:var(--best);font-weight:700">gold</span>.</p>
+  </section>
+
+  <section>
+    <h2>Per-line median <span class="rule"></span></h2>
+    <div class="scroll">
+      <table id="median">
+        <thead><tr>
+          <th>Model</th><th>median CER</th><th>median char-acc</th><th>median WER</th><th>median word-acc</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="notes">
+    <p><b>kraken CTC + LM</b> leads on character accuracy (0.9744) and CER; the per-position
+      char-LM rescorer fixes minim substitutions on top of the CTC model.</p>
+    <p><b>Catmus</b>, the frozen off-the-shelf CATMuS-medieval baseline, leads on word accuracy
+      (0.8566) and WER (0.1434) — it makes the fewest whole-word errors, even though its character
+      accuracy sits mid-field.</p>
+    <p><b>Medusa</b>, a 9-billion-parameter vision-language model, is last on every metric — the
+      4-million-parameter kraken pipeline is both more accurate and ~2000× smaller.</p>
+    <p class="k">Validation = 300 held-out line crops of the AlbucE manuscript. All figures on the
+      diplomatic (base-letter) transcription. Catmus and Medusa are scored on the full-page eval
+      (their fair protocol); the fine-tuned kraken and TrOCR models on the native line-crop eval.</p>
+  </div>
+</div>
+
+<script>
+const MODELS=[
+ {n:"kraken · CTC + LM",g:"ours",arch:"CTC + char-n-gram LM",cer:.0256,char:.9744,cLo:.9707,cHi:.9780,wer:.1627,word:.8373,wLo:.8143,wHi:.8597,mcer:.0238,mchar:.9762,mwer:.1250,mword:.8750,size:"4.08 M · 16 MB",lp:"E"},
+ {n:"kraken · CTC",g:"ours",arch:"CTC (VGSL CRNN)",cer:.0290,char:.9710,cLo:.9670,cHi:.9749,wer:.1798,word:.8202,wLo:.7962,wHi:.8441,mcer:.0250,mchar:.9750,mwer:.1250,mword:.8750,size:"4.08 M · 16 MB",lp:"S"},
+ {n:"TrOCR · light-aug",g:"ours",arch:"ViT + RoBERTa",cer:.0383,char:.9617,cLo:.9573,cHi:.9660,wer:.2174,word:.7826,wLo:.7590,wHi:.8059,mcer:.0278,mchar:.9722,mwer:.1818,mword:.8182,size:"282.6 M · 1.1 GB",lp:"E"},
+ {n:"Catmus",g:"base",arch:"Kraken CTC, frozen",cer:.0387,char:.9613,cLo:.9562,cHi:.9663,wer:.1434,word:.8566,wLo:.8389,wHi:.8738,mcer:.0278,mchar:.9722,mwer:.1250,mword:.8750,size:"4.08 M · 16 MB",lp:"W"},
+ {n:"TrOCR · med4k",g:"ours",arch:"ViT + RoBERTa",cer:.0452,char:.9548,cLo:.9496,cHi:.9596,wer:.2293,word:.7707,wLo:.7462,wHi:.7938,mcer:.0286,mchar:.9714,mwer:.1667,mword:.8333,size:"282.6 M · 1.1 GB",lp:"SW"},
+ {n:"Medusa",g:"base",arch:"Qwen-VL, 9 B",cer:.0490,char:.9510,cLo:.9459,cHi:.9558,wer:.3106,word:.6894,wLo:.6593,wHi:.7191,mcer:.0435,mchar:.9565,mwer:.2857,mword:.7143,size:"9 B · ~18 GB",lp:"S"},
+];
+const pct=x=>(x*100).toFixed(2)+"%", f4=x=>x.toFixed(4);
+
+/* ---------- scatter ---------- */
+(function(){
+  const W=680,H=430,m={l:64,r:150,t:18,b:52};
+  const xd=[.945,.977], yd=[.665,.875];          // char (x), word (y)
+  const X=v=>m.l+(v-xd[0])/(xd[1]-xd[0])*(W-m.l-m.r);
+  const Y=v=>H-m.b-(v-yd[0])/(yd[1]-yd[0])*(H-m.t-m.b);
+  const NS="http://www.w3.org/2000/svg";
+  const el=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e};
+  const svg=document.getElementById("plot");
+  const xt=[.95,.955,.96,.965,.97,.975], yt=[.70,.75,.80,.85];
+  yt.forEach(t=>{svg.append(el("line",{class:"grid",x1:m.l,x2:W-m.r,y1:Y(t),y2:Y(t)}));
+    const g=el("text",{class:"tick",x:m.l-10,y:Y(t)+4,"text-anchor":"end"});g.textContent=(t*100).toFixed(0)+"%";svg.append(g);});
+  xt.forEach(t=>{svg.append(el("line",{class:"grid",x1:X(t),x2:X(t),y1:m.t,y2:H-m.b}));
+    const g=el("text",{class:"tick",x:X(t),y:H-m.b+18,"text-anchor":"middle"});g.textContent=(t*100).toFixed(1);svg.append(g);});
+  svg.append(el("line",{class:"axis",x1:m.l,x2:W-m.r,y1:H-m.b,y2:H-m.b}));
+  svg.append(el("line",{class:"axis",x1:m.l,x2:m.l,y1:m.t,y2:H-m.b}));
+  const ax=el("text",{class:"axttl",x:(m.l+W-m.r)/2,y:H-10,"text-anchor":"middle"});ax.textContent="Character accuracy (%)";svg.append(ax);
+  const ay=el("text",{class:"axttl",transform:`rotate(-90 16 ${(m.t+H-m.b)/2})`,x:16,y:(m.t+H-m.b)/2,"text-anchor":"middle"});ay.textContent="Word accuracy (%)";svg.append(ay);
+  // label offsets so the 6 points don't collide (dx,dy from dot; anchor)
+  const off={"kraken · CTC + LM":[10,-14,"start"],"kraken · CTC":[10,16,"start"],
+    "TrOCR · light-aug":[10,-8,"start"],"Catmus":[-10,-13,"end"],
+    "TrOCR · med4k":[10,4,"start"],"Medusa":[10,4,"start"]};
+  MODELS.forEach(d=>{
+    const cls=d.g==="ours"?"ours":"base", x=X(d.char),y=Y(d.word);
+    svg.append(el("line",{class:"ci-"+cls,x1:X(d.cLo),x2:X(d.cHi),y1:y,y2:y}));
+    svg.append(el("line",{class:"ci-"+cls,x1:x,x2:x,y1:Y(d.wLo),y2:Y(d.wHi)}));
+    svg.append(el("circle",{class:"dot-"+cls,cx:x,cy:y,r:6}));
+    const o=off[d.n], tx=x+o[0], ty=y+o[1];
+    const t=el("text",{class:"lbl",x:tx,y:ty,"text-anchor":o[2]});t.textContent=d.n.replace(" · ","  ");svg.append(t);
+    const s=el("text",{class:"lbl-sub",x:tx,y:ty+12,"text-anchor":o[2]});
+    s.textContent=pct(d.char)+" · "+pct(d.word);svg.append(s);
+  });
+})();
+
+/* ---------- tables ---------- */
+function chip(g){return g==="ours"?'<span class="chip ours">this thesis</span>':'<span class="chip base">baseline</span>'}
+function row(cells){return "<tr>"+cells.map(c=>`<td class="${c.cls||''}">${c.h}</td>`).join("")+"</tr>"}
+// corpus
+document.querySelector("#corpus tbody").innerHTML = MODELS.map(d=>row([
+  {h:`<span class="model" style="font-family:var(--serif)">${d.n}</span>${chip(d.g)}<span class="arch">${d.arch}</span>`,cls:"model"},
+  {h:`<span class="num">${f4(d.cer)}</span>`, cls:""},
+  {h:`<span class="num">${pct(d.char)}</span><span class="ci">[${pct(d.cLo)}, ${pct(d.cHi)}]</span>`, cls:d.char===.9744?"lead":""},
+  {h:`<span class="num">${f4(d.wer)}</span>`, cls:d.wer===.1434?"lead":""},
+  {h:`<span class="num">${pct(d.word)}</span><span class="ci">[${pct(d.wLo)}, ${pct(d.wHi)}]</span>`, cls:d.word===.8566?"lead":""},
+  {h:`<span class="num" style="color:var(--muted)">${d.size}</span>`},
+])).join("");
+// mark CER leader properly (kraken+LM 0.0256)
+document.querySelectorAll("#corpus tbody tr").forEach((tr,i)=>{ if(MODELS[i].cer===.0256) tr.children[1].classList.add("lead"); });
+// median
+const bMcer=Math.min(...MODELS.map(d=>d.mcer)), bMwer=Math.min(...MODELS.map(d=>d.mwer));
+const bMchar=Math.max(...MODELS.map(d=>d.mchar)), bMword=Math.max(...MODELS.map(d=>d.mword));
+document.querySelector("#median tbody").innerHTML = MODELS.map(d=>row([
+  {h:`<span style="font-family:var(--serif);font-weight:600">${d.n}</span>`,cls:"model"},
+  {h:`<span class="num">${f4(d.mcer)}</span>`,cls:d.mcer===bMcer?"lead":""},
+  {h:`<span class="num">${pct(d.mchar)}</span>`,cls:d.mchar===bMchar?"lead":""},
+  {h:`<span class="num">${f4(d.mwer)}</span>`,cls:d.mwer===bMwer?"lead":""},
+  {h:`<span class="num">${pct(d.mword)}</span>`,cls:d.mword===bMword?"lead":""},
+])).join("");
+</script>
