@@ -5493,6 +5493,33 @@ over-confident errors **46%→32%** with **AUROC flat at 0.956** and accuracy un
 figures + `worst_lines_*.md` + `per_line_*.csv` in `tests/ocr/evaluations/longtail_confidence/`; log
 `logs/analysis/longtail_confidence_20260828.log`.
 
+*Why kraken's reported conf is a bad signal (mechanism, verified):* `net.predict → codec.decode →
+greedy_decoder` computes the per-char confidence via `outputs[mask]` (mask = one-hot of the per-frame
+argmax); **boolean-mask indexing flattens in class-major order, not frame order**, so the confidences
+are **misaligned from their frames** and collapse toward ~1.0 (verified: char `n` at frame 17 reports
+1.000 while `om[:,17].max()`=0.826). The genuine confidence is the softmax posterior at the char's
+peak frame.
+
+**Hard-case feature analysis — what's hard, and for which model (2026-08-28).** Characterised the four
+funnel groups (hard-for-BOTH / kraken-only / TrOCR-only / neither) by line features (image size, text
+length, ink-bleed §6.5.8, minim + abbreviation density; `scripts/ocr/hard_case_features.py`):
+
+| group (n) | ink-bleed | minim | abbrev |
+|---|---|---|---|
+| BOTH-hard (11) | 0.35 | 1.45 | 0.64 |
+| kraken-only (19) | **0.33** | 0.84 | 0.11 |
+| TrOCR-only (19) | 0.23 | **1.21** | **0.53** |
+| neither (250) | 0.24 | 0.85 | 0.08 |
+
+**Complementary weaknesses:** **kraken (CTC) is hurt more by *physical degradation*** — its own-hard
+lines are ink-bled (0.33) but content-simple (bleed↔CER ρ=0.21 > TrOCR 0.17); **TrOCR (seq2seq) is hurt
+more by *content ambiguity*** — its own-hard lines are physically clean but minim/abbrev-dense
+(minim↔CER ρ=0.19 > kraken 0.14). BOTH-hard = both problems. **Image size and line length do NOT
+predict error** (ρ≈0). → a per-line **router** is plausible: ink-bled lines → TrOCR, minim/abbrev-dense
+lines → kraken (correlations modest ~0.13–0.21, so a tendency, but the group structure is consistent).
+Artefacts `tests/ocr/evaluations/longtail_confidence/hard_case_features.{png,csv}`. *(TrOCR here is the
+0.9549 med4k model; re-run on the exact 0.9617 light-aug pending a cluster pull.)*
+
 **LM rescoring — transferring the honest λ to the 600-leader (2026-08-15).** The honest
 λ\*=0.8 was tuned on the *weaker* ViT-500's clean dev; the deployable best ViT is the
 600-data `mixed_med4k_fixed` (0.9546/0.7705 baseline). Applying the **pre-committed λ=0.8**
