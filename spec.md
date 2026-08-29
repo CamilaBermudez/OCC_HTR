@@ -5562,6 +5562,16 @@ comparison must be on one calibrated scale). Artefacts
 `tests/ocr/evaluations/longtail_confidence/hard_case_features.{png,csv}`; head-to-head calibration
 `tests/ocr/evaluations/confidence_analysis/confidence_calibration.png`.
 
+**Metric convention — CER/WER clipped at 1 (2026-08-29, project-wide).** Per-line CER/WER are now
+upper-bounded at 1 (edit distance clipped at the reference length), so a line that *over-produces*
+(hyp longer than ref, edit > ref-len) counts as at most 100% wrong and char/word **accuracy stays in
+[0, 1]** (never negative). Applied in the canonical `src/ocr/evaluate_ocr.py` + `trocr_finetune.py`
+`compute_metrics` and every analysis/rescoring corpus function (`confidence_*`, `*_router`,
+`ensemble_oracle`, `kraken_lm_*`, `trocr_lm_rescore`, `dump_kraken_rescored`, …). **Impact: character
+accuracy is unchanged** (no 300-val line over-produces enough for char-CER>1); **word accuracy rises
+~+0.001** (a few lines over-produce *words*, WER>1→1) — hence the word column here is +0.001 vs earlier
+prints. All char-based conclusions are unaffected.
+
 **Confidence-gated router — BUILT and MEASURED (2026-08-29). Result: NEGATIVE.** Fit per-model
 isotonic calibrators (raw per-line mean-conf → predicted line accuracy) on the **600 dev**, routed the
 **full 300-val** to the higher *calibrated* predicted-accuracy model; kraken branch emits the deployed
@@ -5570,11 +5580,11 @@ calibrators on `router_dev600/`). The kraken side raw→rescored reproduces exac
 
 | strategy (300-val) | char | word | →TrOCR | Δchar vs deployed |
 |---|---|---|---|---|
-| all kraken+LM (deployed) | 0.9743 | 0.8367 | — | — |
-| all TrOCR 0.9617 | 0.9608 | 0.7798 | — | −1.35 |
+| all kraken+LM (deployed) | 0.9743 | 0.8376 | — | — |
+| all TrOCR 0.9617 | 0.9607 | 0.7807 | — | −1.35 |
 | **ORACLE** (kraken+LM vs TrOCR) | **0.9802** | **0.8707** | 46 | **+0.59** |
-| naive max mean-conf | 0.9728 | 0.8318 | 160 | −0.15 |
-| **router: calibrated conf (argmax)** | 0.9732 | 0.8333 | 126 | **−0.11** |
+| naive max mean-conf | 0.9728 | 0.8328 | 160 | −0.15 |
+| **router: calibrated conf (argmax)** | 0.9732 | 0.8352 | 126 | **−0.11** |
 | router + bleed prior (β≥0.01) | ≤0.9731 | — | ~127 | ≤−0.12 |
 
 **The router does not beat deploying the stronger model everywhere.** Calibration *helps* over naive

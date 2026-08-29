@@ -60,7 +60,7 @@ def analyse(name: str, preds: dict[str, tuple[str, list[float]]], gts: dict[str,
             cc.append(0 if is_err else 1)
             cf.append(cnf)
         lc.append(float(np.mean(confs)))
-        lcer.append(Levenshtein.distance(pred, gt) / max(1, len(gt)))
+        lcer.append(min(1.0, Levenshtein.distance(pred, gt) / max(1, len(gt))))
     cc, cf = np.array(cc), np.array(cf)
     auroc = roc_auc_score(1 - cc, 1 - cf) if cc.min() != cc.max() else float("nan")
     e, conf_bins, acc_bins = ece(cf, cc)

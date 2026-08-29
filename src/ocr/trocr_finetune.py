@@ -602,12 +602,16 @@ def _compute_metrics_factory(tokenizer):
                 # do the same so the metric isn't dominated by pathological
                 # empty-label rows.
                 continue
-            total_char_dist += Levenshtein.distance(p, g)
-            total_chars += len(g)
             p_toks = p.split()
             g_toks = g.split()
-            total_word_dist += Levenshtein.distance(p_toks, g_toks)
-            total_words += len(g_toks) if g_toks else 1
+            nc = len(g)
+            nw = len(g_toks) if g_toks else 1
+            # clip per line: a line is at most 100% wrong, so over-production can't push the
+            # edit distance past the reference length (keeps CER/WER<=1, accuracy>=0).
+            total_char_dist += min(Levenshtein.distance(p, g), nc)
+            total_chars += nc
+            total_word_dist += min(Levenshtein.distance(p_toks, g_toks), nw)
+            total_words += nw
 
         cer = total_char_dist / total_chars if total_chars else 0.0
         wer = total_word_dist / total_words if total_words else 0.0

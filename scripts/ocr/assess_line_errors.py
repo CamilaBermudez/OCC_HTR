@@ -40,7 +40,7 @@ _FOLD = str.maketrans({"v": "u", "j": "i", "ſ": "s", "ꝛ": "r"})
 def raw_cer(ref: str, hyp: str) -> float:
     if not ref:
         return 0.0 if not hyp else 1.0
-    return Levenshtein.distance(ref, hyp) / len(ref)
+    return min(1.0, Levenshtein.distance(ref, hyp) / len(ref))
 
 
 def folded_cer(ref: str, hyp: str) -> float:
@@ -48,7 +48,7 @@ def folded_cer(ref: str, hyp: str) -> float:
     fr, fh = _fold(ref), _fold(hyp)
     if not fr:
         return 0.0 if not fh else 1.0
-    return Levenshtein.distance(fr, fh) / len(fr)
+    return min(1.0, Levenshtein.distance(fr, fh) / len(fr))
 
 
 def has_abbrev_mark(text: str) -> bool:

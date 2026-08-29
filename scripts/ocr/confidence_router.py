@@ -40,10 +40,12 @@ def corpus(rows):
     """rows = list of (pred, gt) -> (char_acc, word_acc)."""
     cd = cn = wd = wn = 0
     for pred, gt in rows:
-        cd += Levenshtein.distance(pred, gt)
-        cn += max(1, len(gt))
-        wd += Levenshtein.distance(pred.split(), gt.split())
-        wn += max(1, len(gt.split()))
+        nc, nw = max(1, len(gt)), max(1, len(gt.split()))
+        # clip per line: over-production can't push a line past 100% wrong (CER/WER<=1, acc>=0)
+        cd += min(Levenshtein.distance(pred, gt), nc)
+        cn += nc
+        wd += min(Levenshtein.distance(pred.split(), gt.split()), nw)
+        wn += nw
     return 1 - cd / cn, 1 - wd / wn
 
 

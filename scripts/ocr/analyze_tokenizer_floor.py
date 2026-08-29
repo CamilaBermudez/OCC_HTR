@@ -50,7 +50,7 @@ def round_trip(tokenizer, text: str, skip_special: bool) -> str:
 def cer(ref: str, hyp: str) -> float:
     if not ref:
         return 0.0
-    return rapidfuzz.distance.Levenshtein.distance(ref, hyp) / len(ref)
+    return min(1.0, rapidfuzz.distance.Levenshtein.distance(ref, hyp) / len(ref))
 
 
 def analyze(name: str, model_id: str, gts: list[tuple[str, str]]) -> None:

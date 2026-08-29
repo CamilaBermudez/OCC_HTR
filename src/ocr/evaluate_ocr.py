@@ -126,6 +126,10 @@ def eval_one_model(
         hyp = normalise(pred_path.read_text(encoding="utf-8"))
         ec, nc = char_error(ref, hyp)
         ew, nw = word_error(ref, hyp)
+        # Clip the edit distance at the reference length: a line can be at most 100% wrong, so
+        # over-production (hyp longer than ref, edit > ref-len) can't push CER/WER above 1 nor
+        # accuracy below 0. edit_chars/edit_words keep the raw distance for diagnostics.
+        ec_c, ew_c = min(ec, nc), min(ew, nw)
         per_line.append(
             LineEval(
                 stem=stem,
@@ -134,14 +138,14 @@ def eval_one_model(
                 n_words_ref=nw,
                 edit_chars=ec,
                 edit_words=ew,
-                cer=ec / nc if nc else 0.0,
-                wer=ew / nw if nw else 0.0,
+                cer=ec_c / nc if nc else 0.0,
+                wer=ew_c / nw if nw else 0.0,
             )
         )
         total_chars_ref += nc
         total_words_ref += nw
-        total_edit_chars += ec
-        total_edit_words += ew
+        total_edit_chars += ec_c
+        total_edit_words += ew_c
 
     agg = {
         "model": model_name,

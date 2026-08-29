@@ -32,10 +32,12 @@ def acc(net, ts, l2c, crops, lm, lam, beam, topk):
         except Exception:
             continue
         pred = rescore(cands, lm, lam, beam, topk)
-        cd += Levenshtein.distance(pred, gt)
-        cn += len(gt)
-        wd += Levenshtein.distance(pred.split(), gt.split())
-        wn += max(1, len(gt.split()))
+        nc, nw = max(1, len(gt)), max(1, len(gt.split()))
+        # clip per line: over-production can't push CER/WER above 1 (accuracy below 0)
+        cd += min(Levenshtein.distance(pred, gt), nc)
+        cn += nc
+        wd += min(Levenshtein.distance(pred.split(), gt.split()), nw)
+        wn += nw
     return 1 - cd / cn, 1 - wd / wn
 
 

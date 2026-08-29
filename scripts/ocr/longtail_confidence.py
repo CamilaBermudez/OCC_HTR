@@ -44,7 +44,8 @@ def collect(preds, gts):
     lines = []
     for stem, gt in gts.items():
         pred, confs = preds.get(stem, ("", []))
-        cer = Levenshtein.distance(pred, gt) / max(1, len(gt))
+        # clip at 1: over-production (pred longer than gt) can't make a line >100% wrong
+        cer = min(1.0, Levenshtein.distance(pred, gt) / max(1, len(gt)))
         ok = pred != "" and len(confs) == len(pred)
         err = label_errors(pred, gt) if ok else []
         lines.append(

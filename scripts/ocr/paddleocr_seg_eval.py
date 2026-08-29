@@ -62,7 +62,7 @@ def match_paddle(our, boxes):
 
 
 def cer(ref, hyp):
-    return Levenshtein.distance(ref, hyp) / max(1, len(ref))
+    return min(1.0, Levenshtein.distance(ref, hyp) / max(1, len(ref)))
 
 
 def first_word(s):

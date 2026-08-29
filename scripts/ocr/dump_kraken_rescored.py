@@ -71,9 +71,10 @@ def main() -> None:
         raw = rescore(cands, None, 0.0, a.beam, a.topk)
         resc = rescore(cands, lm, a.lam, a.beam, a.topk)
         rows.append((crop.stem, raw, resc, gt))
-        craw += Levenshtein.distance(raw, gt)
-        crescore += Levenshtein.distance(resc, gt)
-        cn += len(gt)
+        nc = max(1, len(gt))  # clip per line so over-production can't push CER>1
+        craw += min(Levenshtein.distance(raw, gt), nc)
+        crescore += min(Levenshtein.distance(resc, gt), nc)
+        cn += nc
 
     with open(a.out, "w", newline="", encoding="utf-8") as f:
         wr = csv.writer(f)

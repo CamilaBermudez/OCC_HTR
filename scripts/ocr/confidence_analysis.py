@@ -143,7 +143,8 @@ def analyse(name, preds, gts):
             cc.append(0 if is_err else 1)
             cf.append(cnf)
         lc.append(float(np.mean(confs)))
-        lcer.append(Levenshtein.distance(pred, gt) / max(1, len(gt)))
+        # clip at 1: over-production (pred longer than gt) can't make a line >100% wrong
+        lcer.append(min(1.0, Levenshtein.distance(pred, gt) / max(1, len(gt))))
     cc, cf = np.array(cc), np.array(cf)
     err_lab = 1 - cc  # 1 = error
     auroc = roc_auc_score(err_lab, 1 - cf) if err_lab.min() != err_lab.max() else float("nan")

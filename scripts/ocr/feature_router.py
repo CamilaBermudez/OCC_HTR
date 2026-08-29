@@ -83,10 +83,12 @@ def build(per_k, per_t, resc, bleed, crops):
 def corpus(pairs):
     cd = cn = wd = wn = 0
     for p, g in pairs:
-        cd += Levenshtein.distance(p, g)
-        cn += max(1, len(g))
-        wd += Levenshtein.distance(p.split(), g.split())
-        wn += max(1, len(g.split()))
+        nc, nw = max(1, len(g)), max(1, len(g.split()))
+        # clip per line: over-production can't push a line past 100% wrong (CER/WER<=1, acc>=0)
+        cd += min(Levenshtein.distance(p, g), nc)
+        cn += nc
+        wd += min(Levenshtein.distance(p.split(), g.split()), nw)
+        wn += nw
     return 1 - cd / cn, 1 - wd / wn
 
 
