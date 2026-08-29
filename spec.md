@@ -5538,6 +5538,34 @@ comparison must be on one calibrated scale). Artefacts
 `tests/ocr/evaluations/longtail_confidence/hard_case_features.{png,csv}`; head-to-head calibration
 `tests/ocr/evaluations/confidence_analysis/confidence_calibration.png`.
 
+**Confidence-gated router — BUILT and MEASURED (2026-08-29). Result: NEGATIVE.** Fit per-model
+isotonic calibrators (raw per-line mean-conf → predicted line accuracy) on the **600 dev**, routed the
+**full 300-val** to the higher *calibrated* predicted-accuracy model; kraken branch emits the deployed
+LM-rescored text (0.9743) so the fight is fair (`scripts/ocr/{confidence_router,dump_kraken_rescored}.py`,
+calibrators on `router_dev600/`). The kraken side raw→rescored reproduces exactly (0.9708→**0.9743**).
+
+| strategy (300-val) | char | word | →TrOCR | Δchar vs deployed |
+|---|---|---|---|---|
+| all kraken+LM (deployed) | 0.9743 | 0.8367 | — | — |
+| all TrOCR 0.9617 | 0.9608 | 0.7798 | — | −1.35 |
+| **ORACLE** (kraken+LM vs TrOCR) | **0.9802** | **0.8707** | 46 | **+0.59** |
+| naive max mean-conf | 0.9728 | 0.8318 | 160 | −0.15 |
+| **router: calibrated conf (argmax)** | 0.9732 | 0.8333 | 126 | **−0.11** |
+| router + bleed prior (β≥0.01) | ≤0.9731 | — | ~127 | ≤−0.12 |
+
+**The router does not beat deploying the stronger model everywhere.** Calibration *helps* over naive
+(oracle-pick agreement 57%→63%, 0.9728→0.9732) but the honest argmax router (0.9732) still **loses** to
+0.9743 (paired bootstrap **Δ−0.11pp, 95% CI [−0.37,+0.17] — spans 0**). A margin threshold τ can nudge
++0.05pp (0.9747, routing 49) up to +0.07pp (0.9750, routing 3) **but τ is picked on the test set and the
+gain is not significant** (τ=0.02: Δ+0.045pp [−0.15,+0.25]). The **bleed prior adds nothing** (redundant
+with confidence; val-only, run-normalised → noisy). Root cause, one number: calibrated confidence
+identifies the winning model **63%** of the time — *below the trivial "always-kraken" base rate of 85%*.
+**Verdict: the complementarity is real (oracle +0.59pp char / +3.4pp word) but NOT exploitable by
+confidence-based routing** — the models know *that* they're uncertain (good calibration) but their
+confidences don't rank *which model wins a given line* well enough to beat the strong default. One swing
+taken, clean negative; not pursuing a learned router (marginal char gain sits inside bootstrap noise).
+Log `logs/analysis/longtail_confidence_20260828.log`.
+
 **LM rescoring — transferring the honest λ to the 600-leader (2026-08-15).** The honest
 λ\*=0.8 was tuned on the *weaker* ViT-500's clean dev; the deployable best ViT is the
 600-data `mixed_med4k_fixed` (0.9546/0.7705 baseline). Applying the **pre-committed λ=0.8**

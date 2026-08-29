@@ -1,0 +1,601 @@
+stem,cer,mean_conf,min_conf,n_err,overconf_err,tail,gt,pred
+05_garde_001_line_0,0.0000,0.9981,0.9574,0,0,0,yssi comensan las paraulas de,yssi comensan las paraulas de
+05_garde_001_line_25,0.0000,0.9875,0.8693,0,0,0,sa delu. elart. ¶ E es uist ami que,sa delu. elart. ¶ E es uist ami que
+05_garde_001_line_56,0.0000,0.9935,0.8915,0,0,0,sciencia. e ses experiment. quar yeu ui,sciencia. e ses experiment. quar yeu ui
+05_garde_001_line_63,0.0270,0.9645,0.5074,1,0,0,ra una peyra dun home lequal auia pro,ra una peyra din home lequal auia pro
+05_garde_001_line_66,0.0000,0.9680,0.3147,0,0,0,tros dela uesiqua perque aquel home ⁊,tros dela uesiqua perque aquel home ⁊
+05_garde_001_line_70,0.0000,0.9735,0.7240,0,0,0,conogui sobre lu que morira. ¶E,conogui sobre lu que morira. ¶E
+06_f_001v_002_line_115,0.0270,0.9810,0.5332,1,0,0,de lu alunhat. e fort leu fa uenir en,de lu alunhat. e fort leu sa uenir en
+06_f_001v_002_line_127,0.0000,0.9941,0.8469,0,0,0,cio delu enles cors. edela sieua expul,cio delu enles cors. edela sieua expul
+06_f_001v_002_line_131,0.0606,0.9614,0.6012,2,0,0,E sapiatz filh que els se desacor,E sapiatz si h que els se desacor
+06_f_001v_002_line_134,0.5000,0.5566,0.4861,1,0,1,de,dx
+06_f_001v_002_line_159,0.0000,0.9782,0.5694,0,0,0,del sieu senhor. ¶ E es possible que,del sieu senhor. ¶ E es possible que
+06_f_001v_002_line_22,0.0000,0.9881,0.6336,0,0,0,ala uostra gloria. epus aut enle mõ,ala uostra gloria. epus aut enle mõ
+06_f_001v_002_line_80,0.0000,0.9969,0.9794,0,0,0,e secca am aquo que es caut. e sec,e secca am aquo que es caut. e sec
+06_f_001v_002_line_89,0.0000,0.9859,0.6453,0,0,0,de aquel que espetiment aquo ia a,de aquel que espetiment aquo ia a
+06_f_001v_002_line_91,0.0000,0.9989,0.9912,0,0,0,empero no coue que nengua sobre,empero no coue que nengua sobre
+07_f_002v_003_line_105,0.0000,0.9993,0.9920,0,0,0,cauteri entro que la codena en partida,cauteri entro que la codena en partida
+07_f_002v_003_line_110,0.0000,0.9869,0.6854,0,0,0,es apelat uas. e es aquel loc enle qual,es apelat uas. e es aquel loc enle qual
+07_f_002v_003_line_178,0.0588,0.9732,0.4278,1,0,0,Capitol quart de cauterizacio demi,apitol quare de cauterizacio demi
+07_f_002v_003_line_188,0.0857,0.9594,0.5496,3,0,1,cauteri am medicina. o del cauterit,cauteri am medicina. o del cauterl ⁊
+07_f_002v_003_line_22,0.0000,0.9968,0.9561,0,0,0,e apoplexcio. e semblantz en aquelas,e apoplexcio. e semblantz en aquelas
+07_f_002v_003_line_36,0.2571,0.9045,0.4498,1,0,1,tre les huels sieus mays empero cum,tre les huels sieusasio cum
+07_f_002v_003_line_49,0.2000,0.9403,0.4464,1,0,1,la tua aa. esino torno la tua ma am,la tus eno torno la tua ma am
+07_f_002v_003_line_56,0.0488,0.9838,0.6408,1,1,0,e leyssa aquel sobre lu entro que sia des,⁊ leyssa aquel sbre lu entro que sia des
+07_f_002v_003_line_7,0.0250,0.9810,0.6924,1,1,0,tols. et he ordenat aquels del cap entro,tols. et he ordenat aquels del cap entio
+07_f_002v_003_line_86,0.0526,0.9512,0.5186,2,0,0,cauteri primieyra es mays salua. e mil,cauteri primieyra es ⁊ays saluia. e mil
+08_f_003v_004_line_103,0.0303,0.9933,0.9586,0,0,0,Capitol .uiii. de cauterizacio de,Capitol .uiii. decauterizacio de
+08_f_003v_004_line_139,0.0500,0.9666,0.5059,2,0,0,les corns del cap. e am cauteri sobre la,les coriis del cap. e am cauteri sobre la
+08_f_003v_004_line_162,0.0286,0.9748,0.6877,1,0,0,uel mondifican deuant a quo permotz,uel mondifican deuant a quo per motz
+08_f_003v_004_line_177,0.0345,0.9790,0.4370,0,0,0,sb̃til segon aquesta manieyra,sbtil segon aquesta manieyra
+08_f_003v_004_line_36,0.0541,0.9783,0.5380,2,0,0,es remauguda la dolor. lahoras Igueys,es remanguda la dolor. lahoras igueys
+08_f_003v_004_line_48,0.0588,0.9774,0.8092,2,1,0,entro que sian sanatz. Capitol.ui.,entro que sian saratz. Capitol .ui.
+08_f_003v_004_line_50,0.0769,0.9493,0.4276,2,0,0,Urtura laqual es curada. e,Ertura laqual es curada. Ee
+08_f_003v_004_line_57,0.0278,0.9877,0.7730,0,0,0,cauterizacio de laspecia que en deue,cauterizacio delaspecia que en deue
+08_f_003v_004_line_9,0.0000,0.9963,0.9338,0,0,0,espasme. e si es sobre la custodia. e cau,espasme. e si es sobre la custodia. e cau
+09_f_004v_005_line_116,0.0000,0.9971,0.9512,0,0,0,Eaprop cauteriza sobre la figura la,Eaprop cauteriza sobre la figura la
+09_f_004v_005_line_123,0.0270,0.9852,0.4845,1,0,0,pebre del huel Ia esser contrayta els,pebre del huel ia esser contrayta els
+09_f_004v_005_line_133,0.0769,0.9862,0.7368,1,1,0,cauteri sobre aquel tot ayssi cum auias,cauteri sobre aquel tot ayssi cum ama
+09_f_004v_005_line_148,0.0270,0.9914,0.8130,1,0,0,ditat. eaprop expandeys de aquo sobre,ditat. e aprop expandeys de aquo sobre
+09_f_004v_005_line_157,0.0000,0.9974,0.9633,0,0,0,la medicina. quar mordicacio es en lu,la medicina. quar mordicacio es en lu
+09_f_004v_005_line_160,0.0294,0.9946,0.9214,1,1,0,leyssa la medicina. emau aquela am,leyssa la medicina. e mau aquela am
+09_f_004v_005_line_174,0.0000,0.9956,0.8658,0,0,0,aprop cura aquel am enguent de afi,aprop cura aquel am enguent de afi
+09_f_004v_005_line_175,0.0789,0.9691,0.3239,2,1,0,niton. o am autre entro que sia sanat.,niton. Oam autre entro que sia sauat.
+09_f_004v_005_line_29,0.0000,0.9941,0.8586,0,0,0,incideys am cauteri totas las uenas. e,incideys am cauteri totas las uenas. e
+09_f_004v_005_line_57,0.1316,0.9201,0.2410,4,0,1,addicio lahoras cauteriza aquel en tot,addicio lahoras cati eolza aquel en tot
+09_f_004v_005_line_73,0.0571,0.9842,0.6851,1,0,0,Capitol.xu. de cauteri de mollifica,apitol .xu. de cauteri de mollifica
+09_f_004v_005_line_80,0.0000,0.9992,0.9947,0,0,0,Esi uos cauteriza aquel sobre les dos,Esi uos cauteriza aquel sobre les dos
+10_f_005v_006_line_0,0.0000,0.9906,0.8370,0,0,0,studi en aquesta art Capitol .xuii.,studi en aquesta art Capitol .xuii.
+10_f_005v_006_line_124,0.0588,0.9941,0.8424,1,0,0,gon que uols. eaprop le malaute hu,gon que uols. e aprople malaute hu
+10_f_005v_006_line_14,0.0294,0.9915,0.8868,1,0,0,de huou. oen mutellage deptilli so,de huou. o en mutellage deptilli so
+10_f_005v_006_line_148,0.1429,0.9617,0.6154,4,3,1,la deut e si uoys submergeys lana o,la deut. esi uoys subiuergeys lana. o
+10_f_005v_006_line_152,0.0606,0.9782,0.5308,2,0,0,alpreon dela concauitat dela dent,al preon dela concauitat dela dent.
+10_f_005v_006_line_176,0.0270,0.9698,0.6009,0,0,0,leugerament la horas tu igneys le cau,leugerament lahoras tu igneys le cau
+10_f_005v_006_line_184,0.0811,0.9689,0.5299,3,0,1,tema. esi la postema es pauca lahoras,temia. esi la postenia es pauca lahoras
+10_f_005v_006_line_19,0.0294,0.9822,0.5250,1,0,0,extremitat am laqual es fayta lo ⁊,extremitat am laqual es fayta lo E
+10_f_005v_006_line_32,0.0000,0.9851,0.8634,0,0,0,que no erre la tua ma o le malaute si,que no erre la tua ma o le malaute si
+10_f_005v_006_line_53,0.0000,0.9971,0.9438,0,0,0,E fon en en aquela la quantitat de,E fon en en aquela la quantitat de
+10_f_005v_006_line_79,0.0294,0.9881,0.6837,1,1,0,E sia la conquauitat delu segon la,E sia la conquanitat delu segon la
+11_f_006v_007_line_112,0.0000,0.9970,0.9200,0,0,0,sia un cauteri segon la forma de cercle,sia un cauteri segon la forma de cercle
+11_f_006v_007_line_121,0.0270,0.9745,0.4783,0,0,0,Capitol .xxuii. de cauterizacio del ⁊,apitol .xxuii. de cauterizacio del ⁊
+11_f_006v_007_line_18,0.0286,0.9860,0.7691,1,0,0,un pauc. e cauteriza aquel am autra,un paue. e cauteriza aquel am autra
+11_f_006v_007_line_185,0.0000,0.9892,0.7639,0,0,0,de medicina es prolonguat. e enlas,de medicina es prolonguat. e enlas
+11_f_006v_007_line_37,0.0500,0.9979,0.9507,1,1,0,ta la forma del qual precedeys enla põc,ta la forma del qual precedeys enla poe
+11_f_006v_007_line_68,0.0811,0.9584,0.4362,3,0,1,E aprop cauteriza la codena entro que,E aprop cauteriza la code ia encro que
+11_f_006v_007_line_94,0.1000,0.9467,0.3678,4,1,1,le malaute sia sobre le sieu dos ressupi,le unralaute ssa sobre le sieu dos ressupi
+12_f_007v_008_line_109,0.0541,0.9972,0.9621,1,1,0,les pes sobre ledos delpe aquo que es,les pes sobre ledos dape aquo que es
+12_f_007v_008_line_119,0.0000,0.9836,0.8205,0,0,0,teri segon la longunt dela coyssa .i. de,teri segon la longunt dela coyssa .i. de
+12_f_007v_008_line_121,0.0263,0.9949,0.9406,0,0,0,la coyssa. e sobre quascuna coyssa dos,la coyssa. e sobre quascua coyssa dos
+12_f_007v_008_line_171,0.1176,0.9594,0.5091,4,1,1,cura lu entro que sia sanat:. Capi,cura lu entio que sta sanat : Capi
+12_f_007v_008_line_173,0.0870,0.9728,0.6688,2,1,1,aprop la abscizio delor,auroy la abscizio delor
+12_f_007v_008_line_2,0.0270,0.9933,0.8132,1,0,0,per un cauteri en aquel loc lequal es,per on cauteri en aquel loc lequal es
+12_f_007v_008_line_36,0.0286,0.9991,0.9789,0,0,0,curacio lahoras cauteri en lu es se,curacio lahoras cauteri enlu es se
+12_f_007v_008_line_49,0.0811,0.9745,0.5208,3,2,1,ele malaute sia eues sobre losieu dos,ele iualaute sia eues sobre lo sieu dos
+13_f_008v_009_line_111,0.0357,0.9770,0.6077,1,0,0,ditat. e sia le spazi lequal,ditat. e sia le spazi le qual
+13_f_008v_009_line_120,0.0000,0.9970,0.9224,0,0,0,cio dela dislocacio delanqua. laqual,cio dela dislocacio delanqua. laqual
+13_f_008v_009_line_142,0.0323,0.9782,0.7280,1,0,0,am un cauteri cutellar. ¶ Eguar,am un cauteri cutellar. ¶ ¶Eguar
+13_f_008v_009_line_145,0.0769,0.9803,0.6762,2,1,0,ras nerui. o gran arceria. e que peraqͦ,ras nermi. egran arceria. e que peraqͦ
+13_f_008v_009_line_154,0.1538,0.9157,0.3462,4,1,1,aquo la mort. esi ladolor es en dos par,aquo la morti. ei la dolor Es endos yar
+13_f_008v_009_line_186,0.0263,0.9902,0.6890,1,0,0,teris alu qui los sufferta et atroba a,teris alu qui les sufferta et atroba a
+13_f_008v_009_line_197,0.0000,0.9993,0.9842,0,0,0,guan se entrolor segon aquesta forma.,guan se entrolor segon aquesta forma.
+13_f_008v_009_line_23,0.0870,0.9923,0.9122,1,1,1,Uan enles ronhos ronhos,Uan enles rouhosronhos
+13_f_008v_009_line_33,0.0714,0.9702,0.7784,2,0,0,deriers en Iuuament: Capitol,deriers en iuuament: ¶apitol
+13_f_008v_009_line_9,0.0256,0.9836,0.6687,1,0,0,uesica. o alcors del budel lahoras guar,uesica. o alcors del budel lahoras quar
+13_f_008v_009_line_90,0.0714,0.9760,0.5729,3,2,0,ꝑitol .xli. de cauterizacio dela uena scia,ꝑitol .xli. de canterizacio dela uena stra
+14_f_009v_010_line_102,0.0513,0.9834,0.7176,1,1,0,has segon la latitut delu pusque senhas,has segon la latitut delu pusque seuha
+14_f_009v_010_line_111,0.0857,0.9742,0.7162,2,1,1,Capitol.xliii. de cauterizacio alco,¶apitol .xliii. de cauterizacio alc
+14_f_009v_010_line_12,0.0000,0.9982,0.9707,0,0,0,sia la negror dela adhustio remangu,sia la negror dela adhustio remangu
+14_f_009v_010_line_138,0.0385,0.9974,0.9516,0,0,0,Uan dolor de iuncturas son,an dolor de iuncturas son
+14_f_009v_010_line_140,0.0938,0.9761,0.4922,3,2,1,quals so en fundutz aquascun mem,quals so en fundutz aquascun miena
+14_f_009v_010_line_167,0.0000,0.9852,0.7423,0,0,0,uem dit enle sieu capitol. ¶ E si,uem dit enle sieu capitol. ¶ E si
+14_f_009v_010_line_179,0.0263,0.9767,0.5969,1,0,0,laute debon regiment. e de receptio de,laute debon regiment. e de recepcio de
+14_f_009v_010_line_30,0.0588,0.9883,0.6775,2,1,0,ola autra ola enveyriada. egete so,ola autra ola en ueyriada. egete so
+15_f_010v_011_line_0,0.0769,0.9442,0.3244,3,0,0,que tengua le sieu ale entro que sia fo,que traegua le sieu ale entro que sia fo
+15_f_010v_011_line_122,0.0000,0.9924,0.7947,0,0,0,del dos. e am un gran sobre les spondils,del dos. e am un gran sobre les spondils
+15_f_010v_011_line_136,0.0476,0.9708,0.5422,2,0,0,sobre leos del pentenilh. e am autre sobre,sobre le os del pentenilh. e am autre sobxe
+15_f_010v_011_line_149,0.0526,0.9818,0.7262,1,1,0,Capitol.xluiii. de cauterizacio de stu,apitol .xluiii. de cauterizacio de stu
+15_f_010v_011_line_16,0.0263,0.9770,0.4790,1,1,0,sus las cambas delu. e autre sus le pi,sus las camibas delu. e autre sus le pi
+15_f_010v_011_line_166,0.0294,0.9865,0.6117,1,0,0,enla anotomia dels membre. e dela.,enla anotomia dels menbre. e dela.
+15_f_010v_011_line_168,0.0303,0.9875,0.6716,0,0,0,Capitol .xlix. de cauterizacio de,apitol .xlix. de cauterizacio de
+15_f_010v_011_line_171,0.0000,0.9989,0.9904,0,0,0,comfereys alu alcu dels enguẽtz,comfereys alu alcu dels enguẽtz
+15_f_010v_011_line_173,0.0571,0.9808,0.7437,2,0,0,aquela am cauter preon unpauc segõ,la quela am cauter preon unpauc segõ
+15_f_010v_011_line_180,0.0526,0.9939,0.9243,2,2,0,ba. e am sanc de yronda da cascuna sia,ba. e aui sanc de yronda da cascuna sia
+15_f_010v_011_line_190,0.0286,0.9902,0.8257,1,1,0,rier cauteri enle mieg loc mays ami,rier cauteri enle mieg los mays ami
+15_f_010v_011_line_46,0.1081,0.8954,0.4194,3,0,1,uar aprop .xl. dias la hora aministra,uar a prop .xl. dias la hora amiistie
+16_f_011v_012_line_115,0.0556,0.9866,0.6279,2,1,0,sa.e festina la sanetatdela malautia,sa. e festina la sanetat dela malautia
+16_f_011v_012_line_134,0.0323,0.9661,0.5404,1,0,0,fleubotomia. Capiol.Lxi. de cau,fleubotomia. Capibl.Lxi. de cau
+16_f_011v_012_line_161,0.0000,0.9954,0.8759,0,0,0,teri coytadament dels cauteris les q̈ls,teri coytadament dels cauteris les q̈ls
+16_f_011v_012_line_178,0.0000,0.9849,0.5092,0,0,0,medicinas delas quals la uertut es,medicinas delas quals la uertut es
+16_f_011v_012_line_27,0.0000,0.9963,0.9604,0,0,0,ambulant enle membre,ambulant enle membre
+16_f_011v_012_line_55,0.0323,0.9870,0.8021,1,0,0,delu auras endegencia: Capitol.,delu auras endegencia: ¶apitol.
+16_f_011v_012_line_57,0.0000,0.9970,0.9750,0,0,0,autres semblants,autres semblants
+16_f_011v_012_line_62,0.0811,0.9932,0.8664,1,0,1,e cauteri en aquels es segon dos mani,e cauteri en aquels es segondos mam
+16_f_011v_012_line_71,0.0541,0.9859,0.7738,2,1,0,ma amle cauteri enle circuit del clau,ma auile cauteri enle circuit del clau
+16_f_011v_012_line_86,0.1143,0.9690,0.6949,4,2,1,una quannula de eram. o deferr. ode,una quanmlla de eram. ⁊ deferr. o de
+17_f_012v_013_line_108,0.0345,0.9867,0.7820,1,1,0,es spremuda quan tu compremes,es spremuda quan cu compremes
+17_f_012v_013_line_159,0.0513,0.9798,0.6397,2,1,0,ment entro al os. e sia aquo perla lati,uient entro al os. e sia aquo perla lati
+17_f_012v_013_line_163,0.0000,0.9983,0.9817,0,0,0,gitut dela inscizio cays dos ditz aiustatz,gitut dela inscizio cays dos ditz aiustatz
+17_f_012v_013_line_183,0.0556,0.9721,0.5960,1,0,0,tro que sia sanat.: Capitol .iii. de,tro que sia sanat. ¶apitol .iii. de
+17_f_012v_013_line_26,0.1081,0.9638,0.5068,4,1,1,euacuacio laqual es am sanc am le q̃l,euacuacio la qual es am sanc aui le q̈l
+17_f_012v_013_line_36,0.0000,0.9849,0.5543,0,0,0,ueguadas cazodeues uos manieyras,ueguadas cazodeues uos manieyras
+17_f_012v_013_line_6,0.1000,0.9680,0.5067,2,1,1,Ia hauem dit eule pͥ,ia hauem dit enle pͥ
+17_f_012v_013_line_91,0.0270,0.9616,0.6060,1,0,0,tat. o es ageguada entre la codena el,tat. o es ag guada entre la codena el
+17_f_012v_013_line_94,0.1765,0.9812,0.8649,3,2,1,humiditats entre la codena el os e,humduat Entre la codena el os E
+18_f_013v_014_line_113,0.0000,0.9943,0.8696,0,0,0,cuna inscizio la quantitat de tres,cuna inscizio la quantitat de tres
+18_f_013v_014_line_121,0.1389,0.9692,0.6603,5,1,1,ala segonda inscizio. exxcoria amaqł,ala segouda inscizio. eexcoria auiaql
+18_f_013v_014_line_23,0.0000,0.9953,0.8479,0,0,0,ria es gran lahoras coue que tulies,ria es gran lahoras coue que tulies
+18_f_013v_014_line_30,0.0000,0.9791,0.7579,0,0,0,e fay aquo en aquela hora. o aprop z,e fay aquo en aquela hora. o aprop z
+18_f_013v_014_line_49,0.0000,0.9924,0.7728,0,0,0,tu te coyta a restrenger aquel sanc,tu te coyta a restrenger aquel sanc
+18_f_013v_014_line_71,0.0541,0.9951,0.8811,2,2,0,e pus leugiera. esia lespazi lequales,e pus leugiera. e sia lespazi lequal es
+18_f_013v_014_line_8,0.0000,0.9991,0.9950,0,0,0,am facilitat entro que peruenguas a,am facilitat entro que peruenguas a
+18_f_013v_014_line_81,0.0000,0.9976,0.9563,0,0,0,Capitol quart dela cura de cors de,Capitol quart dela cura de cors de
+18_f_013v_014_line_93,0.0278,0.9969,0.9347,1,1,0,conodutz.elas palpebras so scalfadas,conodutz. elas palpebras so scalfadas
+19_f_014v_015_line_1,0.1000,0.9639,0.5472,2,1,1,catz enlas aurelhas.,catr eulas aurelhas.
+19_f_014v_015_line_102,0.0938,0.9711,0.7024,2,1,1,getada ¶ E ia laygua sira foroge,getada ¶ EIa laygua sira foro ge
+19_f_014v_015_line_126,0.0000,0.9984,0.9814,0,0,0,curacio. lahoras coue quetu reguar,curacio. lahoras coue quetu reguar
+19_f_014v_015_line_50,0.0256,0.9869,0.7160,0,0,0,trauc dela aurelha am facilitat. e a'pp,trauc dela aurelha am facilitat. e app
+19_f_014v_015_line_53,0.0000,0.9995,0.9916,0,0,0,las causas las quals hauem reconta,las causas las quals hauem reconta
+19_f_014v_015_line_61,0.0588,0.9659,0.6079,2,0,0,cezer entre las tuas mas. e conuer,cezer entre las turas mas. e couuer
+19_f_014v_015_line_71,0.0000,0.9968,0.9662,0,0,0,que sia sanat. E si la causa cazent en,que sia sanat. E si la causa cazent en
+19_f_014v_015_line_9,0.0000,0.9774,0.6618,0,0,0,alcunabestia. ¶ E donc quan pey,alcunabestia. ¶ E donc quan pey
+20_f_015v_016_line_175,0.0263,0.9966,0.9400,1,1,0,pebra.e fay penetrar la agulha am fiel,pebra. e fay penetrar la agulha am fiel
+20_f_015v_016_line_185,0.0000,0.9929,0.9423,0,0,0,petitz de coto. o de drap. e aprop senha so,petitz de coto. o de drap. e aprop senha so
+20_f_015v_016_line_49,0.0256,0.9608,0.4641,1,0,0,si dolor am flux de sanc ueno lahoras ⁊,si dolor am flux de sanc ueno lahoras z
+20_f_015v_016_line_65,0.0000,0.9981,0.9763,0,0,0,pelada. e es agreguacio de humiditat,pelada. e es agreguacio de humiditat
+20_f_015v_016_line_67,0.0000,0.9996,0.9929,0,0,0,la opperacio enlor es que consideras la,la opperacio enlor es que consideras la
+21_f_016v_017_line_109,0.0278,0.9843,0.5364,1,0,0,tu eleua aquel. Capitol.xiii. delacu,cu eleua aquel. Capitol.xiii. delacu
+21_f_016v_017_line_116,0.0000,0.9649,0.5275,0,0,0,o de cauteri. e es apelada leporina. e,o de cauteri. e es apelada leporina. e
+21_f_016v_017_line_26,0.0000,0.9962,0.8863,0,0,0,tat. e aprop am aquels eleua la tua ma,tat. e aprop am aquels eleua la tua ma
+21_f_016v_017_line_69,0.0741,0.9829,0.8025,1,0,0,uan son pels nonatu es dur.,an son pels no natu es dur.
+21_f_016v_017_line_92,0.1143,0.9796,0.6249,4,2,1,ties. euo mays eaprop tura la tuama,tres. eno mays eaprop tira la tua ma
+22_f_017v_018_line_108,0.0000,0.9921,0.8858,0,0,0,Capitol .xuii. de inscizio de alguazar de,Capitol .xuii. de inscizio de alguazar de
+22_f_017v_018_line_166,0.0278,0.9913,0.8256,1,0,0,prop suspen aquelas uenas am un onci,prop suspen aquelas uenas am uni onci
+22_f_017v_018_line_173,0.0000,0.9986,0.9570,0,0,0,E aprop sian colligidas aquelas ue,E aprop sian colligidas aquelas ue
+22_f_017v_018_line_192,0.0270,0.9742,0.3023,1,0,0,apostema caut. e aprop itera sobre lu,apostema caut. e aprop atera sobre lu
+22_f_017v_018_line_52,0.0000,0.9975,0.9337,0,0,0,fiel la ungla e exten aquela alas parti,fiel la ungla e exten aquela alas parti
+22_f_017v_018_line_72,0.0000,0.9839,0.5873,0,0,0,getan enle huel un pauc de sal trissa.,getan enle huel un pauc de sal trissa.
+22_f_017v_018_line_81,0.0000,0.9938,0.8522,0,0,0,sanada ayssi cum yeu e recomtat en,sanada ayssi cum yeu e recomtat en
+22_f_017v_018_line_93,0.0000,0.9990,0.9810,0,0,0,ra sobre aquela la operacio entro que,ra sobre aquela la operacio entro que
+23_f_018v_019_line_105,0.0588,0.9781,0.6203,1,0,0,una. ¶ E aprop cura le huel am aqͦ,Cuna. ¶  aprop cura le huel am aqͦ
+23_f_018v_019_line_111,0.0000,0.9988,0.9860,0,0,0,al preon del huel. e corra la humiditat,al preon del huel. e corra la humiditat
+23_f_018v_019_line_12,0.0000,0.9734,0.5393,0,0,0,donc cum es descubert le os. e uezes enlu,donc cum es descubert le os. e uezes enlu
+23_f_018v_019_line_142,0.0286,0.9789,0.6233,1,0,0,entro que sia sanat. Capitol.xxiii.,entro que sia sanat. Capitol .xxiii.
+23_f_018v_019_line_144,0.0714,0.9995,0.9963,0,0,0,l hauem dit las specias dela,hauem dit las specias dela
+23_f_018v_019_line_160,0.0000,0.9977,0.9366,0,0,0,pausa la extremitat de almagda prop de,pausa la extremitat de almagda prop de
+23_f_018v_019_line_191,0.0000,0.9949,0.8826,0,0,0,nos e aquels que so de nostre temps pau,nos e aquels que so de nostre temps pau
+23_f_018v_019_line_64,0.0000,0.9979,0.9694,0,0,0,emplaustre sobre le huel am motz pol,emplaustre sobre le huel am motz pol
+23_f_018v_019_line_73,0.0000,0.9981,0.9798,0,0,0,am succio ses scarificacio. e aprop osta,am succio ses scarificacio. e aprop osta
+24_f_019v_020_line_121,0.0000,0.9880,0.8336,0,0,0,cus iorns entro que sia sanat. mays,cus iorns entro que sia sanat. mays
+24_f_019v_020_line_169,0.0250,0.9799,0.5611,1,0,0,lahoras euacua le malaute. e inscideys a,lahoras e uacua le malaute. e inscideys a
+24_f_019v_020_line_181,0.0789,0.9875,0.5648,3,2,0,plagua fresca amle sieu sanc. elahoras,plagua fresca auile sieu sanc. e lahoras
+24_f_019v_020_line_59,0.0000,0.9955,0.9316,0,0,0,es asemblansa de aquel peys represen,es asemblansa de aquel peys represen
+24_f_019v_020_line_63,0.0000,0.9965,0.9163,0,0,0,la que es en aquestas carns leon no,la que es en aquestas carns leon no
+24_f_019v_020_line_64,0.0571,0.9773,0.6046,1,1,0,fraudulenta nicancroza coue que fas,fraudulenta incancroza coue que fas
+24_f_019v_020_line_77,0.0000,0.9980,0.9682,0,0,0,entro que delu no romangua dengu,entro que delu no romangua dengu
+25_f_020v_021_line_111,0.0000,0.9989,0.9867,0,0,0,ray subtil perso que no sia trinquada ⁊,ray subtil perso que no sia trinquada ⁊
+25_f_020v_021_line_125,0.0000,0.9996,0.9935,0,0,0,das fan uenir sobre les homes malau,das fan uenir sobre les homes malau
+25_f_020v_021_line_146,0.0238,0.9954,0.9289,1,1,0,de breus extramitatz. esian faytas de ferr,de breus extramitatz. e sian faytas de ferr
+25_f_020v_021_line_160,0.0000,0.9991,0.9892,0,0,0,roman alcuna causa lahoras coue,roman alcuna causa lahoras coue
+25_f_020v_021_line_22,0.0000,0.9891,0.8338,0,0,0,sanat Capitol .xxuiii. de inscizio dela,sanat Capitol .xxuiii. de inscizio dela
+25_f_020v_021_line_45,0.0250,0.9935,0.7881,1,0,0,douc coue que tu fassas sezer le malaute,donc coue que tu fassas sezer le malaute
+25_f_020v_021_line_84,0.0278,0.9956,0.9370,1,1,0,no cessa entro que la dent malauta.e,no cessa entro que la dent malauta. e
+26_f_021v_022_line_156,0.0244,0.9808,0.5591,1,0,0,ria. euengua flux de sanc. e aprop sia la,ria. e uengua flux de sanc. e aprop sia la
+26_f_021v_022_line_47,0.0238,0.9932,0.8937,1,0,0,entro que sia sanat Capitol.xxxii. dela cu,entro que sia sanat Capitol .xxxii. dela cu
+26_f_021v_022_line_49,0.0714,0.9764,0.5670,2,1,0,uan las dentz so eminentz no,Uan las deutz so eminentz no
+26_f_021v_022_line_65,0.0000,0.9992,0.9879,0,0,0,sia comanguda autra delas dentz ¶E,sia comanguda autra delas dentz ¶E
+26_f_021v_022_line_7,0.0000,0.9993,0.9931,0,0,0,la forma del segon instrument es que,la forma del segon instrument es que
+26_f_021v_022_line_72,0.0541,0.9832,0.5734,2,2,0,cum lima amla qual son faytas agulhas,cum luna amla qual son faytas agulhas
+26_f_021v_022_line_81,0.0000,0.9975,0.9366,0,0,0,aquela fraccio sia ostada. e engualha,aquela fraccio sia ostada. e engualha
+27_f_022v_023_line_102,0.1111,0.9804,0.7031,4,3,1,a prop mi. Capitolxxxuii. deinscizio,a prop mi. Capitol .xxxuii. de iuscizio
+27_f_022v_023_line_119,0.0690,0.9786,0.8195,2,1,0,malaute. ¶E quantu uezes aque,malaute. ¶ E quan tu uezes aque
+27_f_022v_023_line_13,0.0000,0.9941,0.8891,0,0,0,deysso de foras. e so nompnadas doas,deysso de foras. e so nompnadas doas
+27_f_022v_023_line_142,0.0000,0.9999,0.9986,0,0,0,laygua laqual hauem dita enle capitol,laygua laqual hauem dita enle capitol
+27_f_022v_023_line_185,0.0833,0.9632,0.5362,1,0,1,manieyra. R/ calament. ysop. origua.,maneyra. E calament. ysop. origua.
+27_f_022v_023_line_56,0.0000,0.9972,0.9423,0,0,0,esia agut dela una part no agut de lau,esia agut dela una part no agut de lau
+27_f_022v_023_line_66,0.0000,0.9748,0.4953,0,0,0,aquel entro que sia sanat. ¶ E alcu,aquel entro que sia sanat. ¶ E alcu
+27_f_022v_023_line_72,0.0000,0.9933,0.7866,0,0,0,apostema le qual erat nat enle golayro,apostema le qual erat nat enle golayro
+27_f_022v_023_line_82,0.0000,0.9914,0.7814,0,0,0,donc yeu me cuytegui fisturalment,donc yeu me cuytegui fisturalment
+27_f_022v_023_line_9,0.0526,0.9832,0.6538,2,0,0,enle golayro. e delasautras apostemas.,enle golayro. e delas autras apostemias.
+28_f_023v_024_line_126,0.0000,0.9942,0.8616,0,0,0,no leyssa. Capitol .xl. enlequal es la,no leyssa. Capitol .xl. enlequal es la
+28_f_023v_024_line_128,0.0000,0.9996,0.9967,0,0,0,Es apostemas so motas speci,Es apostemas so motas speci
+28_f_023v_024_line_146,0.0250,0.9918,0.7536,1,0,0,delor so autras apostemas les quals coue,de lor so autras apostemas les quals coue
+28_f_023v_024_line_174,0.0000,0.9812,0.2761,0,0,0,foracio cazer enle loc pus deios dela pos,foracio cazer enle loc pus deios dela pos
+28_f_023v_024_line_38,0.0909,0.9683,0.5628,2,0,1,elia aquela fortment aquela am fi,⁊elia aquela fortmnent aquela amfi
+28_f_023v_024_line_40,0.0270,0.9961,0.8914,0,0,0,la. quar cum perue alloc en lequal so,la. quar cum perue alloc enlequal so
+28_f_023v_024_line_46,0.0667,0.9562,0.5316,2,0,0,ment len tratz. ¶Mays si no so,ment len tratz. ¶ Ways si no so
+28_f_023v_024_line_87,0.1081,0.9919,0.8389,4,4,1,ga.e obra la boca delu en aquela. ela,ga. e obra la lira delu en aquela. ela
+28_f_023v_024_line_93,0.0571,0.9828,0.7006,2,1,0,foro getada am aquo que hauem recom,foro getada aml aquo que hauem recon
+28_f_023v_024_line_94,0.0000,0.9922,0.8385,0,0,0,tat lahoras sub fumigua le malaute a,tat lahoras sub fumigua le malaute a
+29_f_024v_025_line_113,0.0000,0.9983,0.9669,0,0,0,la plagua. e layssa aquel entro ad autra,la plagua. e layssa aquel entro ad autra
+29_f_024v_025_line_119,0.0000,0.9849,0.4458,0,0,0,ia romas alcuna causa de aquela pellicu,ia romas alcuna causa de aquela pellicu
+29_f_024v_025_line_157,0.0541,0.9756,0.6290,1,0,0,Capitol.xlii. de seccio de strophulas,apitol .xlii. de seccio de strophulas
+29_f_024v_025_line_18,0.0000,0.9991,0.9860,0,0,0,mays aquel alqual no es cap ayssi ayssi,mays aquel alqual no es cap ayssi ayssi
+29_f_024v_025_line_5,0.0000,0.9848,0.5607,0,0,0,sitat dela grandesa dels apostemas ¶E,sitat dela grandesa dels apostemas ¶E
+29_f_024v_025_line_71,0.0000,0.9986,0.9874,0,0,0,e oli e tot aquo sia freg entro que sia le,e oli e tot aquo sia freg entro que sia le
+29_f_024v_025_line_8,0.0000,0.9993,0.9793,0,0,0,encidida quan es fayta ayssi quo pan,encidida quan es fayta ayssi quo pan
+29_f_024v_025_line_84,0.0000,0.9949,0.9122,0,0,0,cap petitz apostemas. e so de pe,cap petitz apostemas. e so de pe
+30_f_025v_026_line_108,0.0256,0.9816,0.5641,1,0,0,que enla seccio del epilhot noha temor.,que enla seccio del epillot noha temor.
+30_f_025v_026_line_113,0.0357,0.9989,0.9926,1,1,0,hernia del golayro es aposte,heruia del golayro es aposte
+30_f_025v_026_line_132,0.0513,0.9905,0.8330,2,0,0,cura le loc am aquo que coue de curacio,cura le loc am aquo que cone de curatio
+30_f_025v_026_line_133,0.0278,0.9898,0.7191,1,0,0,entro que sia sanat. Capitol.xlu. de,entro que sia sanat. Capitol .xlu. de
+30_f_025v_026_line_134,0.1333,0.9793,0.5004,2,1,1,seccio delas specias de nodes:,Esegio delas specias de nodes
+30_f_025v_026_line_135,0.0000,0.9979,0.9651,0,0,0,Els nodes so motas specias. e,Els nodes so motas specias. e
+30_f_025v_026_line_136,0.0294,0.9881,0.7140,1,0,0,yeu ia he dit totas las specias de,reu ia he dit totas las specias de
+30_f_025v_026_line_173,0.0263,0.9943,0.8467,1,0,0,temas. esi del uestigi del intromes no,temas. e si del uestigi del intromes no
+30_f_025v_026_line_195,0.0270,0.9938,0.8243,1,0,0,caut. ecura aquel delautra curacio en,caut. e cura aquel delautra curacio en
+30_f_025v_026_line_2,0.0571,0.9890,0.6558,2,1,0,indit sies romas alcuna causa delas,Indit si es romas alcuna causa delas
+30_f_025v_026_line_34,0.0789,0.9763,0.5948,2,1,0,tro que sia sanada. Capitol. xliii. de,tro que sia sanada. ¶apitol .xliii. de
+30_f_025v_026_line_68,0.0000,0.9980,0.9601,0,0,0,ma lequal es de aquela eyssit am aquo,ma lequal es de aquela eyssit am aquo
+30_f_025v_026_line_78,0.0294,0.9934,0.8147,1,0,0,del sermo lequal hauem recomtat ex,del sermo le qual hauem recomtat ex
+31_f_026v_027_line_101,0.0571,0.9771,0.3721,2,1,0,forma de m̃gda migier. migier forma,forma de uigda migier. migier forma
+31_f_026v_027_line_113,0.0000,0.9978,0.9659,0,0,0,gier. e pauc. e aquestas so las formas de a,gier. e pauc. e aquestas so las formas de a
+31_f_026v_027_line_127,0.0238,0.9884,0.7016,1,0,0,ses. ayssi cum enles lacretis delas cambas,ses. ayssi cum enles lacretis delas camibas
+31_f_026v_027_line_150,0.0857,0.9570,0.3212,2,1,1,am seccio lumau segon aquesta forma,am seccis luan segon aquesta forma
+31_f_026v_027_line_66,0.0556,0.9819,0.6357,0,0,0,¶ Forma de unci orp gran. gran forma,Forma de unci orp gran. gran forma
+32_f_027v_028_line_0,0.0000,0.9969,0.9476,0,0,0,uempla la plagua de medicament en car,uempla la plagua de medicament en car
+32_f_027v_028_line_113,0.0000,0.9938,0.8450,0,0,0,delu es liat. eaprop pausa sobre lu puluil,delu es liat. eaprop pausa sobre lu puluil
+32_f_027v_028_line_116,0.0000,0.9957,0.8620,0,0,0,fayta am calguas. e enguentz entro que,fayta am calguas. e enguentz entro que
+32_f_027v_028_line_118,0.0556,0.9929,0.8959,1,1,0,qual accideys per torcio deneruis mi,qual agideys per torcio deneruis mi
+32_f_027v_028_line_13,0.0000,0.9919,0.8158,0,0,0,la linha de.g. e aprop excoria,la linha de.g. e aprop excoria
+32_f_027v_028_line_151,0.0000,0.9877,0.6530,0,0,0,cors de aquels theils les quals son apelatz,cors de aquels theils les quals son apelatz
+32_f_027v_028_line_16,0.0312,0.9974,0.9418,1,1,0,pingueza.e aministra aquo que ha,pingueza. e aministra aquo que ha
+32_f_027v_028_line_197,0.0250,0.9810,0.6334,1,0,0,de cranc aprop aysso. Capitol.lii. de cu,de cranc aprop aysso. Capitol .lii. de cu
+32_f_027v_028_line_26,0.0000,0.9884,0.7621,0,0,0,aquel entro que sia sanat Capitol,aquel entro que sia sanat Capitol
+32_f_027v_028_line_34,0.0606,0.9589,0.5177,2,0,0,las que conteno humiditatz coue ⁊,las que couteno huuiditatz coue ⁊
+32_f_027v_028_line_43,0.0732,0.9831,0.7517,2,0,0,aquo entro que sia sanat.e si le apostem̃,aquo entro que sia sauat. e si le apostem
+32_f_027v_028_line_92,0.0000,0.9980,0.9709,0,0,0,aquel am enguentz conuenientz ad,aquel am enguentz conuenientz ad
+32_f_027v_028_line_94,0.0270,0.9931,0.8479,1,0,0,apostema per seccio de uena lahoras ⁊,apostema per seccio de uena lahoras e
+32_f_027v_028_line_99,0.0256,0.9714,0.5076,1,0,0,ios la tua ma. e fay aquela penetrar. e,ios la tua ma. e fay aquela ponetrar. e
+33_f_028v_029_line_105,0.0000,0.9941,0.9105,0,0,0,de tota part amla codena sego bona per,de tota part amla codena sego bona per
+33_f_028v_029_line_120,0.0000,0.9996,0.9972,0,0,0,diuisio delas specias de ydro,diuisio delas specias de ydro
+33_f_028v_029_line_132,0.0000,0.9977,0.9729,0,0,0,si almalaute ia es conseguida debelitat,si almalaute ia es conseguida debelitat
+33_f_028v_029_line_15,0.0541,0.9908,0.7544,2,1,0,ditat lahoras es leon. enoes occultat,ditat lahoras es leon. eno es occultat.
+33_f_028v_029_line_155,0.0244,0.9931,0.7755,1,0,0,pici es de pait dels budels. quar lahoras,pici es de part dels budels. quar lahoras
+33_f_028v_029_line_165,0.0250,0.9941,0.8870,1,0,0,bre lequal uoliaser le malaute perque no,bre lequal uol iaser le malaute perque no
+33_f_028v_029_line_171,0.0256,0.9929,0.9136,1,1,0,titat de una ungla. oenuiro. eaprop per,titat de una ungla. o enuiro. eaprop per
+33_f_028v_029_line_7,0.0244,0.9983,0.9614,1,1,0,sies per egressio del budel lahoras le si,si es per egressio del budel lahoras le si
+33_f_028v_029_line_82,0.0000,0.9824,0.4850,0,0,0,e hauem dit cranc engendrat. enla ⁊,e hauem dit cranc engendrat. enla ⁊
+33_f_028v_029_line_92,0.0541,0.9837,0.5895,2,1,0,antiquat. e es gra no coue que te pro,autiquat. e es gya no coue que te pro
+33_f_028v_029_line_95,0.0000,0.9898,0.6688,0,0,0,sia peruengut ad aquo. ¶ Ela opera,sia peruengut ad aquo. ¶ Ela opera
+34_f_029v_030_line_107,0.0286,0.9954,0.8718,0,0,0,da. ¶E si le cap dela uergua es cor,da. ¶Esi le cap dela uergua es cor
+34_f_029v_030_line_109,0.0000,0.9834,0.4958,0,0,0,ras coue que tu intrometas enlo meat,ras coue que tu intrometas enlo meat
+34_f_029v_030_line_126,0.0571,0.9831,0.6519,2,1,0,perla sua subtilitat leugierament.e,perla sua subtilitat leugierament . e
+34_f_029v_030_line_162,0.0278,0.9976,0.9499,1,1,0,eam mundificacio lequal es fayta per,e am mundificacio lequal es fayta per
+34_f_029v_030_line_186,0.0000,0.9989,0.9882,0,0,0,es que tu fassas estar le enfant moior,es que tu fassas estar le enfant moior
+34_f_029v_030_line_188,0.0000,0.9945,0.9192,0,0,0,petit que no fassas sino que tu lies le,petit que no fassas sino que tu lies le
+34_f_029v_030_line_193,0.0263,0.9953,0.8707,1,1,0,sibla de aquo que recep la sua intelli,sibla de aquo que recep la fua intelli
+34_f_029v_030_line_68,0.0256,0.9818,0.6699,1,0,0,dela uergua.e de corropcio enegros. ead,dela uergua. e de corropcio enegros. ead
+34_f_029v_030_line_79,0.1212,0.9285,0.5535,4,1,1,nicon entro que sia sanat. Esi al,initon entio que sia sanat. E si al
+35_f_030v_031_line_136,0.0000,0.9915,0.8168,0,0,0,gua segon que hauem recomtat en la ⁊,gua segon que hauem recomtat en la ⁊
+35_f_030v_031_line_14,0.0250,0.9918,0.8036,0,0,0,ra desus. esobre la poluera pausa drap ⁊,ra desus. esobre la poluera pausa drap⁊
+35_f_030v_031_line_146,0.0263,0.9954,0.8785,1,0,0,uesica de moto. epausa en aquela la hu,uesica de moto. e pausa en aquela la hu
+35_f_030v_031_line_166,0.0000,0.9992,0.9907,0,0,0,ayssi cum has fayt am uesica. e exprescio,ayssi cum has fayt am uesica. e exprescio
+35_f_030v_031_line_2,0.0256,0.9917,0.8309,1,0,0,fla enla codena. etira aquela sus entro,fla enla codena. e tira aquela sus entro
+35_f_030v_031_line_27,0.0263,0.9871,0.5271,1,0,0,error en mundificacio es quar fort leu,error en mundificatio es quar fort leu
+35_f_030v_031_line_57,0.0294,0.9925,0.8107,1,0,0,aquo que hauem dit delas manieyras,aquo que hauem dit delas mamieyras
+35_f_030v_031_line_59,0.0488,0.9938,0.8788,2,2,0,uuda la urina. eueses retentio delu esser,unda la urina. e ueses retentio delu esser
+36_f_031v_032_line_147,0.0000,0.9957,0.9059,0,0,0,tratz aquela. e aprop deslia le liament,tratz aquela. e aprop deslia le liament
+36_f_031v_032_line_16,0.0000,0.9954,0.8873,0,0,0,donc si sentes la peyra enlespazi laho,donc si sentes la peyra enlespazi laho
+36_f_031v_032_line_182,0.0000,0.9613,0.5474,0,0,0,matrona.be. esenhada enle fayt delas,matrona.be. esenhada enle fayt delas
+36_f_031v_032_line_186,0.0588,0.9593,0.5683,2,0,0,tot aquo que tu li mandaras dela ⁊,tot aquo que tu li muandaras deba ⁊
+36_f_031v_032_line_19,0.0000,0.9920,0.8693,0,0,0,ment. lahoras coue que tu untes am,ment. lahoras coue que tu untes am
+36_f_031v_032_line_50,0.0588,0.9951,0.8796,1,0,0,¶Esapias que dela peyra. es alcuna,E sapias que dela peyra. es alcuna
+36_f_031v_032_line_67,0.0000,0.9849,0.5158,0,0,0,e si tu ueus flux de sanc abscindeys en,e si tu ueus flux de sanc abscindeys en
+36_f_031v_032_line_9,0.0263,0.9841,0.6556,1,0,0,alpreon dela uesica. o que saute deloc,al preon dela uesica. o que saute deloc
+37_f_032v_033_line_0,0.0000,0.9971,0.9149,0,0,0,sobre lapeyra pus que pausa la sua ma,sobre lapeyra pus que pausa la sua ma
+37_f_032v_033_line_135,0.0000,0.9854,0.5890,0,0,0,aquo que hauem dit. mays si laygua,aquo que hauem dit. mays si laygua
+37_f_032v_033_line_141,0.0000,0.9745,0.6893,0,0,0,la fay. E aprop tu abstergiys le sanc. e,la fay. E aprop tu abstergiys le sanc. e
+37_f_032v_033_line_18,0.0294,0.9713,0.4721,1,0,0,la. ¶E sapias que las specias de ⁊,la. ¶El sapias que las specias de ⁊
+37_f_032v_033_line_183,0.0571,0.9827,0.7354,1,0,0,cio am seccio. ¶ Mays si atu fa con,cio am seccio. ¶Mays si atu fa cou
+37_f_032v_033_line_191,0.0789,0.9693,0.6059,3,0,0,lahoras administra perforacio segon q̃,iahoras admuinistra per foracio segon q̃
+37_f_032v_033_line_199,0.0000,0.9931,0.7701,0,0,0,e pausa la perforacio segon la longitut del,e pausa la perforacio segon la longitut del
+37_f_032v_033_line_46,0.1071,0.9754,0.5609,3,1,1,agreguacio de himiditat eule,agreguacio de huiiditat enle
+37_f_032v_033_line_86,0.0000,0.9921,0.8159,0,0,0,quan nos uinem ala curacio delu am,quan nos uinem ala curacio delu am
+37_f_032v_033_line_89,0.0476,0.9949,0.9352,2,2,0,es atu possibla. e uezes le cos delu ple.e,es atu possi bla. e uezes le cos delu ple. e
+38_f_033v_034_line_140,0.0000,0.9988,0.9763,0,0,0,del ciphac quar alcomensament fa acci,del ciphac quar alcomensament fa acci
+38_f_033v_034_line_18,0.0857,0.9830,0.7205,3,1,1,segon aquela meteyssa mameyra. quar,segon a quela meteyssa manieyra. quar
+38_f_033v_034_line_189,0.0256,0.9893,0.8301,1,0,0,dissolueys la ad herencia que es detras,disso lueys la ad herencia que es detras
+38_f_033v_034_line_190,0.0000,0.9820,0.5201,0,0,0,am solucio complida. E cerqua am les,am solucio complida. E cerqua am les
+38_f_033v_034_line_194,0.0000,0.9975,0.9165,0,0,0,causa. lahoras tu enpelleys aquel al,causa. lahoras tu enpelleys aquel al
+38_f_033v_034_line_74,0.0000,0.9989,0.9745,0,0,0,quela am lautra curacio entro que,quela am lautra curacio entro que
+38_f_033v_034_line_78,0.0385,0.9896,0.7740,0,0,0,alcuna en uolucio semblant,alcuna enuolucio semblant
+38_f_033v_034_line_95,0.0000,0.9919,0.7957,0,0,0,deys am spatum lat agut per seccio,deys am spatum lat agut per seccio
+39_f_034v_035_line_122,0.0000,0.9733,0.5270,0,0,0,per les iuuamentz nostres per aquelas ⁊,per les iuuamentz nostres per aquelas ⁊
+39_f_034v_035_line_130,0.0556,0.9862,0.7445,2,0,0,cauda entro quels genetius delu sian,canda entro quels genetius delu si an
+39_f_034v_035_line_146,0.0000,0.9971,0.9610,0,0,0,atrissio fort leu layssa alcuna causa dels,atrissio fort leu layssa alcuna causa dels
+39_f_034v_035_line_165,0.0000,0.9959,0.9149,0,0,0,pucii de home edos testicols. ela curacio es,pucii de home edos testicols. ela curacio es
+39_f_034v_035_line_177,0.0000,0.9913,0.8281,0,0,0,Entinge fort leu es aiusta,Entinge fort leu es aiusta
+39_f_034v_035_line_24,0.0278,0.9847,0.5811,1,0,0,le liament le qual havem recomtat. e,le liament le qual hauem recomtat. e
+39_f_034v_035_line_39,0.0256,0.9661,0.5880,1,0,0,curacio delu am ferr. E les pͥmiers diy,curacio delu am feyr. E les pͥmiers diy
+39_f_034v_035_line_50,0.2857,0.9544,0.2430,6,3,1,fayta enles anguonars,fayta enles anguonars saumu
+39_f_034v_035_line_53,0.0250,0.9849,0.6590,1,0,0,hauem dit. e emineys le loc. eno deyssen,hauem dit. e emineys le loc. eno deysseu
+39_f_034v_035_line_64,0.0000,0.9976,0.9642,0,0,0,e emineys. Ela cura delu es am cauteri,e emineys. Ela cura delu es am cauteri
+39_f_034v_035_line_69,0.0244,0.9986,0.9801,1,1,0,laute iagua sobre le sicudos entre las tu,laute iagua sobre le sieudos entre las tu
+39_f_034v_035_line_7,0.0286,0.9839,0.6444,1,0,0,aquelas am liament uement entro que,aquelas au liament uement entro que
+40_f_035v_036_line_0,0.0000,0.9973,0.9644,0,0,0,o enle preon dela mayre. o enles costatz,o enle preon dela mayre. o enles costatz
+40_f_035v_036_line_114,0.0541,0.9907,0.7086,2,2,0,ment es aguda am percussio. e flecma.,ment es aguda am percussio. e fleciua.
+40_f_035v_036_line_16,0.0256,0.9911,0.6985,1,0,0,dudas. e aprop exten las doas labias am,dudas. e aprop exten las doas labras am
+40_f_035v_036_line_21,0.0500,0.9677,0.3680,2,0,0,so quel loc inscis no sia consolidat. mu,so quel loc in scis no sia consolidat. mur
+40_f_035v_036_line_56,0.0000,0.9992,0.9836,0,0,0,he dit enla diuisio las specias de aque,he dit enla diuisio las specias de aque
+40_f_035v_036_line_69,0.0606,0.9887,0.7174,2,2,0,deys aquelas amlas razitz.e aprop,deys aquelas amilas razitz. e aprop
+40_f_035v_036_line_76,0.0250,0.9850,0.5749,1,0,0,seuera le fluxs delsanc. lahoras fay aq̃,seuera le fluxs delsanc. lahoras fay a q̃
+41_f_036v_037_line_139,0.0270,0.9964,0.9250,1,1,0,fora natura. eno uino e conte aquelas,fora natura. e no uino e conte aquelas
+41_f_036v_037_line_199,0.0000,0.9978,0.9764,0,0,0,si le deysendiment es sobre les pes delu,si le deysendiment es sobre les pes delu
+41_f_036v_037_line_43,0.0526,0.9864,0.7596,2,1,0,ex tornudar am condizi. quar sira foro,ex tormidar am condizi. quar sira foro
+41_f_036v_037_line_48,0.0250,0.9828,0.6880,1,0,0,aquel sira lahoras foro getat am leugier,aquel sura lahoras foro getat am leugier
+41_f_036v_037_line_66,0.0000,0.9957,0.9469,0,0,0,sira tantost fora getat Eyssiment del,sira tantost fora getat Eyssiment del
+41_f_036v_037_line_69,0.0000,0.9975,0.9479,0,0,0,Uan le fet eyssira segon aquesta,Uan le fet eyssira segon aquesta
+41_f_036v_037_line_73,0.0714,0.9884,0.6959,2,0,0,sieu col.eles pes delu pengo en ios. eaque,sieu col. e les pes delu pengo enios. eaque
+42_f_037v_038_line_114,0.0000,0.9980,0.9821,0,0,0,que le metge artifec amla ma per cu,que le metge artifec amla ma per cu
+42_f_037v_038_line_119,0.0909,0.9975,0.9575,2,2,1,alqual engualhament si an dos uir,alqual engualhauient sian dos uir
+42_f_037v_038_line_124,0.0000,0.9974,0.9412,0,0,0,titut de quascun fust quays dos ditz,titut de quascun fust quays dos ditz
+42_f_037v_038_line_157,0.0000,0.9858,0.5752,0,0,0,na fassa so que uols Capitol .lxxuii. delas,na fassa so que uols Capitol .lxxuii. delas
+42_f_037v_038_line_158,0.0189,0.9730,0.5438,1,0,0,formas dels instrumẽtz q̃ so necessaris a extrayra l,formas dels instrumẽtz q̃ so necessatis a extrayra l
+42_f_037v_038_line_72,0.0000,0.9988,0.9762,0,0,0,mayre es coartada per apostema caut,mayre es coartada per apostema caut
+42_f_037v_038_line_94,0.0000,0.9975,0.9563,0,0,0,hada. e aprop foc mort es lefet autre ac,hada. e aprop foc mort es lefet autre ac
+43_f_038v_039_line_144,0.0263,0.9664,0.3551,1,0,0,quela tenta subtil deplom. o depels de,quela tenta subtil deplom. o depels. de
+43_f_038v_039_line_167,0.0256,0.9807,0.5212,1,0,0,balh. euanetat dels folyls metges sobel,balh. euauetat dels folyls metges sobel
+43_f_038v_039_line_190,0.1053,0.9611,0.3457,3,0,1,perla qual es sperit inuament enlu es.,perla qual es sperit iuament enlit es⁊
+43_f_038v_039_line_40,0.0625,0.9715,0.5149,2,0,0,tengua aquela entro quela euapor,tengua aquela entro quela e napor
+43_f_038v_039_line_5,0.0286,0.9960,0.9197,1,1,0,forma deforceps alaqual so dentz de,forma deforceps ala qual so dentz de
+43_f_038v_039_line_61,0.0263,0.9966,0.9641,1,1,0,dreyt. e sinestre am facilitat.e aprop,dreyt. e sinestre am facilitat. e aprop
+43_f_038v_039_line_67,0.1000,0.9874,0.8333,3,1,1,cacio dela ola am herbas.¶Mays,cacio dela ola aui herbas. ¶Mays
+43_f_038v_039_line_73,0.0250,0.9975,0.9216,0,0,0,es eyssit delu ala boca dela mayre li es,es eyssit delu ala boca dela mayre lies
+44_f_039v_040_line_111,0.0278,0.9855,0.7951,1,0,0,uitat del qual es mot aguda. elautra,uitat del qual es mot aguda. e lautra
+44_f_039v_040_line_113,0.0541,0.9853,0.6392,2,0,0,das aquo que no es necessari ayssi ci,das aquo que no es necessari ayssi El
+44_f_039v_040_line_128,0.0312,0.9860,0.5981,0,0,0,cos. ¶ Ela curacio de aquela que,cos. ¶Ela curacio de aquela que
+44_f_039v_040_line_137,0.0000,0.9967,0.9220,0,0,0,ditat delor emollificacio de aquelas. la,ditat delor emollificacio de aquelas. la
+44_f_039v_040_line_14,0.0000,0.9930,0.8278,0,0,0,endegun temps per autra curacio ¶E,endegun temps per autra curacio ¶E
+44_f_039v_040_line_181,0.0385,0.9980,0.9517,1,1,0,otas ueguadas accideys per,Otas ueguadas accideys per
+44_f_039v_040_line_41,0.0000,0.9937,0.9149,0,0,0,am enguentz carn dura engendran.,am enguentz carn dura engendran.
+44_f_039v_040_line_9,0.0000,0.9961,0.8647,0,0,0,lopadas en boder entro quen yescan to,lopadas en boder entro quen yescan to
+45_f_040v_041_line_109,0.1143,0.9734,0.5359,3,1,1,cambas ala paret. esi la mediciua ⁊,cambas ala paret esi la medicina fe
+45_f_040v_041_line_120,0.0278,0.9858,0.6973,1,0,0,am les quals les enfantz so cristeri,am les quals les en fantz so cristeri
+45_f_040v_041_line_189,0.0000,0.9987,0.9761,0,0,0,al os lahoras tu inscideys tot aquo poyrit,al os lahoras tu inscideys tot aquo poyrit
+45_f_040v_041_line_44,0.0000,0.9988,0.9737,0,0,0,so que sobre ledit la aprencio delu sia abla,so que sobre ledit la aprencio delu sia abla
+45_f_040v_041_line_65,0.0000,0.9972,0.9071,0,0,0,mitat delu pus deius la qual es entro,mitat delu pus deius la qual es entro
+45_f_040v_041_line_87,0.0000,0.9991,0.9880,0,0,0,tat de cristerizar,tat de cristerizar
+46_f_041v_042_line_106,0.0000,0.9891,0.7220,0,0,0,elena. lahoras sapias que la plagua es,elena. lahoras sapias que la plagua es
+46_f_041v_042_line_132,0.0256,0.9707,0.3799,1,0,0,E si la plagua es per inscio despasa. o,E si la plagua es per inscio despasa. O
+46_f_041v_042_line_147,0.1111,0.9707,0.5318,3,0,1,ment de aquo que hauem dit.,ment de aquo que hauem dit.mux
+46_f_041v_042_line_154,0.0556,0.9760,0.5705,2,1,0,alcunas ueguadas yeys le budel o ner,alcuuas ueguadas yeys le budel ⁊ ner
+46_f_041v_042_line_166,0.0303,0.9889,0.6767,0,0,0,nant ditas. ¶ E sapias que sutura,nant ditas. ¶E sapias que sutura
+46_f_041v_042_line_176,0.0526,0.9843,0.6997,2,1,0,alcuna causa del budel per aquela.e es,alcuma causa del budel per aquela. e es
+46_f_041v_042_line_199,0.0000,0.9990,0.9815,0,0,0,emorroydas. ela curacio primieyra es,emorroydas. ela curacio primieyra es
+46_f_041v_042_line_64,0.0513,0.9874,0.6918,2,1,0,sutura. o coarta las labias delu.eaprop,sutura. O coarta las labias delu. eaprop
+46_f_041v_042_line_83,0.0682,0.9868,0.6121,3,2,0,enles quals es stipticitat e excitacio entro,enles quals es scipticitat e excitacio entiy
+46_f_041v_042_line_94,0.0000,0.9978,0.9589,0,0,0,gua es fayta fistula. lahoras cura aque,gua es fayta fistula. lahoras cura aque
+47_f_042v_043_line_107,0.0000,0.9982,0.9493,0,0,0,as disposicios. eles autres metges ha,as disposicios. eles autres metges ha
+47_f_042v_043_line_135,0.0000,0.9966,0.9404,0,0,0,ala partida de foro. e fay penetrar am a,ala partida de foro. e fay penetrar am a
+47_f_042v_043_line_179,0.0263,0.9979,0.9376,1,1,0,dela partida dedintz entro ala partida,dela partida dedintz entio ala partida
+47_f_042v_043_line_193,0.0000,0.9979,0.9827,0,0,0,les curhs engualment. E sapias que,les curhs engualment. E sapias que
+47_f_042v_043_line_48,0.0000,0.9928,0.9239,0,0,0,autra agulha en aquela. e aprop lia aq̃,autra agulha en aquela. e aprop lia aq̃
+48_f_043v_044_line_138,0.0278,0.9896,0.7138,1,0,0,uisio lahoras cum yeu diyssi las pla,uisio lahoras cumi yeu diyssi las pla
+48_f_043v_044_line_16,0.0000,0.9983,0.9835,0,0,0,coto uiel. epermuda aquel dos negua,coto uiel. epermuda aquel dos negua
+48_f_043v_044_line_186,0.0526,0.9913,0.7115,0,0,0,¶ Esi la fistula es hauent motz horrri,Esi la fistula es hauent motz horrri
+48_f_043v_044_line_24,0.0294,0.9971,0.9389,1,1,0,lana leon enoli destremprada quali,lana leon en oli destremprada quali
+48_f_043v_044_line_27,0.0250,0.9956,0.9137,1,1,0,angonas.e deios las aysselhas. E si sent,angonas. e deios las aysselhas. E si sent
+48_f_043v_044_line_5,0.0000,0.9963,0.9053,0,0,0,bre aquela poluera en carnatiua. E si,bre aquela poluera en carnatiua. E si
+48_f_043v_044_line_66,0.0000,0.9927,0.7445,0,0,0,teurada en alcus homes per aysso quar,teurada en alcus homes per aysso quar
+48_f_043v_044_line_72,0.0000,0.9777,0.5684,0,0,0,sitat. adonc yeu pansegui la curacio de,sitat. adonc yeu pansegui la curacio de
+48_f_043v_044_line_76,0.0312,0.9834,0.7957,1,1,0,dat. ¶ E yeu pusque ui le loc ia,dat. ¶ E yen pusque ui le loc ia
+49_f_044v_045_line_160,0.0488,0.9815,0.5826,2,0,0,fluitat de euacuacio sincopi mala. e donc,fluitat de enacuacio sin copi mala. e donc
+49_f_044v_045_line_186,0.0000,0.9985,0.9762,0,0,0,e siappar enla sua enla sua apparicio,e siappar enla sua enla sua apparicio
+49_f_044v_045_line_194,0.0000,0.9996,0.9955,0,0,0,aquel dela primiera partida la on es,aquel dela primiera partida la on es
+49_f_044v_045_line_41,0.0000,0.9952,0.8270,0,0,0,ratz aquel entro quela corrupcio sia hos,ratz aquel entro quela corrupcio sia hos
+49_f_044v_045_line_54,0.0556,0.9840,0.6305,1,1,0,la qual noha conseguida. e adonc atu,la qual uoha conseguida. eadonc atu
+49_f_044v_045_line_59,0.0303,0.9982,0.9865,0,0,0,ad aquo. ¶E si so motz osses laho,ad aquo. ¶Esi so motz osses laho
+49_f_044v_045_line_96,0.0938,0.9760,0.6784,2,0,1,lidada. ¶E yeu reconiti atu aquo,lidada.  Eyeu recomiti atu aquo
+50_f_045v_046_line_0,0.0556,0.9873,0.6817,2,1,0,aquela iunctura corrumpuda.eserra le,aquela iunctura corrumpuda. e serra le
+50_f_045v_046_line_140,0.0000,0.9936,0.8498,0,0,0,es entre dos liamentz am spatum lat ⁊,es entre dos liamentz am spatum lat ⁊
+50_f_045v_046_line_141,0.0250,0.9948,0.8860,1,1,0,entro que sia descuberta tota la carn. e,entro que sia descubelta tota la carn. e
+50_f_045v_046_line_164,0.1111,0.9626,0.4984,3,2,1,am la uehemencia delu que atrobec de,amla ucheiuencia delu que atrobec de
+50_f_045v_046_line_72,0.0000,0.9886,0.7698,0,0,0,¶forma de ray lo qual conueneys ara,¶forma de ray lo qual conueneys ara
+50_f_045v_046_line_80,0.0000,0.9899,0.8272,0,0,0,serras Capitol.lxxxuii. de ĩscizio intrin,serras Capitol.lxxxuii. de ĩscizio intrin
+50_f_045v_046_line_83,0.0333,0.9818,0.5162,1,0,0,per causa intrinseca. oper cau,per causa intrinseca. o per cau
+50_f_045v_046_line_91,0.0000,0.9941,0.7966,0,0,0,la hon acossec la corrupcio perque le,la hon acossec la corrupcio perque le
+51_f_046v_047_line_116,0.0256,0.9889,0.7393,1,0,0,e no ostes ledrap gran sino aprop alcus,e uo ostes ledrap gran sino aprop alcus
+51_f_046v_047_line_149,0.0513,0.9989,0.9893,2,2,0,guent dyafiniton.e sia dissou en oli ro,guent dyafiniton. e sia disson en oli ro
+51_f_046v_047_line_169,0.0000,0.9985,0.9673,0,0,0,nat per aquesta curacio lahoras sapias,nat per aquesta curacio lahoras sapias
+51_f_046v_047_line_172,0.0278,0.9880,0.6299,1,0,0,membres durs oals liamentz lahoras ⁊,menbres durs oals liamentz lahoras ⁊
+51_f_046v_047_line_173,0.0000,0.9935,0.8336,0,0,0,tu le cura am curacio fistular ayssi cum de,tu le cura am curacio fistular ayssi cum de
+51_f_046v_047_line_95,0.0000,0.9911,0.7320,0,0,0,quan lebrac es coartat enla preondeza,quan lebrac es coartat enla preondeza
+52_f_047v_048_line_117,0.0000,0.9978,0.9671,0,0,0,la codena am uncis. e excoria la code,la codena am uncis. e excoria la code
+52_f_047v_048_line_138,0.0000,0.9995,0.9934,0,0,0,auta de totas las seccios entro que,auta de totas las seccios entro que
+52_f_047v_048_line_17,0.0286,0.9863,0.5298,1,0,0,que tu alcomensament fleubotomes le,que tu al comensament fleubotomes le
+52_f_047v_048_line_180,0.0000,0.9944,0.9285,0,0,0,aridas de pauca teneritat. e enlas q̈ls,aridas de pauca teneritat. e enlas q̈ls
+52_f_047v_048_line_196,0.0286,0.9913,0.7253,1,1,0,una pessa deplom del qual sia lepes,una pessa deplom del qual sia le pes
+52_f_047v_048_line_28,0.0244,0.9946,0.9053,1,1,0,fort leu es carnos tot. e fortleu so enlu,fort leu es caruos tot. e fortleu so enlu
+52_f_047v_048_line_35,0.0357,0.9845,0.8457,1,1,0,maugut. ¶ Ede aquels que son,maugut. ¶ ¶de aquels que son
+52_f_047v_048_line_57,0.0000,0.9968,0.9437,0,0,0,rozat perque no sian consolidatz leugie,rozat perque no sian consolidatz leugie
+52_f_047v_048_line_8,0.0000,0.9979,0.9502,0,0,0,traguas car nultemps no es sanat que,traguas car nultemps no es sanat que
+53_f_048v_049_line_112,0.0000,0.9988,0.9800,0,0,0,lahoras no es atu aparent al huel ay,lahoras no es atu aparent al huel ay
+53_f_048v_049_line_127,0.0278,0.9913,0.8206,1,0,0,so que han graus puntas. epetitas. e,so que han grans puntas. epetitas. e
+53_f_048v_049_line_140,0.0286,0.9959,0.8791,1,0,0,yeu recomtare aprop lahoras coue q̃,yen recomtare aprop lahoras coue q̃
+53_f_048v_049_line_173,0.0263,0.9979,0.9523,1,1,0,dela plagua. eles uayssels que so prop,dela plagua. elos uayssels que so prop
+53_f_048v_049_line_184,0.0294,0.9740,0.7215,1,1,0,cuna indigesta. ¶ Esi catz la sage,cuna indigesta. ¶ E si catz la sage
+53_f_048v_049_line_44,0.0270,0.9944,0.8105,1,0,0,e yeys fora.ela generacio delu es per,e yeys fora. ela generacio delu es per
+53_f_048v_049_line_54,0.0000,0.9964,0.9390,0,0,0,trayre lu lahoras no se fa sino deues la,trayre lu lahoras no se fa sino deues la
+53_f_048v_049_line_68,0.0465,0.9878,0.5394,1,0,0,tura. e aprop secsa sobre lu e extratz aql',tura. e aprop secsa sobre lu e extratz aqł
+53_f_048v_049_line_75,0.1333,0.9778,0.7491,2,1,1,tia es nompnada,Etia es nompuada
+54_f_049v_050_line_10,0.0263,0.9879,0.5684,1,0,0,iuzeu laqual cazec enlu enlo grays del,Iuzeu laqual cazec enlu enlo grays del
+54_f_049v_050_line_103,0.0513,0.9952,0.9018,1,1,0,entiera.e no noguec en lu en deguna cau,entiera. e no noguec enlu en deguna cau
+54_f_049v_050_line_116,0.0526,0.9934,0.8755,1,0,0,quan accideysso. E donc yeu dic que sa,quan accideysso. E donc y eudic que sa
+54_f_049v_050_line_118,0.0000,0.9945,0.8078,0,0,0,enles quals son ficadas sino segon dos,enles quals son ficadas sino segon dos
+54_f_049v_050_line_170,0.0000,0.9995,0.9952,0,0,0,relhas amlas quals sia tenguda laho,relhas amlas quals sia tenguda laho
+54_f_049v_050_line_174,0.0000,0.9865,0.6558,0,0,0,podes sobre la euasio dela carn enla frac,podes sobre la euasio dela carn enla frac
+54_f_049v_050_line_4,0.0000,0.9836,0.7861,0,0,0,sa es. quar en un home cazec sageta en,sa es. quar en un home cazec sageta en
+54_f_049v_050_line_63,0.0000,0.9942,0.8328,0,0,0,es uertut atrectiua. e digestiua con,es uertut atrectiua. e digestiua con
+54_f_049v_050_line_96,0.0000,0.9994,0.9959,0,0,0,la forma de aquelas enla fi del capi,la forma de aquelas enla fi del capi
+55_f_050v_051_line_100,0.0278,0.9869,0.8101,1,0,0,dit. e so enlu dos ramps. ¶ E enlepe,dit. e so enlu dos ramps. ¶ E enle pe
+55_f_050v_051_line_109,0.0000,0.9989,0.9752,0,0,0,so aprop las aurelhas es acataris an,so aprop las aurelhas es acataris an
+55_f_050v_051_line_110,0.0769,0.9779,0.6504,3,1,0,tics. e emigranea. esaha faci. e ulcera,tios. e emigranea. e sa ha faci. e ulcera
+55_f_050v_051_line_163,0.0000,0.9993,0.9910,0,0,0,cio. e layssa aquela entro que sia sana,cio. e layssa aquela entro que sia sana
+55_f_050v_051_line_66,0.1562,0.9524,0.4301,4,2,1,xcu. de fleubotomia delas uenas.,cu. de Nleubotomia de las uenas. E
+55_f_050v_051_line_8,0.0238,0.9907,0.8526,1,0,0,las partidas de fora. o fagilbositat la ex,las partidas de fora. o fa gilbositat la ex
+55_f_050v_051_line_80,0.0000,0.9981,0.9762,0,0,0,enla labia deios. e aquestas so las ue,enla labia deios. e aquestas so las ue
+55_f_050v_051_line_99,0.0000,0.9977,0.9573,0,0,0,es entre lo dit auricular el pus petit,es entre lo dit auricular el pus petit
+56_f_051v_052_line_106,0.0000,0.9989,0.9849,0,0,0,segon la strictura de aquelas forma de,segon la strictura de aquelas forma de
+56_f_051v_052_line_114,0.0294,0.9861,0.5754,1,1,0,conteno sanc gros torbat. Eaquesta,conteno sanc gros torbat. E aquesta
+56_f_051v_052_line_116,0.0000,0.9993,0.9938,0,0,0,Eaquest fleubotomi es de menor la,Eaquest fleubotomi es de menor la
+56_f_051v_052_line_123,0.0000,0.9993,0.9863,0,0,0,lautias que so deios leguolayro el col,lautias que so deios leguolayro el col
+56_f_051v_052_line_146,0.0000,0.9897,0.8438,0,0,0,am tencha. e aprop lia lebras. e secsa,am tencha. e aprop lia lebras. e secsa
+56_f_051v_052_line_150,0.0000,0.9990,0.9908,0,0,0,cu spazi del loc dela arceria. e quan tu,cu spazi del loc dela arceria. e quan tu
+56_f_051v_052_line_193,0.0000,0.9971,0.9691,0,0,0,enla punctura del fleunbotomi. e a,enla punctura del fleunbotomi. e a
+56_f_051v_052_line_28,0.0541,0.9855,0.6492,2,1,0,comensa afluir tantost coue que tu ul,comensa alluir tantost doue que tu ul
+56_f_051v_052_line_51,0.0000,0.9979,0.9818,0,0,0,so quel malaute no sia prefocat. e lay,so quel malaute no sia prefocat. e lay
+56_f_051v_052_line_53,0.0625,0.9643,0.5721,1,0,0,sanada ¶ E le iuuament dela fleu,sanada ¶ ¶le iuuament dela fleu
+56_f_051v_052_line_91,0.0000,0.9833,0.6353,0,0,0,eguarda te que no ultimes la tua,eguarda te que no ultimes la tua
+57_f_052v_053_line_0,0.0238,0.9839,0.6268,1,1,0,e fort leu noes sanat de tot. e aquest ner,e fort leu no es sanat de tot. e aquest ner
+57_f_052v_053_line_105,0.0238,0.9834,0.6809,1,0,0,an declaradas alsentiment. e aprop le fleu,an declaradas al sentiment. e aprop le fleu
+57_f_052v_053_line_133,0.0789,0.9966,0.9721,2,2,0,ment: etemes que non yesca sanc la can,ment. e temes que non yesca sanc la ca
+57_f_052v_053_line_155,0.0286,0.9878,0.6546,1,0,0,deys. emaiorment ad aquel que no es,deys. e maiorment ad aquel que no es
+57_f_052v_053_line_185,0.0000,0.9967,0.9453,0,0,0,que appar. quar si le sanc es negre lahoras,que appar. quar si le sanc es negre lahoras
+57_f_052v_053_line_189,0.0857,0.9742,0.3230,3,1,1,E semblantment si es agut entro que,E semblantinent si es agut entio que
+57_f_052v_053_line_55,0.0263,0.9793,0.4986,1,0,0,denant la fleubotomia am clisteri leon,denant la fleubotonia am clisteri leon
+57_f_052v_053_line_72,0.0556,0.9698,0.5680,2,1,0,denant aquo silesanc es gros am uian,denant aquo si le sanc es gros am uian
+57_f_052v_053_line_97,0.0000,0.9961,0.9349,0,0,0,ra temprada. quar la strictura quant,ra temprada. quar la strictura quant
+58_f_053v_054_line_115,0.0000,0.9994,0.9955,0,0,0,lo orrifici dela uena. e es prohibit de,lo orrifici dela uena. e es prohibit de
+58_f_053v_054_line_116,0.0541,0.9800,0.5305,2,1,0,flux. ecum es extray le sane segon la,fluy. e cum es extray le sane segon la
+58_f_053v_054_line_117,0.0000,0.9954,0.9069,0,0,0,quantitat de necessitat lahoras tu ⁊,quantitat de necessitat lahoras tu ⁊
+58_f_053v_054_line_169,0.0244,0.9952,0.8513,1,0,0,delu dellatz dela ancha entro desus le ta,delu del latz dela ancha entro desus le ta
+58_f_053v_054_line_170,0.0270,0.9991,0.9941,0,0,0,lo desus quatre ditz an una benda lon,lo desus quatre ditz anuna benda lon
+58_f_053v_054_line_187,0.0278,0.9805,0.7179,0,0,0,ment es sanat. Capitol .xcui. de uẽ,ment es sanat Capitol .xcui. de uẽ
+58_f_053v_054_line_190,0.0357,0.9934,0.8459,1,1,0,o de ueyre.e uentozacio es ⁊,o de ueyre. e uentozacio es ⁊
+58_f_053v_054_line_5,0.0000,0.9901,0.7653,0,0,0,uenir sincopi deues la fleubotomia. e,uenir sincopi deues la fleubotomia. e
+58_f_053v_054_line_54,0.0455,0.9843,0.7149,2,0,0,orrifici dela uena. e sia fayt difficil issi,orrifici dela uena. e sia fayt ditticil issi
+58_f_053v_054_line_65,0.0286,0.9792,0.5119,1,0,0,sia fora yssit ¶ Esila ueua es apos,sia fora yssit ¶ E sila ueua es apos
+59_f_054v_055_line_100,0.0000,0.9987,0.9844,0,0,0,las ulceracios pus deios. ecoue que co,las ulceracios pus deios. ecoue que co
+59_f_054v_055_line_117,0.0750,0.9852,0.7030,2,0,0,de doas cambas. Elaqualitat dela posicio,dedoas cambas. E la qualitat dela posicio
+59_f_054v_055_line_122,0.0278,0.9854,0.6555,1,1,0,las leugierament. eremau aquelas coy,las leugierament. e remau aquelas coy
+59_f_054v_055_line_133,0.0270,0.9969,0.9605,1,1,0,rat. E comanda aluentozador que ampli,rat. E comanda aluencozador que ampli
+59_f_054v_055_line_141,0.0488,0.9864,0.5820,2,1,0,dela extraccio delsanc gros. E si le sauc,dela extraccio delsans gros. E si le saue
+59_f_054v_055_line_144,0.0270,0.9944,0.8900,1,0,0,gua le derier. E derierament quant uo,gua le derier. E derierament quant no
+59_f_054v_055_line_182,0.0556,0.9963,0.9392,2,2,0,guardada denant de banh habantz cone,guardada deuant de banh habantz coue
+59_f_054v_055_line_190,0.1081,0.9773,0.6679,4,3,1,sobre lu sanc agut. e imflamacio laho,sobre lu sanc agut. e irallamatio laho
+59_f_054v_055_line_191,0.0286,0.9968,0.9230,1,1,0,ras coue que prengua causas infrigi,ras coue que prengua cau sas infrigi
+59_f_054v_055_line_5,0.0526,0.9733,0.3947,2,1,0,las. euentozas de alohoster. e essobre,las. e uentozas de alohoster. e es sobre
+59_f_054v_055_line_8,0.0000,0.9950,0.8799,0,0,0,cauilhas. e uentozas de doas cuoyssas,cauilhas. e uentozas de doas cuoyssas
+59_f_054v_055_line_85,0.0606,0.9843,0.6607,2,1,0,caliditat. ¶ Ela uentosacio delas,caliditat. ¶¶ la uentosacio delas
+59_f_054v_055_line_88,0.0000,0.9869,0.5134,0,0,0,tres uenas so es dela basilica fusca. e,tres uenas so es dela basilica fusca. e
+60_f_055v_056_line_16,0.0294,0.9832,0.6066,1,0,0,membre principals sian confortatze,membre principals sian confortatzie
+60_f_055v_056_line_23,0.0294,0.9928,0.8547,1,1,0,lancha. quar aquestz membres no su,laucha. quar aquestz membres no su
+60_f_055v_056_line_45,0.0000,0.9947,0.8699,0,0,0,so ad ministradas plenas de aygua te,so ad ministradas plenas de aygua te
+60_f_055v_056_line_66,0.0286,0.9951,0.9600,1,1,0,lu. esia almiegdelu uergua transuer,lu. e sia almiegdelu uergua transuer
+61_f_056v_057_line_112,0.1081,0.9842,0.7720,4,2,1,caut. esi alu accida apostema caut la,cauti esi alu accida apostenia caut. la
+61_f_056v_057_line_115,0.0625,0.9891,0.8686,2,2,0,quel segon quascuna manieyra que,quel segon quascima manieyra que
+61_f_056v_057_line_147,0.0556,0.9932,0.8243,2,1,0,guadas fan accidir apostema caut per,guadas fan accidir apostenta caut per
+61_f_056v_057_line_164,0.0000,0.9832,0.7087,0,0,0,o lesio lahoras coue que permutes a,o lesio lahoras coue que permutes a
+61_f_056v_057_line_196,0.0278,0.9984,0.9843,1,1,0,tura un paue emollifiqua lastrictura,tura un paue emollifiqua la strictura
+61_f_056v_057_line_27,0.0000,0.9930,0.9098,0,0,0,aygua. eris. e caps. epes. e uentres de,aygua. eris. e caps. epes. e uentres de
+61_f_056v_057_line_43,0.1212,0.9740,0.7175,3,2,1,empero natura aiusta. e amnecceys,empero natura auista. e am uecceys
+61_f_056v_057_line_54,0.0294,0.9922,0.7830,1,0,0,malaute uiandas enlas quals so gra,malaute uiaudas enlas quals so gra
+61_f_056v_057_line_70,0.0333,0.9823,0.5093,1,0,0,Son diuersificadas las specias,Eon diuersificadas las specias
+62_f_057v_058_line_139,0.0526,0.9766,0.3836,2,1,0,trencat deues la restauracio delu elas,trencat deues la restauracio delic elas
+62_f_057v_058_line_173,0.0323,0.9646,0.5292,1,0,0,sia sanat. ¶ Esi uezes que le a,sia sauat. ¶ Esi uezes que le a
+62_f_057v_058_line_192,0.0000,0.9983,0.9673,0,0,0,del malaute segon que es precedida,del malaute segon que es precedida
+62_f_057v_058_line_22,0.0938,0.9846,0.7453,3,1,1,eaquesta figura ¶Empero coue que,e aquesta figuta ¶ Empero coue que
+62_f_057v_058_line_27,0.0000,0.9852,0.8545,0,0,0,membre en magnitut. eparuitat. e a,membre en magnitut. eparuitat. e a
+62_f_057v_058_line_45,0.0714,0.9547,0.4432,2,0,0,astela haia mens de undit. E,astela haia mens de undit./ ¶
+62_f_057v_058_line_50,0.0270,0.9686,0.4822,1,0,0,da entro que aquo noli fassa lesio. ⁊,da entro que aquo noli fassa le sio. ⁊
+62_f_057v_058_line_54,0.0000,0.9957,0.8797,0,0,0,la enle capiton segon singularitat. E,la enle capiton segon singularitat. E
+63_f_058v_059_line_106,0.0000,0.9960,0.9104,0,0,0,e aprop comensa enla circuicio del os,e aprop comensa enla circuicio del os
+63_f_058v_059_line_13,0.0000,0.9991,0.9818,0,0,0,lor aquo far. perque es pus razonable,lor aquo far. perque es pus razonable
+63_f_058v_059_line_159,0.0000,0.9891,0.6997,0,0,0,podes sobre aquo enfi de leuitat ayssi,podes sobre aquo enfi de leuitat ayssi
+63_f_058v_059_line_25,0.0000,0.9955,0.9155,0,0,0,la spaza inscideys alcuna partida del,la spaza inscideys alcuna partida del
+63_f_058v_059_line_29,0.0286,0.9779,0.5324,1,0,0,lutament. e laplagua de aquestas do,lutament. e la plagua de aquestas do
+63_f_058v_059_line_61,0.0000,0.9907,0.7494,0,0,0,sobre lor. e specia capillar es conoguda,sobre lor. e specia capillar es conoguda
+63_f_058v_059_line_91,0.0000,0.9980,0.9781,0,0,0,tidas menudas. eatricio. lahoras co,tidas menudas. eatricio. lahoras co
+64_f_059v_060_line_0,0.0000,0.9920,0.7797,0,0,0,qual aquesta es la forma. e es aque,qual aquesta es la forma. e es aque
+64_f_059v_060_line_131,0.0000,0.9904,0.7681,0,0,0,tremitat del ray. en lequal sia petita,tremitat del ray. en lequal sia petita
+64_f_059v_060_line_132,0.0323,0.9954,0.9349,0,0,0,grossitut. ¶ Esi la fractura es,grossitut. ¶Esi la fractura es
+64_f_059v_060_line_14,0.0000,0.9986,0.9850,0,0,0,era le pus fol detotz les homes el e,era le pus fol detotz les homes el e
+64_f_059v_060_line_146,0.0909,0.9871,0.7908,2,0,1,dor que las calguas sian en fundu,dor que las calguas sian enfundu E
+64_f_059v_060_line_147,0.0303,0.9705,0.5322,1,0,0,das en boder. esian permudadas en,das en boder. e sian permudadas en
+64_f_059v_060_line_170,0.0303,0.9710,0.5265,1,0,0,huou. e aprop pausa sobrelu stopa,huou. e aprop pausa sobrelu sto pa
+64_f_059v_060_line_179,0.0286,0.9874,0.7258,1,1,0,ad aquo couuenientz. esi accideys ⁊,ad aquo couuenientz. e si accideys ⁊
+64_f_059v_060_line_188,0.0526,0.9953,0.8343,2,1,0,si la fractura es de foras tantsolamẽt,si la fractura es de foras tantsolamẽt
+64_f_059v_060_line_192,0.0000,0.9918,0.7721,0,0,0,sila fractura es enla part dreyta q̃,sila fractura es enla part dreyta q̃
+64_f_059v_060_line_9,0.0000,0.9921,0.8438,0,0,0,malhet entro que inscidas tot leos,malhet entro que inscidas tot leos
+65_f_060v_061_line_122,0.0541,0.9923,0.8889,2,1,0,laquantitat dela scissura dela plagua,laquantitat dela scissina dela plagua
+65_f_060v_061_line_126,0.0000,0.9987,0.9870,0,0,0,la strictura del os quan es ses plagua,la strictura del os quan es ses plagua
+65_f_060v_061_line_162,0.0238,0.9929,0.7763,1,1,0,esia lebras delu alcol de aquel. euo desli,e sia lebras delu alcol de aquel. euo desli
+65_f_060v_061_line_48,0.1143,0.9697,0.3767,3,2,1,le fleubotomi segon la quantitat de,le aeuhotomi se gon la quantitat de
+65_f_060v_061_line_71,0.0278,0.9828,0.5666,1,1,0,sent dos ministres persoque la unten,sent dos ministres persoque la un ten
+66_f_061v_062_line_10,0.0303,0.9962,0.9201,0,0,0,cio. ¶ Esi procezeys delloc delos,cio. ¶Esi procezeys delloc delos
+66_f_061v_062_line_125,0.0000,0.9978,0.9742,0,0,0,gran am cozidura. ecurem aquela ⁊,gran am cozidura. ecurem aquela ⁊
+66_f_061v_062_line_127,0.0789,0.9831,0.4641,3,2,0,e si accideys dedintz apostema lahoras,e si accideys dediutz apostemia lahodas
+66_f_061v_062_line_133,0.0270,0.9635,0.5610,1,0,0,sia sanat Capitol .xx. de restauracio,sia sauat Capitol .xx. de restauracio
+66_f_061v_062_line_155,0.0000,0.9991,0.9914,0,0,0,spondils del col le semblant ad aquo,spondils del col le semblant ad aquo
+66_f_061v_062_line_164,0.0000,0.9850,0.7011,0,0,0,e no pot la horas sapias que es mortal,e no pot la horas sapias que es mortal
+66_f_061v_062_line_168,0.0000,0.9912,0.8583,0,0,0,giera. ¶ Ela curacio delu es que,giera. ¶ Ela curacio delu es que
+66_f_061v_062_line_171,0.0000,0.9965,0.9423,0,0,0,sat oli rozat sol o am mugals de huous,sat oli rozat sol o am mugals de huous
+66_f_061v_062_line_180,0.1290,0.9871,0.8131,4,2,1,lor entro que sia sanat ¶E siac,lor entro que sia sauat ¶ Et si ac
+66_f_061v_062_line_30,0.0270,0.9805,0.5230,1,0,0,racio delu es que sia resupinat le ma,racio delu es que sia resupinal le ma
+66_f_061v_062_line_62,0.0286,0.9649,0.3359,1,0,0,nat.m Capitol .uiii. de restauracio,nat. m Capitol .uiii. de restauracio
+67_f_062v_063_line_101,0.0500,0.9673,0.3978,2,1,0,aiuste le bras sobre aquel adiutori.epau,aiuste le bras sobre aquel adiutori. epzau
+67_f_062v_063_line_148,0.0000,0.9809,0.6804,0,0,0,ma del adiutori. e dela camba delu es q̃,ma del adiutori. e dela camba delu es q̃
+67_f_062v_063_line_19,0.0000,0.9977,0.9512,0,0,0,deios lahoras tu fay iaser le malaute,deios lahoras tu fay iaser le malaute
+67_f_062v_063_line_61,0.0294,0.9859,0.6057,1,0,0,aquel alcuna causa greu elminestre,aquel alcuna causa greu el minestre
+67_f_062v_063_line_65,0.0000,0.9992,0.9919,0,0,0,fractura retorne segon que coue. elau,fractura retorne segon que coue. elau
+67_f_062v_063_line_67,0.0256,0.9867,0.6859,1,0,0,supinat sobre la sieua ceruitz. esuspen,supinat sobre la sieua ceruitz. e suspen
+67_f_062v_063_line_70,0.0000,0.9998,0.9984,0,0,0,delor tengua aquo que es desobre la,delor tengua aquo que es desobre la
+67_f_062v_063_line_89,0.0000,0.9847,0.6770,0,0,0,que coue. e es applicada per bona a,que coue. e es applicada per bona a
+67_f_062v_063_line_92,0.0000,0.9996,0.9978,0,0,0,si accideys apostema caut lahoras lay,si accideys apostema caut lahoras lay
+68_f_063v_064_line_101,0.0000,0.9979,0.9696,0,0,0,es le dit pous sia engualat segon que,es le dit pous sia engualat segon que
+68_f_063v_064_line_21,0.0000,0.9984,0.9859,0,0,0,ra pus fort. epus uehement. e quan ⁊,ra pus fort. epus uehement. e quan ⁊
+68_f_063v_064_line_27,0.0238,0.9865,0.6432,1,0,0,del capitol. eles draps que so en uolopatz,del capitol. eles draps que so en uolopalz
+68_f_063v_064_line_33,0.0882,0.9723,0.5415,3,0,1,el liament aprop alcus dias. ¶ Esi,el liament aprop alcus dias. E ¶ si
+68_f_063v_064_line_38,0.0000,0.9995,0.9920,0,0,0,am aygua cauda entro que cesse aquel,am aygua cauda entro que cesse aquel
+68_f_063v_064_line_73,0.0513,0.9820,0.7090,2,1,0,e denaut lu lies cezent segon equalitat,e denant lu lies cezent segon e qualitat
+68_f_063v_064_line_75,0.0000,0.9984,0.9848,0,0,0,la extenduda. e apro le ministre exten,la extenduda. e apro le ministre exten
+68_f_063v_064_line_94,0.0000,0.9887,0.6368,0,0,0,ses desus stela. e autre estela dela par,ses desus stela. e autre estela dela par
+69_f_064v_065_line_130,0.0541,0.9981,0.9686,2,2,0,dit astela dela sua quantitat en uolo,dit astela dela sira quantitat en uolo
+69_f_064v_065_line_150,0.0270,0.9935,0.8988,1,0,0,la femna sia concutida.e elaua le dos,la femna sia concutida. e elaua le dos
+69_f_064v_065_line_159,0.0286,0.9836,0.6482,1,0,0,ment e aprop retorne al sieu puluil,ment. e aprop retorne al sieu puluil
+69_f_064v_065_line_188,0.0833,0.9812,0.6249,3,1,1,quels. e sira sanada Capitol .xix.de,quels. e sira sauada ¶apitol .xix. de
+69_f_064v_065_line_76,0.0286,0.9802,0.6077,1,0,0,la camba es prohibida de clinar ala,la camba es prohibida de cliuar ala
+69_f_064v_065_line_84,0.0588,0.9874,0.6362,2,1,0,gua propriament. e aprop considera,gua propriament. e aprop consi deta
+69_f_064v_065_line_98,0.0488,0.9934,0.9234,2,2,0,mes de disposicio. esi als osses del peen,mes de disposicio. e si als osses del pe en
+70_f_065v_066_line_13,0.0000,0.9983,0.9784,0,0,0,e am pauca extencio. mays si extencio,e am pauca extencio. mays si extencio
+70_f_065v_066_line_133,0.0000,0.9984,0.9818,0,0,0,que accideys enle uestigi de alcuna frac,que accideys enle uestigi de alcuna frac
+70_f_065v_066_line_155,0.0833,0.9881,0.8378,3,2,1,descentment. quar plor ha proprietat,descentinent. quar plor ha proprierat
+70_f_065v_066_line_176,0.0488,0.9787,0.5953,2,0,0,coue o per super fluitat destrictura dels,coue o per suber fluitat de strictura dels
+70_f_065v_066_line_38,0.0000,0.9965,0.9690,0,0,0,extremitat del os eminent. einpelleys,extremitat del os eminent. einpelleys
+70_f_065v_066_line_98,0.0270,0.9870,0.6602,1,1,0,deslias le liament.e considera la pla,deslias le liament. e considera la pla
+71_f_066v_067_line_104,0.0000,0.9858,0.5481,0,0,0,sie loc ¶Esi dificil es la redicio ⁊,sie loc ¶Esi dificil es la redicio ⁊
+71_f_066v_067_line_125,0.0000,0.9905,0.6924,0,0,0,dibulas so nozadas lahoras maugue,dibulas so nozadas lahoras maugue
+71_f_066v_067_line_19,0.0541,0.9776,0.6643,2,0,0,na.o am oli decirami. esia emplastrat,na. d am oli decirami. esia emplastrat
+71_f_066v_067_line_26,0.0270,0.9900,0.8296,0,0,0,am las mas humidas. esia ad ministrat,am las mas humidas. esia administrat
+71_f_066v_067_line_45,0.0000,0.9984,0.9806,0,0,0,os grans. donc quan accideys ad alcu,os grans. donc quan accideys ad alcu
+71_f_066v_067_line_72,0.0323,0.9842,0.7315,1,0,0,una dedos mameyra. qua o son re,una dedos mameyra. qua o sou re
+71_f_066v_067_line_88,0.0278,0.9980,0.9761,1,1,0,cio delu leugierament.e no sia tarda,cio delu leugierament. e no sia tarda
+72_f_067v_068_line_132,0.0541,0.9884,0.7477,2,0,0,deios le uezement.o deios le tocament,deios le uezement. o deios le torament
+72_f_067v_068_line_148,0.0312,0.9949,0.9480,1,1,0,alamort ¶Ela restauracio delu qñ,alamort ¶Ela restauracio delu qn
+72_f_067v_068_line_171,0.0732,0.9803,0.6535,2,2,0,aiuday enlubricitat dela iunctã am facili,aidan enlubricitat dela iuncta am facili
+72_f_067v_068_line_42,0.0857,0.9495,0.6073,3,0,1,tantost E es reduzit eysament segõ,fantost E es redaazit eysament segõ
+72_f_067v_068_line_43,0.1579,0.9553,0.5375,3,0,1,autra manieyra e es que sia ficat en ⁊,antra manieyra. e es que sia feat en
+72_f_067v_068_line_44,0.1000,0.9653,0.6021,3,1,1,terra unfust lonc le cap del qual sia re,terra unfust louc le orp de qual sia re
+72_f_067v_068_line_86,0.0769,0.9903,0.8691,2,1,0,leyssat. e nosia mauguda la ma delu per,leyssat. e no sia manguda lama delu per
+73_f_068v_069_line_102,0.0488,0.9786,0.5319,2,1,0,denãt enle pietz no es engen. ni sanacio,deuãt eule pietz no es engen. ni sanacio
+73_f_068v_069_line_129,0.0250,0.9948,0.8139,1,0,0,mentz dels sieus locs enles quals son fi,mentz dels sieus loos enles quals son fi
+73_f_068v_069_line_159,0.0233,0.9733,0.3847,1,0,0,de lu es untrauc enlequal es format fo fust,de lu es untrauc enlequal es formati fo fust
+73_f_068v_069_line_188,0.0000,0.9874,0.8867,0,0,0,ueguadas accideys imminẽcia enle de,ueguadas accideys imminẽcia enle de
+73_f_068v_069_line_193,0.1081,0.9700,0.4455,3,0,1,dir mort Capitol.xxxi. decuracio dean,durmort Capitol .xxxi. decuracio de an
+73_f_068v_069_line_26,0.0750,0.9850,0.6294,1,1,0,dela made aquel intrince q̃mẽt sobre la,dela ma de aquel intrinceqmẽt sobre la
+73_f_068v_069_line_51,0.0312,0.9904,0.7649,0,0,0,lcunas ueguadas so dislocatz les,cunas ueguadas so dislocatz les
+73_f_068v_069_line_69,0.0000,0.9932,0.7817,0,0,0,es dislocat alas autres partidas Capitol,es dislocat alas autres partidas Capitol
+73_f_068v_069_line_84,0.0263,0.9822,0.6031,1,0,0,q̃tre partidas. ¶ Donc aquela ia es re,q̈tre partidas. ¶ Donc aquela ia es re
+74_f_069v_070_line_115,0.0000,0.9995,0.9883,0,0,0,tendut alas partidas deios ala partida del,tendut alas partidas deios ala partida del
+74_f_069v_070_line_158,0.0000,0.9979,0.9739,0,0,0,q̃ aplique la sua camba amla coyssa la,q̃ aplique la sua camba amla coyssa la
+74_f_069v_070_line_16,0.0000,0.9985,0.9821,0,0,0,aquo alas partidas denant ala urina,aquo alas partidas denant ala urina
+74_f_069v_070_line_161,0.3415,0.8342,0.3112,9,0,1,q̃ fassas cezer le malaute dreyt en ayssi, sigais deer le nalaute dicyt en ysi
+74_f_069v_070_line_188,0.0263,0.9854,0.7964,1,1,0,que uezes le talo imflat procedent ala,que uezes le talo imiflat procedent ala
+74_f_069v_070_line_38,0.0263,0.9869,0.8086,1,0,0,e alas partidas de fora. emau aquela ⁊,e alas partidas de fora. e mau aquela ⁊
+74_f_069v_070_line_78,0.0000,0.9909,0.7296,0,0,0,que sian liatz les dos pes del malaute ensep̃s,que sian liatz les dos pes del malaute ensep̃s
+75_f_070v_garde_line_13,0.0263,0.9781,0.7332,1,1,0,amlas sieuas mas. e autre ministre ten,amlas si euas mas. e autre ministre ten
+75_f_070v_garde_line_20,0.0000,0.9795,0.6323,0,0,0,ligua le pe am liament ala camba. Eco,ligua le pe am liament ala camba. Eco
+75_f_070v_garde_line_58,0.0000,0.9963,0.9756,0,0,0,dias entro que sia extrenhut. e de reddicio,dias entro que sia extrenhut. e de reddicio
+75_f_070v_garde_line_66,0.0000,0.9934,0.8998,0,0,0,no coue q̃ sobre lacuracio delu presuma,no coue q̃ sobre lacuracio delu presuma
+75_f_070v_garde_line_76,0.0000,0.9980,0.9792,0,0,0,tantost far delu la reduccio enle comẽ,tantost far delu la reduccio enle comẽ
+75_f_070v_garde_line_9,0.0000,0.9965,0.9001,0,0,0,tant entre las coyssas del malaute retinẽt,tant entre las coyssas del malaute retinẽt
