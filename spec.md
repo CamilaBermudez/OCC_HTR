@@ -5562,9 +5562,27 @@ with confidence; val-only, run-normalised → noisy). Root cause, one number: ca
 identifies the winning model **63%** of the time — *below the trivial "always-kraken" base rate of 85%*.
 **Verdict: the complementarity is real (oracle +0.59pp char / +3.4pp word) but NOT exploitable by
 confidence-based routing** — the models know *that* they're uncertain (good calibration) but their
-confidences don't rank *which model wins a given line* well enough to beat the strong default. One swing
-taken, clean negative; not pursuing a learned router (marginal char gain sits inside bootstrap noise).
+confidences don't rank *which model wins a given line* well enough to beat the strong default.
 Log `logs/analysis/longtail_confidence_20260828.log`.
+
+**Supervised feature router — the stronger test, also NEGATIVE, for a STRUCTURAL reason (2026-08-29).**
+Rather than argmax of confidence, *trained* a classifier (logistic + HistGBM) on features we already
+have — both models' per-line confidences, their gap, ink-bleed §6.5.8, line geometry — to predict
+*which model wins each line*, threshold tuned on the 600 dev, reported on the 300-val
+(`scripts/ocr/feature_router.py`). Result: **significantly WORSE than deployed** (logistic 0.9714,
+paired-bootstrap Δ**−0.29pp [−0.57,−0.03], CI excludes 0**; HistGBM 0.9724). Two reasons, the second
+decisive:
+- **The who-wins signal is weak on held-out data**: val AUC for predicting the winner is only **0.645**
+  (features barely rank who wins), vs an inflated 0.75–0.77 dev-CV AUC.
+- **The router cannot be trained honestly — label leakage.** Per-line win-labels can only be measured on
+  data where GT is known *and* neither recogniser was trained; the only held-out set is the 300-val
+  (reserved for reporting). On the 600 dev — both models' *training* set — TrOCR (seq2seq) overfits hard
+  (**dev 0.9902** vs **val 0.9608**) while kraken+LM barely moves (dev 0.9765 / val 0.9743), so the
+  dev/val gap **flips sign** and the TrOCR-win rate is **40% on dev vs 15% on val**. A router trained on
+  those biased labels over-routes to TrOCR (171/299) and loses. There is no third held-out set in the
+  data budget to fix this. → **An image/feature router is not worth building**: the exploitable signal is
+  weak *and* it has no honest training target. Settled negative ([[project_router_ensemble_net_negative]]);
+  the complementarity stays a *diagnostic* finding, not a deployable gain.
 
 **LM rescoring — transferring the honest λ to the 600-leader (2026-08-15).** The honest
 λ\*=0.8 was tuned on the *weaker* ViT-500's clean dev; the deployable best ViT is the
