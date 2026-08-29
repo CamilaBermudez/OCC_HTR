@@ -112,6 +112,16 @@ def main() -> None:
     for g, S in groups.items():
         print(f"{g:>12} | " + " | ".join(f"{m(S,k):>6.2f}" for k in FEATS) + f" | {len(S):>3}")
 
+    # length-normalised densities: raw counts don't control for line length, so also report
+    # count / line-length (per 100 chars), averaged per line so long lines don't inflate.
+    print("\nlength-normalised (per 100 chars):")
+    print(f"{'group':>12} | {'avg chars':>9} | {'minim/100ch':>11} | {'special/100ch':>13}")
+    for g, S in groups.items():
+        ch = st.mean([F[s]["chars"] for s in S])
+        md = 100 * st.mean([F[s]["minim"] / max(1, F[s]["chars"]) for s in S])
+        sd = 100 * st.mean([F[s]["special"] / max(1, F[s]["chars"]) for s in S])
+        print(f"{g:>12} | {ch:>9.1f} | {md:>11.2f} | {sd:>13.2f}")
+
     print("\nSpearman(feature, per-line CER) — what makes lines hard for each model:")
     print(f"{'feature':>8} | {'kraken':>7} | {'trocr':>7}")
     for k in FEATS:

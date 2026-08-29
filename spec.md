@@ -5512,14 +5512,20 @@ Characterised the four funnel groups (hard-for-BOTH / kraken-only / TrOCR-only /
 features (image size, text length, ink-bleed §6.5.8, minim + abbreviation density;
 `scripts/ocr/hard_case_features.py`):
 
-| group (n) | ink-bleed | minim | special |
-|---|---|---|---|
-| BOTH-hard (11) | 0.33 | 1.18 | 0.55 |
-| kraken-only (19) | **0.34** | 1.00 | 0.11 |
-| TrOCR-only (19) | 0.24 | 0.89 | **0.21** |
-| neither (250) | 0.24 | 0.88 | 0.10 |
+| group (n) | avg chars | ink-bleed | minim | minim/100ch | special | special/100ch |
+|---|---|---|---|---|---|---|
+| BOTH-hard (11) | 38.3 | 0.33 | 1.18 | 3.17 | 0.55 | 1.32 |
+| kraken-only (19) | 35.4 | **0.34** | 1.00 | 2.91 | 0.11 | 0.37 |
+| TrOCR-only (19) | 34.3 | 0.24 | 0.89 | 2.83 | **0.21** | **0.54** |
+| neither (250) | 37.0 | 0.24 | 0.88 | 2.40 | 0.10 | 0.26 |
 
-Values are **per-line averages** within each group. `special` = count of special glyphs per line —
+Values are **per-line averages** within each group; `/100ch` = length-normalised density (count ÷
+line-length ×100, averaged per line) so long lines don't inflate the raw count. **Line length is not a
+driver** — hard-for-one-model lines are *shorter* (34–35 chars) than "neither" (37), not longer.
+Normalising sharpens the reading: **minim density is elevated in all three hard groups (2.8–3.2 vs 2.4)
+but ~equal across models** — a *general* difficulty marker, not TrOCR-specific; **special-char density
+stays TrOCR-leaning after length control** (TrOCR-only 0.54 vs kraken-only 0.37 vs neither 0.26 per 100
+chars — the raw 2× contrast becomes ~1.5×, so it survives but is modest). `special` = count of special glyphs per line —
 diacritic letters (ñõãẽĩũ) + abbreviation symbols (⁊ Tironian *et*, ꝑ), each counted once via NFC, `¶`
 paragraph marker excluded (this replaces an earlier `abbrev` proxy that double-counted precomposed
 diacritics; we count *characters*, not semantic abbreviations). `minim` = count of minim-prone letter
