@@ -3,7 +3,7 @@
 The long-tail zoom (spec §6.13) found kraken and TrOCR fail on *largely disjoint* lines (only
 11 of a 49-line union are hard for both). This characterises the four groups (hard-for-BOTH,
 kraken-only, TrOCR-only, neither) by line features — image size, text length, ink-bleed score
-(§6.5.8), minim + special-character density — to see what drives each model's errors and whether a
+(§6.5.8), minim run-length + special-character density — to see what drives each model's errors, and whether a
 per-line router could exploit the difference.
 
 Inputs: per-line tail flags from longtail_confidence (per_line_{kraken,trocr}.csv) + the
@@ -34,33 +34,19 @@ from scipy.stats import spearmanr
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-_MINIM = [
-    "in",
-    "ni",
-    "im",
-    "mi",
-    "iu",
-    "ui",
-    "un",
-    "nu",
-    "mn",
-    "nm",
-    "nn",
-    "mm",
-    "uu",
-    "iii",
-    "am",
-    "ma",
-]
-_ROM = re.compile(r"\b[ivxlc]{2,}\b")
-FEATS = ["w", "h", "chars", "words", "bleed", "minim", "special"]
+# maximal runs of adjacent minim letters (i, m, n, u); {2,} = 2+ in a row. Adjacency is what
+# creates the ambiguity — a lone minim letter is readable, "iiii"/"mmuni" is not.
+_RUN = re.compile(r"[imnu]{2,}")
+FEATS = ["w", "h", "chars", "words", "bleed", "runlen", "special"]
 OURS, GOLD, GREY = "#9C2A24", "#8A6A26", "#8A8072"
 
 
 def features(stem, gt, val_dir, bleed):
     w, h = Image.open(f"{val_dir}/{stem}.png").size
     low = gt.lower()
-    mc = sum(low.count(s) for s in _MINIM) + len(_ROM.findall(low))
+    # minim ambiguity = total chars inside maximal runs of >=2 adjacent minim letters. Isolated
+    # minim letters aren't confusable, so only runs count ('sic'->0, 'dixit'->0, 'minim'->5).
+    mc = sum(len(r) for r in _RUN.findall(low))
     # special-glyph count: diacritic letters (ñõãẽĩũ, incl. loose combining marks) + medieval
     # abbreviation symbols (⁊ Tironian et, ꝑ p-with-stroke). NFC composes precomposed forms so each
     # glyph counts ONCE; the ¶ paragraph marker is excluded (structural, not a hard letterform).
@@ -72,7 +58,7 @@ def features(stem, gt, val_dir, bleed):
         "chars": len(gt),
         "words": len(gt.split()),
         "bleed": bleed.get(stem + ".png", {}).get("bleed_score", float("nan")),
-        "minim": mc,
+        "runlen": mc,
         "special": sp,
     }
 
@@ -115,12 +101,12 @@ def main() -> None:
     # length-normalised densities: raw counts don't control for line length, so also report
     # count / line-length (per 100 chars), averaged per line so long lines don't inflate.
     print("\nlength-normalised (per 100 chars):")
-    print(f"{'group':>12} | {'avg chars':>9} | {'minim/100ch':>11} | {'special/100ch':>13}")
+    print(f"{'group':>12} | {'avg chars':>9} | {'runlen/100ch':>12} | {'special/100ch':>13}")
     for g, S in groups.items():
         ch = st.mean([F[s]["chars"] for s in S])
-        md = 100 * st.mean([F[s]["minim"] / max(1, F[s]["chars"]) for s in S])
+        rd = 100 * st.mean([F[s]["runlen"] / max(1, F[s]["chars"]) for s in S])
         sd = 100 * st.mean([F[s]["special"] / max(1, F[s]["chars"]) for s in S])
-        print(f"{g:>12} | {ch:>9.1f} | {md:>11.2f} | {sd:>13.2f}")
+        print(f"{g:>12} | {ch:>9.1f} | {rd:>12.2f} | {sd:>13.2f}")
 
     print("\nSpearman(feature, per-line CER) — what makes lines hard for each model:")
     print(f"{'feature':>8} | {'kraken':>7} | {'trocr':>7}")
@@ -166,7 +152,7 @@ def main() -> None:
     fig, ax = plt.subplots(figsize=(7.2, 5.2))
     for g, S in groups.items():
         xs = [F[s]["bleed"] for s in S]
-        ys = [F[s]["minim"] + F[s]["special"] for s in S]
+        ys = [F[s]["runlen"] + F[s]["special"] for s in S]
         ax.scatter(
             xs,
             ys,
@@ -179,7 +165,7 @@ def main() -> None:
         )
     ax.set(
         xlabel="ink-bleed score (physical degradation)",
-        ylabel="minim + special-char count (content ambiguity)",
+        ylabel="minim run-length + special-char count (content ambiguity)",
         title="Hard-case features — kraken fails on bleed, TrOCR on content",
     )
     ax.legend(frameon=False, fontsize=9)

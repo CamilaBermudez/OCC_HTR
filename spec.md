@@ -5512,33 +5512,33 @@ Characterised the four funnel groups (hard-for-BOTH / kraken-only / TrOCR-only /
 features (image size, text length, ink-bleed §6.5.8, minim + abbreviation density;
 `scripts/ocr/hard_case_features.py`):
 
-| group (n) | avg chars | ink-bleed | minim | minim/100ch | special | special/100ch |
+| group (n) | avg chars | ink-bleed | runlen | runlen/100ch | special | special/100ch |
 |---|---|---|---|---|---|---|
-| BOTH-hard (11) | 38.3 | 0.33 | 1.18 | 3.17 | 0.55 | 1.32 |
-| kraken-only (19) | 35.4 | **0.34** | 1.00 | 2.91 | 0.11 | 0.37 |
-| TrOCR-only (19) | 34.3 | 0.24 | 0.89 | 2.83 | **0.21** | **0.54** |
-| neither (250) | 37.0 | 0.24 | 0.88 | 2.40 | 0.10 | 0.26 |
+| BOTH-hard (11) | 38.3 | 0.33 | 1.45 | 3.71 | 0.55 | 1.32 |
+| kraken-only (19) | 35.4 | **0.34** | 1.26 | 3.52 | 0.11 | 0.37 |
+| TrOCR-only (19) | 34.3 | 0.24 | 1.47 | **3.91** | **0.21** | **0.54** |
+| neither (250) | 37.0 | 0.24 | 0.99 | 2.67 | 0.10 | 0.26 |
 
 Values are **per-line averages** within each group; `/100ch` = length-normalised density (count ÷
 line-length ×100, averaged per line) so long lines don't inflate the raw count. **Line length is not a
 driver** — hard-for-one-model lines are *shorter* (34–35 chars) than "neither" (37), not longer.
-Normalising sharpens the reading: **minim density is elevated in all three hard groups (2.8–3.2 vs 2.4)
-but ~equal across models** — a *general* difficulty marker, not TrOCR-specific; **special-char density
-stays TrOCR-leaning after length control** (TrOCR-only 0.54 vs kraken-only 0.37 vs neither 0.26 per 100
-chars — the raw 2× contrast becomes ~1.5×, so it survives but is modest). `special` = count of special glyphs per line —
-diacritic letters (ñõãẽĩũ) + abbreviation symbols (⁊ Tironian *et*, ꝑ), each counted once via NFC, `¶`
-paragraph marker excluded (this replaces an earlier `abbrev` proxy that double-counted precomposed
-diacritics; we count *characters*, not semantic abbreviations). `minim` = count of minim-prone letter
-pairs in the GT string — a **text proxy**, not a measure of visual stroke ambiguity. This analysis is
-**descriptive/correlational** (group means + marginal Spearman), not causal — the causal complement is
-the augmentation ablations (`abl_ink_bleed` etc.).
+`runlen` = total characters inside maximal runs of ≥2 *adjacent* minim letters (i/m/n/u) — the actual
+source of minim ambiguity, since isolated minim letters are readable (`sic`→0, `minim`→5). This replaces
+an earlier pattern-count proxy that double-counted overlapping bigrams (`minim`→4) yet undercounted
+long runs (`nnn`→1); a plain minim-*letter* count carries no signal (ρ≈0, it just tracks letter
+frequency). `special` = count of special glyphs per line — diacritic letters (ñõãẽĩũ) + abbreviation
+symbols (⁊ Tironian *et*, ꝑ), each counted once via NFC, `¶` paragraph marker excluded (replaces an
+earlier `abbrev` proxy that double-counted precomposed diacritics; we count *characters*, not semantic
+abbreviations). This analysis is **descriptive/correlational** (group means + marginal Spearman), not
+causal — the causal complement is the augmentation ablations (`abl_ink_bleed` etc.).
 
-Spearman(feature, per-line CER): kraken — **bleed 0.21**, minim 0.14, special 0.14; TrOCR — bleed 0.08,
-minim 0.14, **special 0.17**, height 0.18. **Complementary weaknesses:** **kraken (CTC) hurt more by
-*physical degradation*** (bleed↔CER ρ=0.21 vs TrOCR 0.08); **TrOCR (seq2seq) hurt more by *content***
-(special-char density ρ 0.17 vs kraken 0.14; group 0.21 vs 0.11; robust to bleed). **Image width and
-line length do NOT predict error** (ρ≈0). The content signal is *weak* (ρ~0.14–0.17) — a tendency, not
-a strong effect; only bleed→kraken is robust.
+Spearman(feature, per-line CER): kraken — **bleed 0.21**, runlen 0.13, special 0.14; TrOCR — bleed 0.08,
+**runlen 0.16**, **special 0.17**, height 0.18. **Complementary weaknesses:** **kraken (CTC) hurt more by
+*physical degradation*** (bleed↔CER ρ=0.21 vs TrOCR 0.08); **TrOCR (seq2seq) hurt more by *content*** —
+both minim run-length (ρ 0.16 vs kraken 0.13; density 3.91 vs 3.52/100ch) and special chars (ρ 0.17 vs
+0.14; 0.54 vs 0.37/100ch) lean TrOCR, and it is robust to bleed. **Image width and line length do NOT
+predict error** (ρ≈0). The content signal is *weak* (ρ~0.13–0.17) — a tendency, not a strong effect;
+only bleed→kraken is robust.
 
 **Ink-bleed by percentile (the group means understate it).** Where each hard group sits in the *overall*
 val bleed distribution (p75 0.306, p90 0.382, p99 0.562): **kraken-only-hard lines are genuinely
