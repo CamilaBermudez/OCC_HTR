@@ -3,7 +3,7 @@
 The long-tail zoom (spec §6.13) found kraken and TrOCR fail on *largely disjoint* lines (only
 11 of a 49-line union are hard for both). This characterises the four groups (hard-for-BOTH,
 kraken-only, TrOCR-only, neither) by line features — image size, text length, ink-bleed score
-(§6.5.8), minim + abbreviation density — to see what drives each model's errors and whether a
+(§6.5.8), minim + special-character density — to see what drives each model's errors and whether a
 per-line router could exploit the difference.
 
 Inputs: per-line tail flags from longtail_confidence (per_line_{kraken,trocr}.csv) + the
@@ -27,6 +27,7 @@ import unicodedata
 from pathlib import Path
 
 import matplotlib
+import numpy as np
 from PIL import Image
 from scipy.stats import spearmanr
 
@@ -52,8 +53,7 @@ _MINIM = [
     "ma",
 ]
 _ROM = re.compile(r"\b[ivxlc]{2,}\b")
-_ABBR = set("ñõãẽĩũ⁊")
-FEATS = ["w", "h", "chars", "words", "bleed", "minim", "abbr"]
+FEATS = ["w", "h", "chars", "words", "bleed", "minim", "special"]
 OURS, GOLD, GREY = "#9C2A24", "#8A6A26", "#8A8072"
 
 
@@ -61,9 +61,11 @@ def features(stem, gt, val_dir, bleed):
     w, h = Image.open(f"{val_dir}/{stem}.png").size
     low = gt.lower()
     mc = sum(low.count(s) for s in _MINIM) + len(_ROM.findall(low))
-    ab = sum(1 for ch in unicodedata.normalize("NFD", gt) if unicodedata.combining(ch)) + sum(
-        gt.count(c) for c in _ABBR
-    )
+    # special-glyph count: diacritic letters (ñõãẽĩũ, incl. loose combining marks) + medieval
+    # abbreviation symbols (⁊ Tironian et, ꝑ p-with-stroke). NFC composes precomposed forms so each
+    # glyph counts ONCE; the ¶ paragraph marker is excluded (structural, not a hard letterform).
+    # We count special CHARACTERS, not "abbreviations" (which need a semantic call we can't make).
+    sp = sum(1 for ch in unicodedata.normalize("NFC", gt) if ord(ch) > 127 and ch != "¶")
     return {
         "w": w,
         "h": h,
@@ -71,7 +73,7 @@ def features(stem, gt, val_dir, bleed):
         "words": len(gt.split()),
         "bleed": bleed.get(stem + ".png", {}).get("bleed_score", float("nan")),
         "minim": mc,
-        "abbr": ab,
+        "special": sp,
     }
 
 
@@ -119,6 +121,26 @@ def main() -> None:
         rt = spearmanr(x, [float(T[s]["cer"]) for s in idx]).correlation
         print(f"{k:>8} | {rk:>7.2f} | {rt:>7.2f}")
 
+    # ink-bleed: where do the hard groups sit in the OVERALL bleed distribution? (means hide this)
+    allb = np.array([F[s]["bleed"] for s in sh if F[s]["bleed"] == F[s]["bleed"]])
+    p75, p90, p99 = (float(np.percentile(allb, q)) for q in (75, 90, 99))
+    print(
+        f"\nink-bleed percentiles (overall n={len(allb)}): p75 {p75:.3f}  p90 {p90:.3f}  p99 {p99:.3f}"
+    )
+    print(
+        f"{'group':>12} | {'median':>6} | {'%>p75':>5} | {'%>p90':>5} | {'%>p99':>5} | {'mean %ile-rank':>13}"
+    )
+    ranks = {
+        s: 100 * r / (len(allb) - 1) for r, s in enumerate(sorted(sh, key=lambda s: F[s]["bleed"]))
+    }
+    for g, S in groups.items():
+        v = np.array([F[s]["bleed"] for s in S if F[s]["bleed"] == F[s]["bleed"]])
+        mr = np.mean([ranks[s] for s in S])
+        print(
+            f"{g:>12} | {np.median(v):>6.3f} | {100 * np.mean(v > p75):>4.0f}% | "
+            f"{100 * np.mean(v > p90):>4.0f}% | {100 * np.mean(v > p99):>4.0f}% | {mr:>12.0f}%"
+        )
+
     # dump per-line features + group
     def grp(s):
         return next(g for g, S in groups.items() if s in S)
@@ -134,7 +156,7 @@ def main() -> None:
     fig, ax = plt.subplots(figsize=(7.2, 5.2))
     for g, S in groups.items():
         xs = [F[s]["bleed"] for s in S]
-        ys = [F[s]["minim"] + F[s]["abbr"] for s in S]
+        ys = [F[s]["minim"] + F[s]["special"] for s in S]
         ax.scatter(
             xs,
             ys,
@@ -147,7 +169,7 @@ def main() -> None:
         )
     ax.set(
         xlabel="ink-bleed score (physical degradation)",
-        ylabel="minim + abbreviation count (content ambiguity)",
+        ylabel="minim + special-char count (content ambiguity)",
         title="Hard-case features — kraken fails on bleed, TrOCR on content",
     )
     ax.legend(frameon=False, fontsize=9)
