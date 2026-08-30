@@ -167,21 +167,42 @@ def append_correction(
     return record
 
 
-def queue_payload(cfg: Config, limit: int, skip_done: bool) -> dict:
-    """The ranked queue for the frontend: pending (or all) lines + done-status + any saved text."""
+def queue_payload(cfg: Config, limit: int, mode: str = "pending") -> dict:
+    """The ranked queue for the frontend, filtered by ``mode`` (all worst-first by score):
+
+    - ``pending``  — not yet corrected (the default work queue);
+    - ``done``     — already corrected, to revisit/re-edit;
+    - ``flagged``  — corrected but self-rated ``unsure``/``illegible`` (needs a second pass);
+    - ``all``      — every line, done or not.
+    """
     q = get_queue(cfg)
     done = load_done(corrections_path())
+    flagged_ids = {
+        lid for lid, r in done.items() if r.get("annotator_confidence") in ("unsure", "illegible")
+    }
     rows = []
     for ql in q:
-        is_done = ql.line_id in done
-        if skip_done and is_done:
+        rec = done.get(ql.line_id)
+        is_done = rec is not None
+        if mode == "pending" and is_done:
+            continue
+        if mode == "done" and not is_done:
+            continue
+        if mode == "flagged" and ql.line_id not in flagged_ids:
             continue
         row = asdict(ql)
-        rec = done.get(ql.line_id, {})
         row["done"] = is_done
-        row["corrected_text"] = rec.get("corrected_text", "")
-        row["annotator_confidence"] = rec.get("annotator_confidence", "")
+        row["corrected_text"] = rec.get("corrected_text", "") if rec else ""
+        row["annotator_confidence"] = rec.get("annotator_confidence", "") if rec else ""
         rows.append(row)
         if len(rows) >= limit:
             break
-    return {"total": len(q), "done": len(done), "pending": len(q) - len(done), "lines": rows}
+    return {
+        "total": len(q),
+        "done": len(done),
+        "pending": len(q) - len(done),
+        "flagged": len(flagged_ids),
+        "mode": mode,
+        "shown": len(rows),
+        "lines": rows,
+    }

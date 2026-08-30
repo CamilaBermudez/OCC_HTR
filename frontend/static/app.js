@@ -703,6 +703,8 @@ function bindEvents() {
             setReviewConfidence(b.dataset.conf);
             $("#review-input")?.focus();
         }));
+    $$("#review-modes .rvm-btn").forEach((b) =>
+        b.addEventListener("click", () => setReviewMode(b.dataset.mode)));
     $("#page-select").addEventListener("change", (e) => selectPage(e.target.value));
     // Model dropdown: re-fetch the current page for the chosen model (drives tabs 1 & 2).
     const modelSel = $("#model-select");
@@ -921,7 +923,10 @@ async function loadComparePage(page) {
 }
 
 // ---------- Tab 6: human-in-the-loop review & correct (spec §6.13) ----------
-const reviewState = { lines: [], idx: 0, total: 0, done: 0, loaded: false, saving: false, confidence: "certain" };
+const reviewState = {
+    lines: [], idx: 0, total: 0, done: 0, flagged: 0,
+    mode: "pending", loadedMode: null, saving: false, confidence: "certain",
+};
 
 function setReviewConfidence(val) {
     reviewState.confidence = val;
@@ -929,16 +934,13 @@ function setReviewConfidence(val) {
         b.classList.toggle("active", b.dataset.conf === val));
 }
 
-async function initReview() {
-    if (reviewState.loaded && reviewState.lines.length) {
-        renderReviewCard();
-        return;
-    }
-    $("#review-count").textContent = "Loading queue…";
+async function loadReviewQueue() {
+    $("#review-count").textContent = "Loading…";
     try {
-        const data = await fetchJson("/api/review/queue?limit=500&skip_done=1");
+        const data = await fetchJson(`/api/review/queue?limit=500&mode=${reviewState.mode}`);
         Object.assign(reviewState, {
-            lines: data.lines, total: data.total, done: data.done, idx: 0, loaded: true,
+            lines: data.lines, total: data.total, done: data.done, flagged: data.flagged,
+            idx: 0, loadedMode: reviewState.mode,
         });
         renderReviewCard();
     } catch (e) {
@@ -946,19 +948,39 @@ async function initReview() {
     }
 }
 
+async function initReview() {
+    if (reviewState.loadedMode === reviewState.mode && reviewState.lines.length) {
+        renderReviewCard();
+        return;
+    }
+    await loadReviewQueue();
+}
+
+function setReviewMode(mode) {
+    if (mode === reviewState.mode) return;
+    reviewState.mode = mode;
+    $$("#review-modes .rvm-btn").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
+    loadReviewQueue();
+}
+
 function renderReviewCard() {
     const L = reviewState.lines[reviewState.idx];
     const stage = $("#review-stage");
+    const tally = `${reviewState.done} corrected · ${reviewState.flagged} flagged of ${reviewState.total}`;
     if (!L) {
-        $("#review-count").textContent =
-            `All ${reviewState.done}/${reviewState.total} reviewed — nothing pending 🎉`;
+        const empty = {
+            pending: `All ${reviewState.done}/${reviewState.total} reviewed — nothing pending 🎉`,
+            done: "No corrected lines yet.",
+            flagged: "No flagged lines — nothing marked unsure / illegible.",
+        }[reviewState.mode] || "Nothing to show.";
+        $("#review-count").textContent = empty;
         stage.style.display = "none";
         return;
     }
     stage.style.display = "";
+    const modeLabel = { pending: "Pending", done: "Corrected", flagged: "Flagged" }[reviewState.mode];
     $("#review-count").textContent =
-        `Line ${reviewState.idx + 1} / ${reviewState.lines.length} pending · ` +
-        `${reviewState.done}/${reviewState.total} corrected corpus-wide`;
+        `${modeLabel}: line ${reviewState.idx + 1} / ${reviewState.lines.length} · ${tally}`;
     const img = $("#review-image");
     img.src = `/api/compare/${L.page}/image/${L.stem}`;
     img.alt = L.stem;

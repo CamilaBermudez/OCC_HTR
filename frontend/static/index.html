@@ -150,9 +150,14 @@
         <section id="tab-review" class="tab-panel">
             <div class="review-bar">
                 <div class="review-progress">
+                    <div class="review-modes" id="review-modes">
+                        <button type="button" class="rvm-btn active" data-mode="pending">Pending</button>
+                        <button type="button" class="rvm-btn" data-mode="done" title="Revisit lines you already corrected">Corrected</button>
+                        <button type="button" class="rvm-btn" data-mode="flagged" title="Corrected lines you marked unsure / illegible">Flagged</button>
+                    </div>
                     <button id="review-prev" title="Previous line">←</button>
                     <span id="review-count">Loading queue…</span>
-                    <button id="review-skip" title="Skip without saving (→)">Skip</button>
+                    <button id="review-skip" title="Next line without saving">Skip</button>
                 </div>
                 <div class="review-hint">Lines ranked <b>worst-first</b> by kraken min-confidence + kraken↔TrOCR disagreement.
                     Read the crop, type the correct transcription, <b>Save</b> (⌘/Ctrl + ↵). The field starts

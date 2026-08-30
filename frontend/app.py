@@ -195,12 +195,13 @@ def api_review_stats() -> dict:
 
 
 @app.get("/api/review/queue")
-def api_review_queue(limit: int = 300, skip_done: int = 1) -> dict:
-    """The confidence-ranked review queue (worst-first): the next ``limit`` pending lines
-    (or all, with ``skip_done=0``), each with the model transcriptions + min-conf + disagreement."""
+def api_review_queue(limit: int = 300, mode: str = "pending") -> dict:
+    """The confidence-ranked review queue (worst-first), filtered by ``mode``
+    (``pending`` | ``done`` | ``flagged`` | ``all``): the next ``limit`` matching lines,
+    each with the model transcriptions + min-conf + disagreement + any saved correction."""
     from frontend import review
 
-    return review.queue_payload(get_repo().config, limit=limit, skip_done=bool(skip_done))
+    return review.queue_payload(get_repo().config, limit=limit, mode=mode)
 
 
 @app.post("/api/review/save")

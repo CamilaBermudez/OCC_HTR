@@ -658,3 +658,13 @@ main {
 .rcp-btn[data-conf="certain"].active { background: #3E7A46; border-color: #3E7A46; color: #eafaef; }
 .rcp-btn[data-conf="unsure"].active { background: var(--accent); border-color: var(--accent); }
 .rcp-btn[data-conf="illegible"].active { background: #9C2A24; border-color: #9C2A24; color: #fbeceb; }
+
+/* Review mode toggle (Pending / Corrected / Flagged) */
+.review-modes { display: inline-flex; gap: 0; margin-right: 0.6rem; border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; }
+.rvm-btn {
+    background: var(--bg); color: var(--muted); border: none; border-right: 1px solid var(--panel-border);
+    padding: 0.25rem 0.7rem; cursor: pointer; font-size: 0.85rem;
+}
+.rvm-btn:last-child { border-right: none; }
+.rvm-btn:hover { color: var(--text); }
+.rvm-btn.active { background: var(--accent); color: #1a1a1a; font-weight: 600; }
