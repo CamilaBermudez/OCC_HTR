@@ -5629,6 +5629,16 @@ display/edit the **rescored 0.9743** text. No calibrated-threshold claim (deferr
 only). Scripts `scripts/ocr/manuscript_confidence.py` + analyses over the `per_line_*` CSVs; log
 `logs/analysis/hitl_triage_20260830.log`.
 
+*BUILT (2026-08-30):* a **"Review & correct" tab** in the viewer SPA (`make frontend`). Backend
+`frontend/review.py` builds the queue from the Tab-4 `line_compare` JSONs (13,654 lines with per-char
+kraken confidence) ranked ascending by `min_conf − disagreement`; endpoints `GET /api/review/{stats,queue}`
++ `POST /api/review/save`; corrections append to `data/processed/human_annotations/corrections.jsonl`
+(override `HITL_CORRECTIONS`), one record per save `{line_id, page, kraken_text, trocr_text,
+corrected_text, changed_vs_kraken, min_conf, disagreement, ts}`. UI: line crop (primary) + all model
+rows read-only (click-to-copy) + **blank** edit field (no anchoring) + Save (⌘/Ctrl+↵); done lines drop
+from the queue. Verified end-to-end (worst line surfaces first — `min_conf 0.33`, disagreement 1.0; save
+round-trip writes the JSONL; crop serves 200).
+
 (a) *Hard-line definition (clarification):* the §6.13 "hard tail" = each model's **worst decile by
 per-line CER** (`np.percentile(cers,90)`), NOT confidence. Confidence was tested *against* that set.
 

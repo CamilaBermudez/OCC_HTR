@@ -14,6 +14,7 @@
             <button class="tab-btn" data-tab="tab-alignment">3-way alignment</button>
             <button class="tab-btn" data-tab="tab-transcribe">Transcribe a page</button>
             <button class="tab-btn" data-tab="tab-compare">Model compare</button>
+            <button class="tab-btn" data-tab="tab-review">Review &amp; correct</button>
             <button class="tab-btn" data-tab="tab-info">Info</button>
         </nav>
         <div class="page-selector">
@@ -145,6 +146,31 @@
             <div id="compare-carousel" class="compare-carousel"></div>
         </section>
 
+        <!-- ============ TAB 6: human-in-the-loop review & correct ============ -->
+        <section id="tab-review" class="tab-panel">
+            <div class="review-bar">
+                <div class="review-progress">
+                    <button id="review-prev" title="Previous line">←</button>
+                    <span id="review-count">Loading queue…</span>
+                    <button id="review-skip" title="Skip without saving (→)">Skip</button>
+                </div>
+                <div class="review-hint">Lines ranked <b>worst-first</b> by kraken min-confidence + kraken↔TrOCR disagreement.
+                    Read the crop, type the correct transcription, <b>Save</b> (⌘/Ctrl + ↵). The field starts
+                    blank on purpose — the model rows are reference only (click one to copy it in).</div>
+            </div>
+            <div class="review-stage" id="review-stage">
+                <div class="review-imgwrap"><img id="review-image" alt="line crop"></div>
+                <div class="review-meta" id="review-meta"></div>
+                <div class="review-models" id="review-models"></div>
+                <textarea id="review-input" spellcheck="false" autocomplete="off"
+                    placeholder="Type the correct transcription for this line…"></textarea>
+                <div class="review-actions">
+                    <span id="review-saved" class="review-saved"></span>
+                    <button id="review-save" class="primary" title="Save correction and go to next (⌘/Ctrl + Enter)">Save &amp; next →</button>
+                </div>
+            </div>
+        </section>
+
         <!-- ============ TAB 5: info / guide ============ -->
         <section id="tab-info" class="tab-panel">
             <div class="info-wrap">
@@ -156,6 +182,7 @@
                         <li><b>3-way alignment:</b> scholarly edition vs. the selected model, with colour-coded difference chips (substitution / addition / deletion / abbrev / spacing / punct). The category chips at the top are <b>filters</b> (click to show/hide a type). <b>Download diffs (JSON)</b> exports the selected model's classified discrepancies (with TEI). Switch the compared model with the top-bar <b>Model</b> dropdown.</li>
                         <li><b>Transcribe a page:</b> upload a page image and run the full pipeline (segmentation → recognition) live.</li>
                         <li><b>Model compare:</b> line-by-line side-by-side of the scholarly text and each model, with per-character confidence heat and mismatch highlighting.</li>
+                        <li><b>Review &amp; correct:</b> a human-in-the-loop queue of every line, ranked <b>worst-first</b> by kraken min-confidence + kraken↔TrOCR disagreement (the lines most likely wrong). Read the crop, type the correct transcription (field starts blank — model rows are reference only, click one to copy it in), and <b>Save</b> (⌘/Ctrl+↵). Corrections append to a JSONL; already-reviewed lines drop out of the queue.</li>
                     </ul>
                 </div>
                 <div class="info-models">

@@ -483,12 +483,17 @@ function activateTab(tabId) {
     // upload, compare, and Info tabs (upload brings its own image; compare has its own page
     // selector; Info is static guide text) — hide them there.
     const ownControls =
-        tabId === "tab-transcribe" || tabId === "tab-compare" || tabId === "tab-info";
+        tabId === "tab-transcribe" || tabId === "tab-compare" || tabId === "tab-info" ||
+        tabId === "tab-review";
     $(".page-selector").style.display = ownControls ? "none" : "flex";
     $("#status").style.display = ownControls ? "none" : "";
     if (tabId === "tab-compare") {
         initCompare();
         return; // no zoom pane on this tab
+    }
+    if (tabId === "tab-review") {
+        initReview();
+        return; // its own layout, no zoom pane
     }
     // A pane that was previously ``display: none`` had clientWidth = 0
     // when its image loaded, so applyZoom used a bogus fit. Recompute
@@ -682,6 +687,16 @@ function downloadUploadAlto() {
 function bindEvents() {
     $$(".tab-btn").forEach((btn) => {
         btn.addEventListener("click", () => activateTab(btn.dataset.tab));
+    });
+    // Tab 6: review & correct
+    $("#review-save")?.addEventListener("click", saveReview);
+    $("#review-skip")?.addEventListener("click", nextReview);
+    $("#review-prev")?.addEventListener("click", prevReview);
+    $("#review-input")?.addEventListener("keydown", (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+            e.preventDefault();
+            saveReview();
+        }
     });
     $("#page-select").addEventListener("change", (e) => selectPage(e.target.value));
     // Model dropdown: re-fetch the current page for the chosen model (drives tabs 1 & 2).
@@ -898,6 +913,100 @@ async function loadComparePage(page) {
     if (!car.children.length) car.textContent = "No comparison lines for this page.";
     car.scrollTop = 0;
     requestAnimationFrame(() => updateCompareFocus(car));
+}
+
+// ---------- Tab 6: human-in-the-loop review & correct (spec §6.13) ----------
+const reviewState = { lines: [], idx: 0, total: 0, done: 0, loaded: false, saving: false };
+
+async function initReview() {
+    if (reviewState.loaded && reviewState.lines.length) {
+        renderReviewCard();
+        return;
+    }
+    $("#review-count").textContent = "Loading queue…";
+    try {
+        const data = await fetchJson("/api/review/queue?limit=500&skip_done=1");
+        Object.assign(reviewState, {
+            lines: data.lines, total: data.total, done: data.done, idx: 0, loaded: true,
+        });
+        renderReviewCard();
+    } catch (e) {
+        $("#review-count").textContent = "Failed to load queue: " + e.message;
+    }
+}
+
+function renderReviewCard() {
+    const L = reviewState.lines[reviewState.idx];
+    const stage = $("#review-stage");
+    if (!L) {
+        $("#review-count").textContent =
+            `All ${reviewState.done}/${reviewState.total} reviewed — nothing pending 🎉`;
+        stage.style.display = "none";
+        return;
+    }
+    stage.style.display = "";
+    $("#review-count").textContent =
+        `Line ${reviewState.idx + 1} / ${reviewState.lines.length} pending · ` +
+        `${reviewState.done}/${reviewState.total} corrected corpus-wide`;
+    const img = $("#review-image");
+    img.src = `/api/compare/${L.page}/image/${L.stem}`;
+    img.alt = L.stem;
+    $("#review-meta").innerHTML =
+        `<span class="review-id">${L.page} · ${L.stem}</span>` +
+        `<span class="review-conf" style="border-color:${confColor(L.min_conf)}">min-conf ${L.min_conf.toFixed(2)}</span>` +
+        `<span class="review-disag">disagreement ${(L.disagreement * 100).toFixed(0)}%</span>`;
+    // read-only model rows (reference only; click copies text into the edit field)
+    const box = $("#review-models");
+    box.innerHTML = "";
+    const models = [
+        ["kraken (CTC + LM)", L.kraken_text, "rv-krak"],
+        ["TrOCR (ViT+RoBERTa)", L.trocr_text, "rv-vit"],
+        ["Catmus", L.catmus_text, "rv-cat"],
+    ].filter(([, t]) => t);
+    for (const [lab, txt, cls] of models) {
+        const row = document.createElement("div");
+        row.className = "review-modelrow " + cls;
+        row.title = "Click to copy this into the edit field";
+        const l = document.createElement("span"); l.className = "rv-label"; l.textContent = lab;
+        const t = document.createElement("span"); t.className = "rv-text"; t.textContent = txt;
+        row.append(l, t);
+        row.addEventListener("click", () => {
+            const inp = $("#review-input"); inp.value = txt; inp.focus();
+        });
+        box.appendChild(row);
+    }
+    const input = $("#review-input");
+    input.value = L.corrected_text || "";  // blank unless previously saved — never model pre-fill
+    $("#review-saved").textContent = L.done ? "saved ✓" : "";
+    input.focus();
+}
+
+async function saveReview() {
+    const L = reviewState.lines[reviewState.idx];
+    if (!L || reviewState.saving) return;
+    reviewState.saving = true;
+    const body = new URLSearchParams({ line_id: L.line_id, corrected_text: $("#review-input").value });
+    try {
+        const r = await fetch("/api/review/save", { method: "POST", body });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const data = await r.json();
+        reviewState.done = data.done;
+        if (!L.done) L.done = true;
+        L.corrected_text = $("#review-input").value;
+        nextReview();
+    } catch (e) {
+        $("#review-saved").textContent = "save failed: " + e.message;
+    } finally {
+        reviewState.saving = false;
+    }
+}
+
+function nextReview() {
+    reviewState.idx = Math.min(reviewState.idx + 1, reviewState.lines.length);
+    renderReviewCard();
+}
+function prevReview() {
+    if (reviewState.idx > 0) { reviewState.idx -= 1; renderReviewCard(); }
 }
 
 async function init() {

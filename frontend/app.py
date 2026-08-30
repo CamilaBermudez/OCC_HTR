@@ -182,6 +182,41 @@ def api_diffs_json(model: str | None = None) -> FileResponse:
     )
 
 
+# ---- Tab 6: human-in-the-loop review & correct (spec §6.13) ----
+@app.get("/api/review/stats")
+def api_review_stats() -> dict:
+    """How many lines are in the review queue and how many corrected so far."""
+    from frontend import review
+
+    cfg = get_repo().config
+    q = review.get_queue(cfg)
+    done = review.load_done(review.corrections_path())
+    return {"total": len(q), "done": len(done), "pending": len(q) - len(done)}
+
+
+@app.get("/api/review/queue")
+def api_review_queue(limit: int = 300, skip_done: int = 1) -> dict:
+    """The confidence-ranked review queue (worst-first): the next ``limit`` pending lines
+    (or all, with ``skip_done=0``), each with the model transcriptions + min-conf + disagreement."""
+    from frontend import review
+
+    return review.queue_payload(get_repo().config, limit=limit, skip_done=bool(skip_done))
+
+
+@app.post("/api/review/save")
+def api_review_save(
+    line_id: Annotated[str, Form()],
+    corrected_text: Annotated[str, Form()] = "",
+) -> dict:
+    """Append one human correction to the JSONL and return the new done-count."""
+    from frontend import review
+
+    cfg = get_repo().config
+    rec = review.append_correction(review.corrections_path(), line_id, corrected_text, cfg)
+    done = review.load_done(review.corrections_path())
+    return {"ok": True, "record": rec, "done": len(done)}
+
+
 # Static mount is LAST so ``/api/*`` routes take precedence. The SPA at
 # ``static/index.html`` is served for any other path. ``html=True`` makes
 # ``/`` return ``index.html`` implicitly.
