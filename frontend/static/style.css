@@ -668,3 +668,14 @@ main {
 .rvm-btn:last-child { border-right: none; }
 .rvm-btn:hover { color: var(--text); }
 .rvm-btn.active { background: var(--accent); color: #1a1a1a; font-weight: 600; }
+
+/* Special-glyph insert palette (below the edit field) */
+.review-chars { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.rvc-btn {
+    background: var(--panel); color: var(--text); border: 1px solid var(--panel-border);
+    border-radius: 5px; min-width: 2.2rem; padding: 0.2rem 0.45rem; cursor: pointer;
+    font-family: "JuliaMono", monospace; font-size: 1.2rem; line-height: 1.2;
+}
+.rvc-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--bg); }
+.rvc-btn.rvc-rubric { color: #b83a30; }          /* the red pilcrow, echoing the manuscript rubric */
+.rvc-btn.rvc-rubric:hover { color: #d24a3e; border-color: #b83a30; }

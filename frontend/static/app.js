@@ -934,6 +934,54 @@ function setReviewConfidence(val) {
         b.classList.toggle("active", b.dataset.conf === val));
 }
 
+// Special glyphs common in the manuscript but absent from a normal keyboard (spec §6.13 special-char
+// analysis: ⁊ pilcrow diacritics ꝑ …). Click inserts at the cursor; the combining tilde attaches to
+// the previous letter. { c: char to insert, d?: display override, t: tooltip, cls?: extra class }.
+const REVIEW_SPECIAL_CHARS = [
+    { c: "¶", t: "pilcrow — paragraph / rubric mark", cls: "rvc-rubric" },
+    { c: "⁊", t: "Tironian et — 'and'" },
+    { c: "ꝑ", t: "p with stroke — per / par" },
+    { c: "ꝓ", t: "p with flourish — pro" },
+    { c: "ꝗ", t: "q with stroke — qui / que" },
+    { c: "ã", t: "a with tilde / macron" },
+    { c: "ẽ", t: "e with tilde / macron" },
+    { c: "ĩ", t: "i with tilde / macron" },
+    { c: "õ", t: "o with tilde / macron" },
+    { c: "ũ", t: "u with tilde / macron" },
+    { c: "ñ", t: "n with tilde" },
+    { c: "̃", d: "◌̃", t: "combining tilde — adds to the previous letter" },
+    { c: "·", t: "middle dot — punctus" },
+];
+
+function insertAtReviewCursor(ch) {
+    const ta = $("#review-input");
+    if (!ta) return;
+    const s = ta.selectionStart ?? ta.value.length;
+    const e = ta.selectionEnd ?? ta.value.length;
+    ta.value = ta.value.slice(0, s) + ch + ta.value.slice(e);
+    const pos = s + ch.length;
+    ta.setSelectionRange(pos, pos);
+    ta.focus();
+}
+
+function buildCharPalette() {
+    const box = $("#review-chars");
+    if (!box || box.childElementCount) return;  // build once
+    for (const sp of REVIEW_SPECIAL_CHARS) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "rvc-btn" + (sp.cls ? " " + sp.cls : "");
+        b.textContent = sp.d || sp.c;
+        b.title = sp.t;
+        // mousedown + preventDefault keeps focus/selection in the textarea (a click would blur it).
+        b.addEventListener("mousedown", (ev) => {
+            ev.preventDefault();
+            insertAtReviewCursor(sp.c);
+        });
+        box.appendChild(b);
+    }
+}
+
 async function loadReviewQueue() {
     $("#review-count").textContent = "Loading…";
     try {
@@ -1050,6 +1098,7 @@ function prevReview() {
 
 async function init() {
     bindEvents();
+    buildCharPalette();
     bindUploadTab();
     bindZoomHandlers();
     bindPanHandlers();

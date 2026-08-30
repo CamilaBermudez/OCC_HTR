@@ -5639,7 +5639,9 @@ corrected_text, annotator_confidence, changed_vs_kraken, min_conf, disagreement,
 anchoring) + an **annotator self-confidence** picker (certain / unsure / illegible — flags genuinely
 hard lines for a second pass) + Save (⌘/Ctrl+↵); done lines drop from the queue. A **Pending / Corrected
 / Flagged** mode toggle (`?mode=` on `/api/review/queue`) lets the annotator revisit already-corrected
-lines or jump straight to the ones they self-flagged unsure/illegible. Verified end-to-end (worst line surfaces first — `min_conf 0.33`, disagreement 1.0; save
+lines or jump straight to the ones they self-flagged unsure/illegible. A **special-glyph palette** under
+the edit field (¶ ⁊ ꝑ ꝓ ꝗ, tilde/macron vowels ãẽĩõũñ, combining tilde, punctus ·) inserts
+keyboard-absent characters at the cursor (mousedown-preventDefault preserves the caret). Verified end-to-end (worst line surfaces first — `min_conf 0.33`, disagreement 1.0; save
 round-trip writes the JSONL; crop serves 200).
 
 (a) *Hard-line definition (clarification):* the §6.13 "hard tail" = each model's **worst decile by
