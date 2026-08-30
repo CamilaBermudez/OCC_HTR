@@ -5618,6 +5618,64 @@ decisive:
   weak *and* it has no honest training target. Settled negative ([[project_router_ensemble_net_negative]]);
   the complementarity stays a *diagnostic* finding, not a deployable gain.
 
+**Human-in-the-loop triage — design + supporting confidence analysis (2026-08-30).** Since both leaders'
+confidence discriminates correct-vs-error (kraken char-AUROC 0.956, TrOCR 0.900), confidence-ranked
+review is a legitimate way to spend annotator time. Agreed design: **rank predicted lines ascending by
+kraken's raw-CTC line _min-confidence_** (worst char per line) plus a **kraken↔TrOCR disagreement flag**;
+UI shows the **line image (primary)** + both transcriptions read-only; **blank edit field (no prefill →
+no anchoring bias)**; save each correction to **JSONL** `{line_id, image, corrected_text, prefill_model,
+was_edited, ts}`. Rank on **raw-CTC** confidence (available pre-rescore, and it *generalizes* — see (e));
+display/edit the **rescored 0.9743** text. No calibrated-threshold claim (deferred by request — ordering
+only). Scripts `scripts/ocr/manuscript_confidence.py` + analyses over the `per_line_*` CSVs; log
+`logs/analysis/hitl_triage_20260830.log`.
+
+(a) *Hard-line definition (clarification):* the §6.13 "hard tail" = each model's **worst decile by
+per-line CER** (`np.percentile(cers,90)`), NOT confidence. Confidence was tested *against* that set.
+
+(b) *Confident errors — char-level, 300-val* (among the chars each model gets WRONG, fraction it was sure
+about):
+
+| model | error chars | conf✓ / conf✗ | %err conf>0.9 | %err conf>0.99 |
+|---|---|---|---|---|
+| kraken | 268 | 0.992 / 0.806 | **45%** | 13% |
+| TrOCR | 301 | 0.989 / 0.856 | **57%** | 31% |
+
+TrOCR hides *more* of its errors behind high confidence (57 vs 45%; 31 vs 13% at >0.99) — consistent with
+its lower char-AUROC. So a char-confidence queue on either model can't reach ~half the errors (they're
+confident) → the disagreement flag is the mitigation.
+
+(c) *Line-level (what the queue ranks), 300-val:* error-**line** detector AUROC (min-conf) kraken 0.779,
+TrOCR 0.827. But only **17%** of kraken's error-lines are "confident" (min-conf>0.9 → missed) vs the 45%
+char-level figure — a line usually has ≥1 shaky char even when it also carries a confident error, so
+min-conf still flags it. Line-ranked triage is more forgiving than the char number implies.
+
+(d) *Triage coverage (worst-first by kraken):* error-**line** coverage — worst 10/20/30% of lines catch
+15/28/44% of error-lines. error-**weighted** coverage (% of all 322 char-errors) — worst 10/20/30/50%:
+**23/38/56/79%** (min-conf); **26/44/58/80%** (min-conf − disagreement); oracle 37/59/75/93%.
+Error-weighted ≫ line coverage (worst 30% hold 56% of errors); **disagreement lifts low budgets (+6pp at
+20%) and alone matches min-conf at 10–20%** — a genuinely independent signal. **HITL ROI: review the worst
+20% by (min-conf + disagreement) → fix ~44% of all character errors, 2.2× random.**
+
+(e) *Confidence generalizes for kraken, not TrOCR (600 train vs 300 val) — the reason we rank on kraken:*
+
+| | kraken train | kraken val | TrOCR train | TrOCR val |
+|---|---|---|---|---|
+| mean CER | 0.0315 | 0.0293 | **0.0101** | 0.0398 |
+| line mean-conf median | 0.990 | 0.992 | **1.000** | 0.990 |
+| line min-conf median | 0.796 | 0.815 | **1.000** | 0.847 |
+| char-conf p10 | 0.988 | 0.989 | **1.000** | 0.993 |
+
+Kraken's confidence + accuracy are **identical on train and held-out** → its confidence generalizes.
+TrOCR **memorizes** (train CER 4× lower, confidence saturated at 1.000 even at p10) → its confidence is
+dangerously optimistic on familiar data, unusable for deployment triage. Rank on kraken's raw-CTC min-conf.
+
+(f) *Whole-manuscript distribution — 13,642 kept lines (post-filter pool `filtered_images/…/kept/`, 35
+failed):* mean-conf p5/25/50/75/95 = 0.963/0.982/0.990/0.996/0.999; **min-conf** p5/25/50/75/95 =
+0.477/0.616/**0.796**/0.934/0.989. **67% of lines have min-conf<0.9, 8.6% have mean-conf<0.97.** Crucially
+the book's distribution ≈ the 300-val's (mean-conf median 0.990 vs 0.992; min-conf median 0.796 vs 0.815)
+— **no distribution shift on the unseen book**, confirming the triage queue built on kraken behaves on all
+folios as measured on the val. Full per-line dump `tests/ocr/evaluations/manuscript_confidence/`.
+
 **LM rescoring — transferring the honest λ to the 600-leader (2026-08-15).** The honest
 λ\*=0.8 was tuned on the *weaker* ViT-500's clean dev; the deployable best ViT is the
 600-data `mixed_med4k_fixed` (0.9546/0.7705 baseline). Applying the **pre-committed λ=0.8**
