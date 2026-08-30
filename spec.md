@@ -5634,9 +5634,10 @@ only). Scripts `scripts/ocr/manuscript_confidence.py` + analyses over the `per_l
 kraken confidence) ranked ascending by `min_conf − disagreement`; endpoints `GET /api/review/{stats,queue}`
 + `POST /api/review/save`; corrections append to `data/processed/human_annotations/corrections.jsonl`
 (override `HITL_CORRECTIONS`), one record per save `{line_id, page, kraken_text, trocr_text,
-corrected_text, changed_vs_kraken, min_conf, disagreement, ts}`. UI: line crop (primary) + all model
-rows read-only (click-to-copy) + **blank** edit field (no anchoring) + Save (⌘/Ctrl+↵); done lines drop
-from the queue. Verified end-to-end (worst line surfaces first — `min_conf 0.33`, disagreement 1.0; save
+corrected_text, annotator_confidence, changed_vs_kraken, min_conf, disagreement, ts}`. UI: line crop
+(primary) + scholarly-edition row + all model rows read-only (click-to-copy) + **blank** edit field (no
+anchoring) + an **annotator self-confidence** picker (certain / unsure / illegible — flags genuinely
+hard lines for a second pass) + Save (⌘/Ctrl+↵); done lines drop from the queue. Verified end-to-end (worst line surfaces first — `min_conf 0.33`, disagreement 1.0; save
 round-trip writes the JSONL; crop serves 200).
 
 (a) *Hard-line definition (clarification):* the §6.13 "hard tail" = each model's **worst decile by

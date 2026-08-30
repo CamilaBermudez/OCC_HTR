@@ -132,12 +132,22 @@ def load_done(path: Path) -> dict[str, dict]:
     return done
 
 
-def append_correction(path: Path, line_id: str, corrected_text: str, cfg: Config) -> dict:
+# The annotator's self-assessed confidence in *their own* transcription — some lines are genuinely
+# hard/illegible, so a correction is not automatically ground truth. "unsure"/"illegible" flag lines
+# for a second pass. Unknown values fall back to "certain".
+ANNOTATOR_CONFIDENCE = ("certain", "unsure", "illegible")
+
+
+def append_correction(
+    path: Path, line_id: str, corrected_text: str, cfg: Config, confidence: str = "certain"
+) -> dict:
     """Append one correction record for line_id and return it. No pre-fill, so a save with empty
     text is a legitimate 'reviewed, nothing to change is not assumed' — we still store what was typed.
+    ``confidence`` is the annotator's self-rated certainty (see ANNOTATOR_CONFIDENCE).
     """
     get_queue(cfg)
     ql = _INDEX.get(line_id)
+    conf = confidence if confidence in ANNOTATOR_CONFIDENCE else "certain"
     record = {
         "line_id": line_id,
         "page": ql.page if ql else None,
@@ -145,6 +155,7 @@ def append_correction(path: Path, line_id: str, corrected_text: str, cfg: Config
         "kraken_text": ql.kraken_text if ql else None,
         "trocr_text": ql.trocr_text if ql else None,
         "corrected_text": corrected_text,
+        "annotator_confidence": conf,
         "changed_vs_kraken": bool(ql and corrected_text.strip() != (ql.kraken_text or "").strip()),
         "min_conf": ql.min_conf if ql else None,
         "disagreement": ql.disagreement if ql else None,
@@ -166,8 +177,10 @@ def queue_payload(cfg: Config, limit: int, skip_done: bool) -> dict:
         if skip_done and is_done:
             continue
         row = asdict(ql)
+        rec = done.get(ql.line_id, {})
         row["done"] = is_done
-        row["corrected_text"] = done.get(ql.line_id, {}).get("corrected_text", "")
+        row["corrected_text"] = rec.get("corrected_text", "")
+        row["annotator_confidence"] = rec.get("annotator_confidence", "")
         rows.append(row)
         if len(rows) >= limit:
             break

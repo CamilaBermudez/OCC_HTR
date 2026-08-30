@@ -698,6 +698,11 @@ function bindEvents() {
             saveReview();
         }
     });
+    $$("#review-confidence .rcp-btn").forEach((b) =>
+        b.addEventListener("click", () => {
+            setReviewConfidence(b.dataset.conf);
+            $("#review-input")?.focus();
+        }));
     $("#page-select").addEventListener("change", (e) => selectPage(e.target.value));
     // Model dropdown: re-fetch the current page for the chosen model (drives tabs 1 & 2).
     const modelSel = $("#model-select");
@@ -916,7 +921,13 @@ async function loadComparePage(page) {
 }
 
 // ---------- Tab 6: human-in-the-loop review & correct (spec §6.13) ----------
-const reviewState = { lines: [], idx: 0, total: 0, done: 0, loaded: false, saving: false };
+const reviewState = { lines: [], idx: 0, total: 0, done: 0, loaded: false, saving: false, confidence: "certain" };
+
+function setReviewConfidence(val) {
+    reviewState.confidence = val;
+    $$("#review-confidence .rcp-btn").forEach((b) =>
+        b.classList.toggle("active", b.dataset.conf === val));
+}
 
 async function initReview() {
     if (reviewState.loaded && reviewState.lines.length) {
@@ -978,6 +989,7 @@ function renderReviewCard() {
     }
     const input = $("#review-input");
     input.value = L.corrected_text || "";  // blank unless previously saved — never model pre-fill
+    setReviewConfidence(L.annotator_confidence || "certain");  // restore prior rating, else default
     $("#review-saved").textContent = L.done ? "saved ✓" : "";
     input.focus();
 }
@@ -986,7 +998,11 @@ async function saveReview() {
     const L = reviewState.lines[reviewState.idx];
     if (!L || reviewState.saving) return;
     reviewState.saving = true;
-    const body = new URLSearchParams({ line_id: L.line_id, corrected_text: $("#review-input").value });
+    const body = new URLSearchParams({
+        line_id: L.line_id,
+        corrected_text: $("#review-input").value,
+        confidence: reviewState.confidence,
+    });
     try {
         const r = await fetch("/api/review/save", { method: "POST", body });
         if (!r.ok) throw new Error("HTTP " + r.status);

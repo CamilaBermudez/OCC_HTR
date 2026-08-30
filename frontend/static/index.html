@@ -165,6 +165,13 @@
                 <textarea id="review-input" spellcheck="false" autocomplete="off"
                     placeholder="Type the correct transcription for this line…"></textarea>
                 <div class="review-actions">
+                    <div class="review-conf-pick" id="review-confidence"
+                        title="How confident are YOU in this transcription? Some lines are genuinely hard — flag them for a second pass.">
+                        <span class="rcp-label">My confidence</span>
+                        <button type="button" class="rcp-btn active" data-conf="certain">Certain</button>
+                        <button type="button" class="rcp-btn" data-conf="unsure">Unsure</button>
+                        <button type="button" class="rcp-btn" data-conf="illegible">Illegible</button>
+                    </div>
                     <span id="review-saved" class="review-saved"></span>
                     <button id="review-save" class="primary" title="Save correction and go to next (⌘/Ctrl + Enter)">Save &amp; next →</button>
                 </div>

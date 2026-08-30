@@ -645,3 +645,16 @@ main {
 /* Scholarly-edition row: the authoritative human reference — set it apart from the model rows. */
 .review-modelrow.rv-schol { border-left: 4px solid #3E7A46; background: #22291f; }
 .review-modelrow.rv-schol .rv-label { color: #7bb585; }
+
+/* Annotator self-confidence picker (Certain / Unsure / Illegible) */
+.review-conf-pick { display: flex; align-items: center; gap: 0.4rem; margin-right: auto; }
+.rcp-label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; margin-right: 0.3rem; }
+.rcp-btn {
+    background: var(--bg); color: var(--muted); border: 1px solid var(--panel-border);
+    border-radius: 5px; padding: 0.3rem 0.7rem; cursor: pointer; font-size: 0.85rem;
+}
+.rcp-btn:hover { color: var(--text); border-color: var(--muted); }
+.rcp-btn.active { color: #1a1a1a; font-weight: 600; }
+.rcp-btn[data-conf="certain"].active { background: #3E7A46; border-color: #3E7A46; color: #eafaef; }
+.rcp-btn[data-conf="unsure"].active { background: var(--accent); border-color: var(--accent); }
+.rcp-btn[data-conf="illegible"].active { background: #9C2A24; border-color: #9C2A24; color: #fbeceb; }

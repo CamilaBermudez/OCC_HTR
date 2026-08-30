@@ -207,12 +207,15 @@ def api_review_queue(limit: int = 300, skip_done: int = 1) -> dict:
 def api_review_save(
     line_id: Annotated[str, Form()],
     corrected_text: Annotated[str, Form()] = "",
+    confidence: Annotated[str, Form()] = "certain",
 ) -> dict:
-    """Append one human correction to the JSONL and return the new done-count."""
+    """Append one human correction (+ the annotator's self-rated confidence) and return done-count."""
     from frontend import review
 
     cfg = get_repo().config
-    rec = review.append_correction(review.corrections_path(), line_id, corrected_text, cfg)
+    rec = review.append_correction(
+        review.corrections_path(), line_id, corrected_text, cfg, confidence=confidence
+    )
     done = review.load_done(review.corrections_path())
     return {"ok": True, "record": rec, "done": len(done)}
 
