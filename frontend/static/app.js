@@ -959,6 +959,7 @@ function renderReviewCard() {
     const box = $("#review-models");
     box.innerHTML = "";
     const models = [
+        ["Scholarly edition", L.scholarly_text, "rv-schol"],
         ["kraken (CTC + LM)", L.kraken_text, "rv-krak"],
         ["TrOCR (ViT+RoBERTa)", L.trocr_text, "rv-vit"],
         ["Catmus", L.catmus_text, "rv-cat"],

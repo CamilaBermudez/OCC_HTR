@@ -641,3 +641,7 @@ main {
     border-radius: 6px; padding: 0.55rem 1.2rem; cursor: pointer; font-size: 0.95rem;
 }
 #review-save.primary:hover { background: var(--accent-strong); }
+
+/* Scholarly-edition row: the authoritative human reference — set it apart from the model rows. */
+.review-modelrow.rv-schol { border-left: 4px solid #3E7A46; background: #22291f; }
+.review-modelrow.rv-schol .rv-label { color: #7bb585; }
