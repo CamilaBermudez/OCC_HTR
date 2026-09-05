@@ -288,7 +288,12 @@ def stage_finetune_data(
             # original image dir, where no .gt.txt sibling exists.
             split_list.append(dst_img.absolute())
 
-    assert train_paths and val_paths, "No usable images staged — check augmented_folder paths."
+    if route_by_stems is not None:
+        # See the split assert above: a fully-unrouted pool has no synth val
+        # images; the real val is mixed in by mix_in_real_samples afterward.
+        assert train_paths, "No usable train images staged — check augmented_folder paths."
+    else:
+        assert train_paths and val_paths, "No usable images staged — check augmented_folder paths."
 
     train_list = staging_dir / "train_files.txt"
     val_list = staging_dir / "val_files.txt"

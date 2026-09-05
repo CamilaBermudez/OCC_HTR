@@ -185,6 +185,40 @@ TROCR_TRANSCRIBE_OUTPUT_DIR?=./data/processed/transcription
 TROCR_RUN_NAME?=
 TROCR_TRANSCRIBE_BATCH_SIZE?=8
 TROCR_MAX_NEW_TOKENS?=128
+#========= post-training pipeline: alignment, diffs, viewer data ========
+# The steps that turn a finished recogniser into viewer-ready data:
+#   1. align_scholarly_edition  scholarly edition -> manuscript lineation (one-off)
+#   2. kraken_lm_transcribe / trocr_transcribe_conf   full-corpus transcription
+#   3. conf_to_txt              per-token conf JSON -> per-line txt layout
+#   4. align_transcriptions     model lines <-> scholarly lines (content-based)
+#   5. diff_transcriptions      classified discrepancies (six categories + TEI)
+#   6. build_line_compare       Model-compare tab JSON (3 models + confidence)
+# Raw scholarly edition + the auxiliary OCR that lends it the manuscript's
+# line breaks (the one-off §6.4 alignment; re-run only if either changes).
+SCHOLARLY_REFERENCE_TXT=./data/raw/AlbucE.txt
+SCHOLARLY_ALIGN_OCR_DIR=./data/processed/transcription/ocr_kept_20260622_120413
+SCHOLARLY_ALIGN_OUTPUT_ROOT=./tests/ocr
+# The frozen aligned edition every downstream step consumes.
+SCHOLARLY_TXT=./tests/ocr/AlbucE_aligned_20260628_142959.txt
+# Which model's full-corpus transcription to align/diff (per-page dirs of
+# <page>_line_<N>.txt). line_alignment.json / line_diff.json are written
+# INTO this dir — the viewer picks them up from there.
+MODEL_TRANSCRIPTION_DIR?=./data/processed/transcription/vitlightreal_full_corpus
+DIFF_METHOD?=banded
+# kraken deployed pipeline (CTC + per-position char-LM) full-corpus run.
+KRAKEN_LM_MODEL?=./models/ocr/finetuned/finetune_20260806_123435/model_best.mlmodel
+KRAKEN_LM_DIR?=./data/processed/annotated_samples/OCR/full_annotated
+KRAKEN_LM_RUN_NAME?=krakenLM_full_corpus
+KRAKEN_LM_LAMBDA?=0.2
+# TrOCR per-token-confidence full-corpus run (feeds tab 4 + conf_to_txt).
+TROCR_CONF_MODEL_DIR?=./models/vit_lightreal_med4k/trocr_20260823_073535/best_model
+TROCR_CONF_OUT_DIR?=./data/processed/transcription/vitlightreal_conf_fullms
+TROCR_CONF_DEVICE?=mps
+TROCR_CONF_BATCH_SIZE?=16
+# Model-compare tab inputs (per-model confidence dumps) + output.
+CATMUS_CONF_DIR?=./data/processed/transcription/catmus_conf_fullms
+KRAKEN_CONF_DIR?=./data/processed/transcription/krakenleader_conf_fullms
+LINE_COMPARE_OUT_DIR?=./data/processed/line_compare
 #========= annotation batch sampling ========
 # Source of line PNGs — the manually-filtered/corrected crops the OCR
 # pipeline actually ran on (NOT the raw extraction folder, which still
@@ -213,7 +247,7 @@ SAMPLE_PATTERN_LABEL?=
 
 PYTHON=uv run python
 
-.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images detect_ink_bleed unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels finetune_ocr trocr_finetune trocr_transcribe sample_annotation_batch frontend clean
+.PHONY: all setup-precommit evaluate_yolo_performance create_masks segment_images plot_bounds crop_segments binarize_image filter_images resize_images detect_ink_bleed unify_corpora run_tokenizer run_transcription run_dictionary_eval corpus_categorization medieval_text_generation extract_parchment_crops augmentation_techniques correct_labels kraken_finetune finetune_ocr trocr_finetune trocr_transcribe align_scholarly_edition kraken_lm_transcribe trocr_transcribe_conf conf_to_txt align_transcriptions diff_transcriptions build_line_compare sample_annotation_batch frontend clean
 
 all: evaluate_yolo_performance
 
@@ -400,21 +434,23 @@ correct_labels:
 			$(if $(LABEL_SUBSTITUTIONS),--substitutions "$(LABEL_SUBSTITUTIONS)")
 
 
-# make finetune_ocr                                # full run, early stopping
-# make finetune_ocr SMOKE=1                        # smoke test: 50 lines, 2 epochs
-# make finetune_ocr SMOKE=1 SMOKE_SIZE=20 SMOKE_EPOCHS=1
-# make finetune_ocr FINETUNE_DEVICE=cuda:0         # use GPU if available
+# Fine-tune the KRAKEN (ketos/CTC) recogniser — this target is kraken-only;
+# the seq2seq counterpart is `trocr_finetune` below.
+# make kraken_finetune                                # full run, early stopping
+# make kraken_finetune SMOKE=1                        # smoke test: 50 lines, 2 epochs
+# make kraken_finetune SMOKE=1 SMOKE_SIZE=20 SMOKE_EPOCHS=1
+# make kraken_finetune FINETUNE_DEVICE=cuda:0         # use GPU if available
 
-#KETOS_EARLY_STOP_MIN_DELTA=0.001 make finetune_ocr FINETUNE_EPOCHS=150 FINETUNE_DEVICE=mps
+#KETOS_EARLY_STOP_MIN_DELTA=0.001 make kraken_finetune FINETUNE_EPOCHS=150 FINETUNE_DEVICE=mps
 # Stricter — requires 0.1pp improvement per epoch
 
-#KETOS_EARLY_STOP_MIN_DELTA=0.0 make finetune_ocr FINETUNE_EPOCHS=150 FINETUNE_DEVICE=mps
+#KETOS_EARLY_STOP_MIN_DELTA=0.0 make kraken_finetune FINETUNE_EPOCHS=150 FINETUNE_DEVICE=mps
 # Reverts to the old Lightning default (any positive change counts)
 
 
-#PYTORCH_ENABLE_MPS_FALLBACK=1 make finetune_ocr FINETUNE_EPOCHS=150 FINETUNE_DEVICE=mps
+#PYTORCH_ENABLE_MPS_FALLBACK=1 make kraken_finetune FINETUNE_EPOCHS=150 FINETUNE_DEVICE=mps
 
-finetune_ocr:
+kraken_finetune:
 	$(PYTHON) scripts/ocr/run_finetune_ocr.py \
 			$(if $(NO_SYNTH_TRAIN),,--augmented-folder $(AUGMENTED_RUN_PATH)) \
 			$(if $(NO_SYNTH_TRAIN),,--labels-json $(FINETUNE_LABELS_JSON)) \
@@ -434,6 +470,9 @@ finetune_ocr:
 			--real-train-frac $(FINETUNE_REAL_TRAIN_FRAC) \
 			--real-val-frac $(FINETUNE_REAL_VAL_FRAC) \
 			$(if $(SMOKE),--smoke --smoke-size $(SMOKE_SIZE) --smoke-epochs $(SMOKE_EPOCHS))
+
+# Deprecated alias — kept so old notes/scripts keep working. Use kraken_finetune.
+finetune_ocr: kraken_finetune
 
 
 # Fine-tune a Swin+BERT VisionEncoderDecoderModel on the real
@@ -483,6 +522,89 @@ trocr_transcribe:
 			--batch-size $(TROCR_TRANSCRIBE_BATCH_SIZE) \
 			--max-new-tokens $(TROCR_MAX_NEW_TOKENS) \
 			--num-beams $(TROCR_NUM_BEAMS)
+
+
+# ======= Post-training pipeline: alignment, diffs, viewer data =======
+
+# One-off §6.4 alignment: break the continuous scholarly edition at the
+# manuscript's line boundaries, guided by an auxiliary OCR transcription.
+# Lossless (output re-concatenates to the reference exactly); verified.
+#   make align_scholarly_edition
+#   make align_scholarly_edition SCHOLARLY_ALIGN_OCR_DIR=./data/processed/transcription/<other>
+align_scholarly_edition:
+	$(PYTHON) scripts/ocr/run_scholarly_alignment.py \
+			--reference-txt $(SCHOLARLY_REFERENCE_TXT) \
+			--ocr-dir $(SCHOLARLY_ALIGN_OCR_DIR) \
+			--output-root $(SCHOLARLY_ALIGN_OUTPUT_ROOT)
+
+
+# Full-corpus transcription with the DEPLOYED kraken pipeline
+# (CTC + per-position char-LM rescore, λ=0.2 — spec §6.13 P1).
+#   make kraken_lm_transcribe
+kraken_lm_transcribe:
+	$(PYTHON) scripts/ocr/kraken_lm_transcribe.py \
+			--input-dir $(FILTERED_ORIGINAL_LINES_PATH) \
+			--model-path $(KRAKEN_LM_MODEL) \
+			--lm-dir $(KRAKEN_LM_DIR) \
+			--run-name $(KRAKEN_LM_RUN_NAME) \
+			--output-dir $(TRANSCRIPTION_DIR) \
+			--lam $(KRAKEN_LM_LAMBDA)
+
+
+# Full-corpus TrOCR transcription WITH per-token confidence (greedy) —
+# feeds the Model-compare tab and, via conf_to_txt, tabs 1-2.
+#   make trocr_transcribe_conf
+trocr_transcribe_conf:
+	$(PYTHON) scripts/ocr/vit_transcribe_conf.py \
+			--input-dir $(FILTERED_ORIGINAL_LINES_PATH) \
+			--model-dir $(TROCR_CONF_MODEL_DIR) \
+			--out-dir $(TROCR_CONF_OUT_DIR) \
+			--device $(TROCR_CONF_DEVICE) \
+			--batch-size $(TROCR_CONF_BATCH_SIZE) \
+			--num-beams 1
+
+
+# Derive the per-page txt layout (<page>/<page>_line_<N>.txt + _full.txt)
+# from a confidence-JSON dump — one decode pass serves both consumers.
+#   make conf_to_txt
+conf_to_txt:
+	$(PYTHON) scripts/ocr/conf_json_to_txt.py \
+			--conf-dir $(TROCR_CONF_OUT_DIR) \
+			--out-dir $(MODEL_TRANSCRIPTION_DIR)
+
+
+# Content-based line alignment: model lines <-> scholarly lines (§6.6).
+# Writes line_alignment.json INTO the model dir (viewer + banded diff read it).
+#   make align_transcriptions MODEL_TRANSCRIPTION_DIR=./data/processed/transcription/<model>
+align_transcriptions:
+	$(PYTHON) scripts/ocr/align_transcriptions.py \
+			--model-dir $(MODEL_TRANSCRIPTION_DIR) \
+			--scholarly-txt $(SCHOLARLY_TXT) \
+			--output $(MODEL_TRANSCRIPTION_DIR)/line_alignment.json
+
+
+# Classified model-vs-scholarly discrepancies (§6.7: six categories + TEI),
+# anchored banded word-NW by default. Writes line_diff.json INTO the model dir.
+# Requires line_alignment.json (run align_transcriptions first).
+#   make diff_transcriptions MODEL_TRANSCRIPTION_DIR=./data/processed/transcription/<model>
+diff_transcriptions:
+	$(PYTHON) scripts/ocr/diff_transcriptions.py \
+			--model-dir $(MODEL_TRANSCRIPTION_DIR) \
+			--scholarly-txt $(SCHOLARLY_TXT) \
+			--output $(MODEL_TRANSCRIPTION_DIR)/line_diff.json \
+			--method $(DIFF_METHOD)
+
+
+# Per-page comparison JSON for the Model-compare tab (§7.4.1): scholarly +
+# catmus + kraken-leader + TrOCR-leader with per-char/token confidence.
+#   make build_line_compare
+build_line_compare:
+	$(PYTHON) scripts/ocr/build_line_compare.py \
+			--catmus-dir $(CATMUS_CONF_DIR) \
+			--kraken-dir $(KRAKEN_CONF_DIR) \
+			--vit-dir $(TROCR_CONF_OUT_DIR) \
+			--scholarly-txt $(SCHOLARLY_TXT) \
+			--out-dir $(LINE_COMPARE_OUT_DIR)
 
 
 # Sample a fresh annotation batch. Examples:

@@ -103,13 +103,18 @@ body {
     font-size: 12px;
 }
 
-#page-select {
+#page-select,
+#model-select,
+#upload-model {
     background: var(--bg);
     color: var(--text);
     border: 1px solid var(--panel-border);
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 13px;
+}
+
+#page-select {
     min-width: 180px;
 }
 

@@ -197,15 +197,15 @@ _MODEL_REGISTRY: list[dict] = [
         "key": "trocr_leader",
         "origin": "ours",
         "label": "TrOCR (ViT+RoBERTa)",
-        "dir": "mixedmed4k_full_corpus",
+        "dir": "vitlightreal_full_corpus",
         "arch": "ViT encoder + RoBERTa decoder (seq2seq)",
         "size": "282.6M params / 1130 MB",
-        "cer": 0.0451,
-        "char_acc": 0.9549,
-        "wer": 0.2280,
-        "word_acc": 0.7720,
+        "cer": 0.0383,
+        "char_acc": 0.9617,
+        "wer": 0.2174,
+        "word_acc": 0.7826,
         "desc": "Best seq2seq.",
-        #: 600 real + 3000 anno + 4000 medical (gentle), stretch + BPE-150
+        #: vit_lightreal_med4k: 600 real + 3000 light-aug real + 4000 medical, stretch + BPE-150
     },
     {
         "key": "medusa",

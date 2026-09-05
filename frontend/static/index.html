@@ -75,7 +75,7 @@
                 <div class="pane-header">
                     <span class="pane-title">Model transcription</span>
                     <div class="pane-actions">
-                        <button id="download-diffs" title="Download the full discrepancy file (all pages) as JSON. Each diff carries its category + TEI encoding — for further analysis.">Download diffs (JSON)</button>
+                        <button id="download-diffs" title="Download the full discrepancy file (all pages) as JSON. Each discrepancy carries its category + TEI encoding — for further analysis.">Download discrepancies (JSON)</button>
                     </div>
                     <div class="diff-legend" id="diff-filters" title="Click a category to show or hide it. All on by default.">
                         <span class="diff-chip diff-substitution filter-chip active" data-diff-type="substitution">substitution</span>
@@ -192,7 +192,7 @@
                     <h3>The tabs</h3>
                     <ul>
                         <li><b>Transcription:</b> the page image beside one model's full transcription. Use the <b>Model</b> dropdown (top bar) to switch which model you read. Click a line to highlight its region on the image.</li>
-                        <li><b>3-way alignment:</b> scholarly edition vs. the selected model, with colour-coded difference chips (substitution / addition / deletion / abbrev / spacing / punct). The category chips at the top are <b>filters</b> (click to show/hide a type). <b>Download diffs (JSON)</b> exports the selected model's classified discrepancies (with TEI). Switch the compared model with the top-bar <b>Model</b> dropdown.</li>
+                        <li><b>3-way alignment:</b> scholarly edition vs. the selected model, with colour-coded difference chips (substitution / addition / deletion / abbrev / spacing / punct). The category chips at the top are <b>filters</b> (click to show/hide a type). <b>Download discrepancies (JSON)</b> exports the selected model's classified discrepancies (with TEI). Switch the compared model with the top-bar <b>Model</b> dropdown.</li>
                         <li><b>Transcribe a page:</b> upload a page image and run the full pipeline (segmentation → recognition) live.</li>
                         <li><b>Model compare:</b> line-by-line side-by-side of the scholarly text and each model, with per-character confidence heat and mismatch highlighting.</li>
                         <li><b>Review &amp; correct:</b> a human-in-the-loop queue of every line, ranked <b>worst-first</b> by kraken min-confidence + kraken↔TrOCR disagreement (the lines most likely wrong). Read the crop, type the correct transcription (field starts blank — model rows are reference only, click one to copy it in), and <b>Save</b> (⌘/Ctrl+↵). Corrections append to a JSONL; already-reviewed lines drop out of the queue.</li>

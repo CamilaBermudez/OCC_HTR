@@ -34,7 +34,7 @@ KRAKEN_MODELS = {
 # seq2seq recognisers — segment with kraken, then run TrOCR per line crop (value = HF
 # checkpoint dir with resize_mode.txt + tokenizer). Handled by ``_recognise_trocr``.
 TROCR_MODELS = {
-    "trocr_leader": "models/ocr/finetuned/mixed_med4k_fixed",
+    "trocr_leader": "models/vit_lightreal_med4k/trocr_20260823_073535/best_model",
 }
 
 

@@ -5890,6 +5890,31 @@ model**, the better its confidence flags errors — CTC (per-frame, no LM) is ov
 the least self-aware. Practical read: use TrOCR/Medusa confidence for a human-review queue,
 never the CTC posterior. Plot: `tests/ocr/evaluations/confidence_catmus_medusa/`.
 
+**CORRECTED full ranking (2026-08-30 — supersedes the table above).** The kraken conf-field
+bug (§ long-tail zoom, `b0b8141`: kraken's reported per-char conf is misaligned by class-major
+mask flattening; genuine confidence = peak-frame softmax posterior) also invalidated the
+**catmus** row above (run 2026-08-17, pre-fix). Re-ran both CTC models + the current TrOCR
+leader through the fixed `confidence_analysis.py` (300-val); Medusa unaffected (its confidence
+is the VLM's own token logprobs, no kraken decoder involved). `char_acc` here = per-predicted-char
+calibration labels (reads above the corpus figure — corpus: kraken CTC 0.9710/pipeline 0.9743,
+catmus 0.9603, TrOCR 0.9617, Medusa 0.9505):
+
+| model | arch | char_acc (calib) | conf✓ | conf✗ | AUROC_char | ECE | AUROC_line | ρ(conf,CER) |
+|---|---|---|---|---|---|---|---|---|
+| **kraken** (0.9710 CTC, base of 0.9743) | CTC | 0.9758 | 0.992 | 0.806 | **0.956** | 0.011 | 0.806 | −0.625 |
+| **catmus** | CTC | 0.9616 | 0.982 | 0.751 | **0.944** | 0.012 | 0.785 | −0.592 |
+| **TrOCR 0.9617** (`vit_lightreal_med4k`) | seq2seq | 0.9726 | 0.989 | 0.856 | **0.900** | 0.019 | 0.826 | −0.576 |
+| **Medusa** (9B) | VLM (autoregressive) | 0.9543 | 0.920 | 0.805 | 0.672 | 0.061 | 0.696 | −0.382 |
+
+**The monotone "more LM → better calibrated" story is DEAD — it was an artifact of the bug.**
+With the genuine posterior the ranking *inverts*: the CTC models are the **best** char-level
+error detectors (0.956 / 0.944), TrOCR next (0.900), Medusa last (0.672). catmus's
+"chance-ish 0.561" → **0.944**: the CTC-overconfidence pathology never generalised — it was
+the same mis-read field. All three local models are well-calibrated (ECE ≤ 0.02) and usable
+for confidence triage; TrOCR keeps the best **line**-level detector (0.826). Artefacts:
+`tests/ocr/evaluations/confidence_corrected_20260830/{leaders,catmus}/`; log
+`logs/analysis/confidence_corrected_20260830.log`.
+
 **Error distribution across the manuscript (2026-08-17).** Where do errors concentrate?
 `scripts/ocr/error_distribution.py`, frozen catmus (UNBIASED — trained on none of our lines)
 over all **899 GT lines / 71 pages** (600 annotated + 300-val). Overall mean-line CER 0.0497,
@@ -6474,3 +6499,38 @@ overlooked** (single-seed cells can't resolve sub-0.4pp — crowning one exact c
 averaging). Models `models/vit_lx{3,5,7}_m{2k,4k,8k}/`; eval
 `tests/ocr/evaluations/vit_augamount_grid_vs_val300_20260827/`; scripts `scripts/cluster/vit_augamount_
 {prep,eval}.sbatch`.
+
+## 6.15 Frontend TrOCR upgrade + pipeline productization (2026-09-05)
+
+**Frontend TrOCR leader upgraded: `mixed_med4k_fixed` (0.9549) → `vit_lightreal_med4k` (0.9617)**
+everywhere the viewer touches TrOCR. The whole frontend data layer had been frozen on 2026-08-16,
+predating the 2026-08-25 leader. One local MPS pass (greedy, batch 16, ~2.2 h) re-transcribed the
+13,677 kept crops WITH per-token confidence (`vit_transcribe_conf.py` →
+`data/processed/transcription/vitlightreal_conf_fullms/`), then the txt layout was **derived** from
+the conf JSONs (new `scripts/ocr/conf_json_to_txt.py` — one decode pass serves tabs 1-2 AND tab 4;
+the old flow decoded twice) → `vitlightreal_full_corpus/`, followed by `align_transcriptions` →
+`diff_transcriptions` (banded) → `build_line_compare` (kraken/catmus conf dirs unchanged). Code:
+registry entry now `vitlightreal_full_corpus` w/ 0.9617 stats (`frontend/manuscript_data.py`);
+tab-3 live model → `models/vit_lightreal_med4k/trocr_20260823_073535/best_model`
+(`src/ocr/page_pipeline.py`). Both models are `stretch`-mode so the conf script's raw-processor
+path is correct. Log `logs/transcription/vitlightreal_full_corpus_20260905.log`.
+
+**Post-training pipeline now fully in the makefile** (new section "alignment, diffs, viewer data"):
+`align_scholarly_edition`, `kraken_lm_transcribe`, `trocr_transcribe_conf`, `conf_to_txt`,
+`align_transcriptions`, `diff_transcriptions`, `build_line_compare` — defaults point at the current
+leaders, per-model override via `MODEL_TRANSCRIPTION_DIR=`. `finetune_ocr` renamed
+**`kraken_finetune`** (it is ketos/CTC-only; old name kept as deprecated alias).
+
+**Scholarly-edition aligner extracted from the notebook** (was only in
+`notebooks/ocr/text_alignment.ipynb`): module `src/ocr/scholarly_alignment.py` (verbatim two-pass
+anchored-DP aligner, §6.4) + CLI `scripts/ocr/run_scholarly_alignment.py` that also ENFORCES the
+lossless invariant (concat(aligned) == reference word-for-word; non-zero exit on violation).
+
+**Docs for future users:** `docs/project_organization.md` (layout, src/scripts/makefile convention,
+naming, data dirs, evaluation protocol, settled-negative warning) + `docs/user_guide.md` (GT sample
+format + storage rules, fine-tune/transcribe/align/compare how-tos, grouped catalog of every
+analysis script) + `README.md` (was empty; now points at both + model_results + spec).
+
+**Frontend polish:** Model dropdowns styled to the dark theme (`#model-select`, `#upload-model` —
+were browser-default white); "Download diffs (JSON)" renamed "Download discrepancies (JSON)"
+(button, tooltip, Info-tab guide).
