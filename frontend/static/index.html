@@ -15,6 +15,7 @@
             <button class="tab-btn" data-tab="tab-transcribe">Transcribe a page</button>
             <button class="tab-btn" data-tab="tab-compare">Model compare</button>
             <button class="tab-btn" data-tab="tab-review">Review &amp; correct</button>
+            <button class="tab-btn" data-tab="tab-tools">Text tools</button>
             <button class="tab-btn" data-tab="tab-info">Info</button>
         </nav>
         <div class="page-selector">
@@ -184,6 +185,78 @@
             </div>
         </section>
 
+        <!-- ============ TAB 6: text tools (user-supplied texts) ============ -->
+        <section id="tab-tools" class="tab-panel">
+            <div class="tools-wrap">
+                <div class="tools-card" id="tools-card-diff">
+                    <div class="tools-card-head">
+                        <h3>Compare two texts</h3>
+                        <div class="tools-head-actions">
+                            <button class="tools-clear" data-tool="diff" title="Clear both text fields and the result">Clear</button>
+                            <button class="tools-toggle" title="Collapse / expand">▾</button>
+                        </div>
+                    </div>
+                    <div class="tools-body">
+                    <p class="tools-hint">Paste (or load) a <b>reference text</b> and a <b>transcription to check</b>,
+                        both line-broken. Lines are matched by content, then every difference is classified
+                        (substitution / addition / deletion / abbreviation / spacing / punctuation) with its TEI
+                        encoding — the same pipeline as the 3-way alignment tab.</p>
+                    <div class="tools-inputs">
+                        <div class="tools-input">
+                            <label>Reference text (e.g. scholarly edition)
+                                <input type="file" class="tools-file" data-target="tools-diff-base" accept=".txt,text/plain"></label>
+                            <textarea id="tools-diff-base" spellcheck="false" placeholder="One line per manuscript line…"></textarea>
+                        </div>
+                        <div class="tools-input">
+                            <label>Transcription to check (e.g. OCR output)
+                                <input type="file" class="tools-file" data-target="tools-diff-ocr" accept=".txt,text/plain"></label>
+                            <textarea id="tools-diff-ocr" spellcheck="false" placeholder="One line per manuscript line…"></textarea>
+                        </div>
+                    </div>
+                    <div class="tools-actions">
+                        <button id="tools-diff-run" class="primary">Find discrepancies</button>
+                        <button id="tools-diff-download" hidden>Download JSON</button>
+                        <span id="tools-diff-status" class="tools-status"></span>
+                    </div>
+                    <div id="tools-diff-result" class="line-list tools-result" hidden></div>
+                    </div>
+                </div>
+                <div class="tools-card" id="tools-card-align">
+                    <div class="tools-card-head">
+                        <h3>Align a text to line structure</h3>
+                        <div class="tools-head-actions">
+                            <button class="tools-clear" data-tool="align" title="Clear both text fields and the result">Clear</button>
+                            <button class="tools-toggle" title="Collapse / expand">▾</button>
+                        </div>
+                    </div>
+                    <div class="tools-body">
+                    <p class="tools-hint">Paste a <b>continuous reference text</b> (no manuscript lineation, e.g. an
+                        edition) and an <b>auxiliary transcription</b> whose line breaks follow the manuscript
+                        (e.g. an OCR output). The reference is re-broken at the auxiliary's line boundaries —
+                        losslessly: the output re-concatenates to the reference word-for-word.</p>
+                    <div class="tools-inputs">
+                        <div class="tools-input">
+                            <label>Reference text (continuous)
+                                <input type="file" class="tools-file" data-target="tools-align-ref" accept=".txt,text/plain"></label>
+                            <textarea id="tools-align-ref" spellcheck="false" placeholder="The clean text, any line breaks…"></textarea>
+                        </div>
+                        <div class="tools-input">
+                            <label>Auxiliary transcription (line-broken)
+                                <input type="file" class="tools-file" data-target="tools-align-aux" accept=".txt,text/plain"></label>
+                            <textarea id="tools-align-aux" spellcheck="false" placeholder="One line per manuscript line…"></textarea>
+                        </div>
+                    </div>
+                    <div class="tools-actions">
+                        <button id="tools-align-run" class="primary">Align</button>
+                        <button id="tools-align-download" hidden>Download .txt</button>
+                        <span id="tools-align-status" class="tools-status"></span>
+                    </div>
+                    <div id="tools-align-result" class="line-list tools-result" hidden></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- ============ TAB 5: info / guide ============ -->
         <section id="tab-info" class="tab-panel">
             <div class="info-wrap">
@@ -196,6 +269,7 @@
                         <li><b>Transcribe a page:</b> upload a page image and run the full pipeline (segmentation → recognition) live.</li>
                         <li><b>Model compare:</b> line-by-line side-by-side of the scholarly text and each model, with per-character confidence heat and mismatch highlighting.</li>
                         <li><b>Review &amp; correct:</b> a human-in-the-loop queue of every line, ranked <b>worst-first</b> by kraken min-confidence + kraken↔TrOCR disagreement (the lines most likely wrong). Read the crop, type the correct transcription (field starts blank — model rows are reference only, click one to copy it in), and <b>Save</b> (⌘/Ctrl+↵). Corrections append to a JSONL; already-reviewed lines drop out of the queue.</li>
+                        <li><b>Text tools:</b> the same machinery on <b>your own texts</b> — paste or load two line-broken texts to get their classified discrepancies (chips + TEI + JSON export), or align a continuous reference text to a manuscript's line structure via an auxiliary line-broken transcription (lossless).</li>
                     </ul>
                 </div>
                 <div class="info-models">

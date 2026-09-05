@@ -128,6 +128,11 @@ abbreviation / orthographic / punctuation / addition / deletion / substitution,
 grouped substantive / editorial / scramble, each with its TEI encoding.
 `discrepancy_table.py` exports the same diffs as a flat table.
 
+No files needed: the viewer's **Text tools** tab runs both operations on
+pasted/uploaded texts — classified discrepancies between any two line-broken
+texts (chips + TEI + JSON export), and the lossless re-breaking of a
+continuous reference text at an auxiliary transcription's line boundaries.
+
 ## 7. Analysis-script catalog (`scripts/ocr/`)
 
 Run once per question; results + verdicts are written to

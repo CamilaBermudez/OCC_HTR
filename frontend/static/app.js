@@ -484,7 +484,7 @@ function activateTab(tabId) {
     // selector; Info is static guide text) — hide them there.
     const ownControls =
         tabId === "tab-transcribe" || tabId === "tab-compare" || tabId === "tab-info" ||
-        tabId === "tab-review";
+        tabId === "tab-review" || tabId === "tab-tools";
     $(".page-selector").style.display = ownControls ? "none" : "flex";
     $("#status").style.display = ownControls ? "none" : "";
     if (tabId === "tab-compare") {
@@ -683,8 +683,172 @@ function downloadUploadAlto() {
     saveBlob(alto, `transcription_${uploadBaseName()}_${m}.xml`, "application/xml");
 }
 
+// ---------- Tab: Text tools (user-supplied texts, spec §6.15) ----------
+// Both tools POST plain text to the backend and render the result locally.
+let toolsDiffResult = null; // last diff response (for the JSON download)
+let toolsAlignResult = null; // last align response (for the .txt download)
+
+function setToolCollapsed(cardId, collapsed) {
+    const card = $(`#${cardId}`);
+    card.classList.toggle("collapsed", collapsed);
+    card.querySelector(".tools-toggle").textContent = collapsed ? "▸" : "▾";
+}
+
+function clearTool(tool) {
+    const card = $(`#tools-card-${tool}`);
+    card.querySelectorAll("textarea").forEach((t) => { t.value = ""; });
+    card.querySelectorAll("input[type=file]").forEach((f) => { f.value = ""; });
+    const result = $(`#tools-${tool}-result`);
+    result.innerHTML = "";
+    result.hidden = true;
+    $(`#tools-${tool}-download`).hidden = true;
+    $(`#tools-${tool}-status`).textContent = "";
+    if (tool === "diff") toolsDiffResult = null;
+    else toolsAlignResult = null;
+}
+
+// Dragging one textarea's resize handle resizes its sibling to match.
+function syncToolTextareas(card) {
+    const tas = [...card.querySelectorAll(".tools-input textarea")];
+    let applying = false;
+    const ro = new ResizeObserver((entries) => {
+        if (applying) return;
+        for (const e of entries) {
+            const h = e.target.offsetHeight;
+            applying = true;
+            for (const t of tas) {
+                if (t !== e.target && Math.abs(t.offsetHeight - h) > 1) t.style.height = `${h}px`;
+            }
+            requestAnimationFrame(() => { applying = false; });
+        }
+    });
+    tas.forEach((t) => ro.observe(t));
+}
+
+async function runToolsDiff() {
+    setToolCollapsed("tools-card-align", true); // focus the tool in use (re-expandable)
+    const status = $("#tools-diff-status");
+    const out = $("#tools-diff-result");
+    status.textContent = "comparing…";
+    try {
+        const resp = await fetch("/api/tools/diff", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                base_text: $("#tools-diff-base").value,
+                ocr_text: $("#tools-diff-ocr").value,
+            }),
+        });
+        if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText);
+        toolsDiffResult = await resp.json();
+    } catch (err) {
+        status.textContent = `failed: ${err.message}`;
+        return;
+    }
+    const nDiffs = toolsDiffResult.lines.reduce((n, l) => n + l.diffs.length, 0);
+    status.textContent = `${toolsDiffResult.lines.length} lines, ${nDiffs} discrepancies`;
+    out.innerHTML = "";
+    const counts = document.createElement("p");
+    counts.className = "tools-counts";
+    counts.textContent = Object.entries(toolsDiffResult.counts)
+        .sort()
+        .map(([k, v]) => `${k}: ${v}`)
+        .join("  ·  ") || "no differences";
+    out.appendChild(counts);
+    for (const line of toolsDiffResult.lines) {
+        const row = document.createElement("div");
+        row.className = "line-row";
+        const idx = document.createElement("span");
+        idx.className = "line-idx";
+        idx.textContent = String(line.idx + 1);
+        const body = document.createElement("div");
+        const text = document.createElement("div");
+        text.className = "line-text";
+        text.textContent = line.text;
+        body.appendChild(text);
+        if (line.diffs.length) body.appendChild(renderDiffChips(line));
+        row.append(idx, body);
+        out.appendChild(row);
+    }
+    out.hidden = false;
+    $("#tools-diff-download").hidden = false;
+}
+
+async function runToolsAlign() {
+    setToolCollapsed("tools-card-diff", true); // focus the tool in use (re-expandable)
+    const status = $("#tools-align-status");
+    const out = $("#tools-align-result");
+    status.textContent = "aligning…";
+    try {
+        const resp = await fetch("/api/tools/align", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                reference_text: $("#tools-align-ref").value,
+                aux_text: $("#tools-align-aux").value,
+            }),
+        });
+        if (!resp.ok) throw new Error((await resp.json()).detail || resp.statusText);
+        toolsAlignResult = await resp.json();
+    } catch (err) {
+        status.textContent = `failed: ${err.message}`;
+        return;
+    }
+    status.innerHTML = `${toolsAlignResult.lines.length} lines · ` +
+        (toolsAlignResult.lossless
+            ? '<span class="tools-lossless">lossless ✓</span>'
+            : '<span class="tools-lossless bad">NOT lossless — inspect the output</span>');
+    out.innerHTML = "";
+    toolsAlignResult.lines.forEach((text, i) => {
+        const row = document.createElement("div");
+        row.className = "line-row";
+        const idx = document.createElement("span");
+        idx.className = "line-idx";
+        idx.textContent = String(i + 1);
+        const body = document.createElement("div");
+        body.className = "line-text";
+        body.textContent = text;
+        row.append(idx, body);
+        out.appendChild(row);
+    });
+    out.hidden = false;
+    $("#tools-align-download").hidden = false;
+}
+
+function bindTools() {
+    // "Load file" inputs fill their target textarea.
+    $$(".tools-file").forEach((inp) =>
+        inp.addEventListener("change", async () => {
+            const f = inp.files?.[0];
+            if (f) $(`#${inp.dataset.target}`).value = await f.text();
+        }));
+    // Collapse/expand: the chevron or the header itself (Clear stays a click apart).
+    $$(".tools-card").forEach((card) => {
+        card.querySelector(".tools-card-head").addEventListener("click", (e) => {
+            if (e.target.classList.contains("tools-clear")) return;
+            setToolCollapsed(card.id, !card.classList.contains("collapsed"));
+        });
+        syncToolTextareas(card);
+    });
+    $$(".tools-clear").forEach((btn) =>
+        btn.addEventListener("click", () => clearTool(btn.dataset.tool)));
+    $("#tools-diff-run")?.addEventListener("click", runToolsDiff);
+    $("#tools-align-run")?.addEventListener("click", runToolsAlign);
+    $("#tools-diff-download")?.addEventListener("click", () => {
+        if (toolsDiffResult)
+            saveBlob(JSON.stringify(toolsDiffResult, null, 1),
+                "discrepancies.json", "application/json");
+    });
+    $("#tools-align-download")?.addEventListener("click", () => {
+        if (toolsAlignResult)
+            saveBlob(toolsAlignResult.lines.join("\n") + "\n",
+                "aligned.txt", "text/plain");
+    });
+}
+
 // ---------- Wire up ----------
 function bindEvents() {
+    bindTools();
     $$(".tab-btn").forEach((btn) => {
         btn.addEventListener("click", () => activateTab(btn.dataset.tab));
     });

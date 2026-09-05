@@ -6534,3 +6534,27 @@ analysis script) + `README.md` (was empty; now points at both + model_results + 
 **Frontend polish:** Model dropdowns styled to the dark theme (`#model-select`, `#upload-model` —
 were browser-default white); "Download diffs (JSON)" renamed "Download discrepancies (JSON)"
 (button, tooltip, Info-tab guide).
+
+**New "Text tools" tab — the pipeline on user-supplied texts (2026-09-05).** Two self-serve tools,
+each a card with paste-or-load-.txt inputs, POSTing plain text to new endpoints:
+- **Compare two texts** (`POST /api/tools/diff`): on-the-fly §6.6+§6.7 pipeline — `align_lines`
+  content matching → `diff_page_banded` (upload treated as one page) → six-category classification
+  + substantive/editorial/scramble grouping + TEI. Rendered as the familiar per-line diff chips +
+  per-category counts; JSON export (client-side blob).
+- **Align a text to line structure** (`POST /api/tools/align`): the §6.4 two-pass anchored aligner
+  (`scholarly_alignment`, aux text staged as a single-page temp dir, boundaries trimmed) re-breaks
+  a continuous reference at the auxiliary transcription's line boundaries; the response carries a
+  **lossless** flag (concat == reference word-for-word) surfaced as a green/red badge; .txt export.
+Verified via TestClient: diff classifies `yssi→Ayssi`/`paramlas→paraulas` substantive + editorial
+punctuation; align reproduces the reference lossless over the aux lineation. Files:
+`frontend/app.py` (endpoints), `frontend/static/{index.html,app.js,style.css}` (tab, wiring, cards),
+Info-tab guide updated. Validated live on page 05 (101 lines / 107 discrepancies; align of full
+AlbucE.txt over the page's lineation → 100 lines, lossless ✓). NB a 405 from these endpoints means
+a stale server process — the POST falls through to the GET-only static mount; restart `make frontend`.
+
+**Text-tools UX pass (user feedback, 2026-09-05):** (1) panel-level scrolling like the Info tab —
+scrollbar at the screen edge, `.tools-wrap` only caps content width; (2) cards are **collapsible**
+(chevron or header click); (3) running one tool **auto-collapses the other** (focus the tool in
+use; both can be manually re-expanded); (4) a **Clear** button per card resets textareas, file
+pickers, result and status; (5) the two textareas of a card are **resize-synced** via a
+ResizeObserver (drag one handle, the sibling follows).

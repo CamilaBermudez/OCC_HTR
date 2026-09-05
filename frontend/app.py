@@ -23,6 +23,7 @@ from typing import Annotated
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from frontend.manuscript_data import get_repo
 
@@ -219,6 +220,96 @@ def api_review_save(
     )
     done = review.load_done(review.corrections_path())
     return {"ok": True, "record": rec, "done": len(done)}
+
+
+# ---- Tab 6: text tools — user-supplied texts (spec §6.15) ----
+class ToolsDiffBody(BaseModel):
+    """Two texts to compare: ``base_text`` = the reference/normalized side,
+    ``ocr_text`` = the diplomatic/model side. Both plain multi-line text."""
+
+    base_text: str
+    ocr_text: str
+
+
+@app.post("/api/tools/diff")
+def api_tools_diff(body: ToolsDiffBody) -> dict:
+    """Classified discrepancies between two uploaded texts.
+
+    Same pipeline as the precomputed viewer diffs (spec §6.6/§6.7), computed
+    on the fly: content-based line alignment -> anchored banded word-level NW
+    diff -> six-category classification + substantive/editorial/scramble
+    grouping + TEI. The whole upload is treated as one page.
+    """
+    from src.ocr.line_alignment import align_lines
+    from src.ocr.line_diff import diff_group
+    from src.ocr.word_align import diff_page_banded
+
+    scholarly = [ln.strip() for ln in body.base_text.splitlines() if ln.strip()]
+    ocr = list(enumerate(ln.strip() for ln in body.ocr_text.splitlines() if ln.strip()))
+    if not scholarly or not ocr:
+        raise HTTPException(status_code=400, detail="both texts need at least one non-empty line")
+
+    pairs = align_lines([t for _, t in ocr], scholarly)
+    m2s = {p.source_idx: p.target_idx for p in pairs if p.is_match}
+    align = {seg: t_idx + 1 for seg, t_idx in m2s.items()}  # diff_page_banded is 1-based
+    diffs = diff_page_banded(scholarly, ocr, align)
+
+    by_line: dict[int, list[dict]] = {}
+    counts: dict[str, int] = {}
+    for d in diffs:
+        group = diff_group(d)
+        counts[f"{group}:{d.type}"] = counts.get(f"{group}:{d.type}", 0) + 1
+        dd = d.as_dict()
+        dd["group"] = group
+        by_line.setdefault(d.ocr_line, []).append(dd)
+    lines = [
+        {
+            "idx": i,
+            "text": t,
+            "scholarly_no": align.get(i),
+            "scholarly_text": scholarly[m2s[i]] if i in m2s else None,
+            "diffs": by_line.get(i, []),
+        }
+        for i, t in ocr
+    ]
+    return {"lines": lines, "counts": counts, "n_scholarly_lines": len(scholarly)}
+
+
+class ToolsAlignBody(BaseModel):
+    """``reference_text`` = continuous clean text (e.g. a scholarly edition);
+    ``aux_text`` = a line-broken auxiliary transcription of the same content."""
+
+    reference_text: str
+    aux_text: str
+
+
+@app.post("/api/tools/align")
+def api_tools_align(body: ToolsAlignBody) -> dict:
+    """Re-break a continuous reference text at an auxiliary transcription's
+    line boundaries (the §6.4 two-pass anchored aligner, single-page). The
+    output is lossless: it re-concatenates to the reference word-for-word,
+    with line breaks where the auxiliary transcription has them.
+    """
+    import tempfile
+
+    from src.ocr.scholarly_alignment import align_ocr_to_reference, enforce_page_boundaries
+
+    if not body.reference_text.strip() or not body.aux_text.strip():
+        raise HTTPException(status_code=400, detail="both texts must be non-empty")
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            (Path(td) / "uploaded_page.txt").write_text(body.aux_text, encoding="utf-8")
+            aligned_doc, page_info = align_ocr_to_reference(body.reference_text, Path(td))
+            aligned_doc = enforce_page_boundaries(
+                aligned_doc, page_info, body.reference_text, mode="trim", verbose=False
+            )
+    except Exception as exc:  # surface aligner errors to the client
+        logging.exception("tools/align failed")
+        raise HTTPException(status_code=500, detail=f"alignment failed: {exc}") from exc
+
+    lines = [ln for _, page_lines in aligned_doc for ln in page_lines]
+    lossless = body.reference_text.split() == [w for ln in lines for w in ln.split()]
+    return {"lines": lines, "lossless": lossless}
 
 
 # Static mount is LAST so ``/api/*`` routes take precedence. The SPA at
